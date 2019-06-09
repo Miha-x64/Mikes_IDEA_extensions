@@ -1,0 +1,40 @@
+<idea-plugin>
+
+    <id>net.aquadc.mike.plugin</id>
+    <name>Mike's tools</name>
+    <vendor email="silizium@ok.de" url="http://aquadc.net/">Mike</vendor>
+
+    <description><![CDATA[
+      Missing inspections, quickfixes, tools.
+
+      <ul>
+        <li>Property delegation warning</li>
+      </ul>
+    ]]></description>
+
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
+    <idea-version since-build="173.0"/>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <localInspection
+                shortName="ktPropBy" displayName="Property delegation"
+                groupPath="Kotlin" groupName="Performance"
+                enabledByDefault="true" level="WARNING"
+                implementationClass="net.aquadc.mike.plugin.KtPropByInspection" />
+
+    </extensions>
+
+    <depends>org.jetbrains.kotlin</depends>
+
+    <actions>
+    </actions>
+
+</idea-plugin>

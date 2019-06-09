@@ -1,0 +1,21 @@
+<html>
+<body>
+<p>
+    Reports cases of property delegation.
+    Property delegation slows down initialization and should be avoided in applications which should start up fast.
+</p>
+
+<p>
+    The cause of this slowdown it that all delegation operator functions accept KProperty instances
+</p>
+<pre>
+operator fun getValue(thisRef: R, property: KProperty<*>): T
+operator fun setValue(thisRef: R, property: KProperty<*>, value: T)
+operator fun provideDelegate(thisRef: R, prop: KProperty<*>): Delegate
+</pre>
+<p>
+    There KProperty instances are created via reflection.
+</p>
+
+</body>
+</html>
