@@ -31,6 +31,13 @@
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.KtPropByInspection" />
 
+        <localInspection
+            language="kotlin"
+            shortName="ktIdIsJavaKw" displayName="Declaration name is Java keyword"
+            groupPath="Kotlin" groupName="Java interop issues"
+            enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.inspection.KtIdIsJavaKeywordInspection" />
+
     </extensions>
 
     <depends>org.jetbrains.kotlin</depends>
