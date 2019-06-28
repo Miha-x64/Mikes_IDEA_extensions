@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin
+package net.aquadc.mike.plugin.inspection
 
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor

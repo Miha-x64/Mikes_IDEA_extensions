@@ -6,7 +6,7 @@
 </p>
 
 <p>
-    The cause of this slowdown it that all delegation operator functions accept KProperty instances
+    The cause of this slowdown it that all delegation operator functions accept <tt>KProperty</tt> instances...
 </p>
 <pre>
 operator fun getValue(thisRef: R, property: KProperty<*>): T
@@ -14,8 +14,14 @@ operator fun setValue(thisRef: R, property: KProperty<*>, value: T)
 operator fun provideDelegate(thisRef: R, prop: KProperty<*>): Delegate
 </pre>
 <p>
-    There KProperty instances are created via reflection.
+    ...even if doesn't need them. These <tt>KProperty</tt> instances are created via reflection.
 </p>
+<p>See these issues in Kotlin YouTrack:</p>
+<ul>
+    <li><a href="https://youtrack.jetbrains.com/issue/KT-14513">Suboptimal compilation of lazy delegated properties with inline getValue</a></li>
+    <li><a href="https://youtrack.jetbrains.com/issue/KT-16997">More flexible delegated property convention</a></li>
+    <li><a href="https://youtrack.jetbrains.com/issue/KT-17034">Support Delegates without KProperty</a></li>
+</ul>
 
 </body>
 </html>
