@@ -7,8 +7,15 @@
     <description><![CDATA[
       Missing inspections, quickfixes, tools.
 
+      <h3>Kotlin inspections</h3>
       <ul>
-        <li>Property delegation warning</li>
+        <li>Property delegation</li>
+        <li>Kotlin identifier is Java keyword</li>
+      </ul>
+
+      <h3>Android inspections</h3>
+      <ul>
+        <li>&lt;include layout="?themeAttribute"&gt;</li>
       </ul>
     ]]></description>
 
@@ -38,9 +45,17 @@
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.KtIdIsJavaKeywordInspection" />
 
+        <localInspection
+            language="XML"
+            shortName="androidIncludeLayoutByThemeAttr" displayName="Using &lt;include&gt; with layout from theme attribute"
+            groupPath="Android" groupName=""
+            enabledByDefault="true" level="ERROR"
+            implementationClass="net.aquadc.mike.plugin.inspection.AndroidIncludeLayoutByThemeAttrInspection" />
+
     </extensions>
 
     <depends>org.jetbrains.kotlin</depends>
+    <depends>org.jetbrains.android</depends>
 
     <actions>
     </actions>
