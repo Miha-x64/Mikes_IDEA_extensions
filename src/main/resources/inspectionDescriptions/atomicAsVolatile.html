@@ -1,0 +1,45 @@
+<html>
+<body>
+
+<p>
+    Reports abuse of atomics which should be replaced with volatiles.
+    Atomic is considered abused when only <tt>get</tt> and/or <tt>set</tt> methods called.
+</p>
+
+<p>
+    Sample of atomic box abuse:
+</p>
+<pre>
+private final AtomicReference&lt;T&gt; tRef = new AtomicReference&lt;&gt;();
+...
+    return tRef.get();
+...
+    tRef.set(value);
+</pre>
+
+<p>
+    Sample of atomic updater abuse:
+</p>
+<pre>
+private volatile T t;
+...
+    return tUpdater.get(this);
+...
+    tUpdater.set(this, value);
+...
+private static final AtomicReferenceFieldUpdater&lt;...&gt; tUpdater = ...;
+</pre>
+
+<p>
+    Fix:
+</p>
+<pre>
+private volatile T t;
+...
+    return t;
+...
+    t = value;
+</pre>
+
+</body>
+</html>

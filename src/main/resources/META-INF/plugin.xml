@@ -1,7 +1,7 @@
 <idea-plugin>
 
     <id>net.aquadc.mike.plugin</id>
-    <name>Mike's tools</name>
+    <name>Mike's IDEA extensions</name>
     <vendor email="silizium@ok.de" url="http://aquadc.net/">Mike</vendor>
 
     <description><![CDATA[
@@ -11,6 +11,7 @@
       <ul>
         <li>Property delegation</li>
         <li>Kotlin identifier is Java keyword</li>
+        <li>Atomic can be replaced with volatile</li>
       </ul>
 
       <h3>Android inspections</h3>
@@ -51,6 +52,13 @@
             groupPath="Android" groupName=""
             enabledByDefault="true" level="ERROR"
             implementationClass="net.aquadc.mike.plugin.inspection.AndroidIncludeLayoutByThemeAttrInspection" />
+
+        <localInspection
+            language="UAST"
+            shortName="atomicAsVolatile" displayName="Atomic can be replaced with volatile"
+            groupPath="JVM languages" groupName=""
+            enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.inspection.AtomicAsVolatileInspection" />
 
     </extensions>
 
