@@ -29,7 +29,7 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version '2019.1.3'
+    version '2018.1'
     plugins 'Kotlin', 'android'
     updateSinceUntilBuild false
 }

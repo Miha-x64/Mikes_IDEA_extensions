@@ -1,8 +1,10 @@
 package net.aquadc.mike.plugin.inspection
 
 import com.intellij.codeInspection.*
+import com.intellij.openapi.util.Conditions
 import com.intellij.psi.*
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.Processor
 import net.aquadc.mike.plugin.SortedArray
 import org.jetbrains.kotlin.psi.*
@@ -11,7 +13,7 @@ import org.jetbrains.uast.kotlin.KotlinUField
 import java.util.concurrent.atomic.*
 
 
-class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool(UField::class.java) {
+class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool() {
 
     private val atomics = SortedArray.of(
         // boxes
@@ -25,6 +27,10 @@ class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool(UField::c
     private val volatileActions = arrayOf(
         "get", "set"
     )
+
+    override fun getProblemElement(psiElement: PsiElement): PsiNamedElement? {
+        return PsiTreeUtil.findFirstParent(psiElement, Conditions.instanceOf(PsiField::class.java)) as PsiNamedElement?
+    }
 
     override fun checkField(field: UField, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor>? {
         val src = field.sourceElement ?: return null
