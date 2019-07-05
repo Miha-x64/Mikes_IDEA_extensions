@@ -5,9 +5,12 @@ import com.intellij.openapi.util.Conditions
 import com.intellij.psi.*
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.PsiUtil
 import com.intellij.util.Processor
 import net.aquadc.mike.plugin.SortedArray
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.kotlin.KotlinUField
 import java.util.concurrent.atomic.*
@@ -34,11 +37,27 @@ class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkField(field: UField, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor>? {
         val src = field.sourceElement ?: return null
-        val rawType = (field.type as? PsiClassType)?.rawType() ?: return null
+        val rawType = PsiUtil.resolveClassInType(field.type) ?: return null
 
-        return if (rawType.canonicalText in atomics && ReferencesSearch.search(src).forEach(isNotSpecificAction)) {
-            problem(field, manager, isOnTheFly, "${rawType.presentableText} can be replaced with volatile")
+        return if (rawType.qualifiedName in atomics && isAtomicAbused(src)) {
+            problem(field, manager, isOnTheFly, "${field.type.presentableText} can be replaced with volatile")
         } else null
+    }
+
+    private fun isAtomicAbused(src: PsiElement): Boolean {
+        var volatile = false
+        val complete = ReferencesSearch.search(src).forEach(Processor { usage: PsiReference ->
+            val name = usage.outerMethodName
+            when (name) {
+                null -> true // continue
+                in volatileActions -> {
+                    volatile = true
+                    true
+                }
+                else -> false // stop execution, non-volatile action found
+            }
+        })
+        return complete && volatile
     }
 
     private fun problem(field: UField, manager: InspectionManager, isOnTheFly: Boolean, text: String) = arrayOf(
@@ -56,27 +75,20 @@ class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool() {
 
     private val PsiReference.outerMethodName: String? get() {
         val el = element
-        if (el is PsiExpression) {
-            ((el.parent as? PsiReferenceExpression)?.parent as? PsiMethodCallExpression)?.methodExpression?.let {
-                if (this === it.qualifierExpression) {
-                    return it.referenceName }
-            }
-        }
 
-        if (el is KtExpression) {
-            el.context?.children?.let {
-                if (it.size == 2 && (it[0] as? KtNameReferenceExpression)?.references?.firstOrNull() === this) {
-                    val text = (it[1] as? KtCallExpression)?.firstChild?.text
-                    return text
-                }
-            }
-        }
+        // Java
+        PsiTreeUtil.getParentOfType(el, PsiMethodCallExpression::class.java)?.methodExpression
+            ?.takeIf { it.qualifierExpression === this }
+            ?.let { (it.reference?.resolve() as PsiMethod?)?.name }
+            ?.let { return it }
+
+        // Kotlin
+        PsiTreeUtil.getParentOfType(el, KtDotQualifiedExpression::class.java)
+            ?.takeIf { it.receiverExpression.references.any { it.element == el } }
+            ?.let { (it.selectorExpression as? KtCallExpression)?.calleeExpression?.references }
+            ?.forEach { (it.resolve() as? PsiMethod)?.name?.let { return it } }
 
         return null
-    }
-
-    private val isNotSpecificAction = Processor { usage: PsiReference ->
-        usage.outerMethodName.let { it == null || it in volatileActions }
     }
 
 }

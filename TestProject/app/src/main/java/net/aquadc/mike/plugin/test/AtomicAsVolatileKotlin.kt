@@ -19,12 +19,12 @@ class AtomicAsVolatileKotlin {
         volatileAtomic.set(Any())
 
         normalFU.getAndSet(this, 11)
-        volatileAsAtomicFU.get(this)
+        atomicFUAsVolatile.get(this)
     }
 
     companion object {
         private val normalFU = AtomicIntegerFieldUpdater.newUpdater(AtomicAsVolatileKotlin::class.java, "v1")
-        private val volatileAsAtomicFU = AtomicIntegerFieldUpdater.newUpdater(AtomicAsVolatileKotlin::class.java, "v2")
+        private val atomicFUAsVolatile = AtomicIntegerFieldUpdater.newUpdater(AtomicAsVolatileKotlin::class.java, "v2")
     }
 
 }
