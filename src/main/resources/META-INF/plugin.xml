@@ -22,7 +22,7 @@
 
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="181.0"/>
+    <idea-version since-build="182.0"/>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
@@ -59,6 +59,13 @@
             groupPath="JVM languages" groupName=""
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.AtomicAsVolatileInspection" />
+
+        <localInspection
+            language="UAST"
+            shortName="enumValuesUncached" displayName="Enum values() are never cached"
+            groupPath="JVM languages" groupName="Performance"
+            enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.inspection.EnumValuesUncachedInspection" />
 
     </extensions>
 

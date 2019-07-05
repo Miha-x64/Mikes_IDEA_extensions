@@ -1,0 +1,36 @@
+<html>
+<body>
+
+<p>
+    Reports use of <tt>values()</tt> method on Enum types.
+</p>
+
+<p>
+    <tt>values()</tt> is internally implemented as <tt>return $VALUES.clone();</tt>.
+    It's recommended co call <tt>values()</tt> only once and use this array instance further.
+    Sample:
+</p>
+
+<pre>
+    private static final ThisEnum[] VALS = values();
+
+    /**
+     * Number of available enum constants.
+     * @see #valueAt
+     */
+    public static final int THIS_ENUM_COUNT = VALS.length;
+
+    /**
+     * Returns enum constant at the given index.
+     * @param index must be in [0; THIS_ENUM_COUNT)
+     * @return enum constant at the given index
+     * @throws ArrayIndexOutOfBoundsException for wrong indices
+     * @see #THIS_ENUM_COUNT
+     */
+    public static ThisEnum valueAt(int index) {
+        return VALS[index];
+    }
+</pre>
+
+</body>
+</html>
