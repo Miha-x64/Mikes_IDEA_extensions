@@ -1,5 +1,25 @@
 
 ## Mike's IDEA extensions
 
-* inspections,
-* well, that's all for now
+Some great inspections, quickfixes, tools. Well, only inspections at the moment.
+
+  <h3>UAST (Java + Kotlin) inspections</h3>
+  <ul>
+    <li>Atomic can be replaced with volatile</li>
+    <li>Calling Enum values() without caching</li>
+  </ul>
+
+  <h3>Kotlin inspections</h3>
+  <ul>
+    <li>Property delegation</li>
+    <li>Declaration name is Java keyword</li>
+    <li>Inline function leaks anonymous declaration</li>
+    <li>Function won't be inlined;
+      noinline callable references are a bit more expensive than noinline lambdas;
+      function cannot be inlined if it is a receiver of an extension function</li>
+  </ul>
+
+  <h3>Android inspections</h3>
+  <ul>
+    <li>&lt;include layout="?themeAttribute"&gt;</li>
+  </ul>
