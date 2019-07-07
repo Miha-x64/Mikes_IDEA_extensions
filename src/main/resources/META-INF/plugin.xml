@@ -74,6 +74,13 @@
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.KtNoinlineFuncInspection" />
 
+        <localInspection
+            language="kotlin"
+            shortName="ktInlineFunctionLeaksAnonymous" displayName="Inline function leaks anonymous declaration"
+            groupPath="Kotlin" groupName="Performance"
+            enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.inspection.KtInlineFunctionLeaksAnonymousDeclaration" />
+
     </extensions>
 
     <depends>org.jetbrains.kotlin</depends>
