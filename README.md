@@ -23,3 +23,5 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
   <ul>
     <li>&lt;include layout="?themeAttribute"&gt;</li>
   </ul>
+
+  [Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)
