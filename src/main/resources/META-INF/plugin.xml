@@ -67,6 +67,13 @@
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.EnumValuesUncachedInspection" />
 
+        <localInspection
+            language="kotlin"
+            shortName="ktNoinlineFunc" displayName="Function won't be inlined"
+            groupPath="Kotlin" groupName="Performance"
+            enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.inspection.KtNoinlineFuncInspection" />
+
     </extensions>
 
     <depends>org.jetbrains.kotlin</depends>
