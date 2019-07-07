@@ -1,14 +1,16 @@
 package net.aquadc.mike.plugin.inspection
 
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiNameIdentifierOwner
 import net.aquadc.mike.plugin.SortedArray
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.idea.quickfix.RenameIdentifierFix
-import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtPsiUtil
 import org.jetbrains.kotlin.psi.KtVisitorVoid
+import org.jetbrains.kotlin.psi.psiUtil.isPublic
 
 
 class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
@@ -26,17 +28,19 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
             ).split(' ')
     )
 
-    // partially copied from https://github.com/JetBrains/kotlin/blob/ba6da7c40a6cc502508faf6e04fa105b96bc7777/idea/idea-android/src/org/jetbrains/kotlin/android/inspection/IllegalIdentifierInspection.kt
-
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
         object : KtVisitorVoid() {
-            override fun visitElement(element: PsiElement) {
-                if (element.node?.elementType != KtTokens.IDENTIFIER) return
+            override fun visitDeclaration(dcl: KtDeclaration) {
+                if (dcl is KtParameter) return // named parameters are unusable from Java\
+                if (!dcl.isPublic) return // also ignore local and private variables and functions
 
-                val identifier = KtPsiUtil.unquoteIdentifier(element.text)
+                val name = dcl.name ?: return // invalid (or anonymous?)
+                val identifier = KtPsiUtil.unquoteIdentifier(name)
                 if (identifier in javaKeywords) {
+                    val highlight = (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl
+
                     holder.registerProblem(
-                        element, "Identifier \"$identifier\" is a Java keyword", RenameIdentifierFix()
+                        highlight, "Identifier \"$identifier\" is a Java keyword", RenameIdentifierFix()
                     )
                 }
             }

@@ -10,13 +10,15 @@ fun `package`() {
 }
 
 fun iAmNotAKeyword() {
-
+    fun long() {}
+    val double = 1
 }
 
 fun `const`() {
 
 }
 
-fun Const() {
-
+fun Const(default: Unit) {
+    `package`()
+    goto.hashCode()
 }
