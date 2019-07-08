@@ -31,15 +31,8 @@
       <a href="http://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
     ]]></description>
 
-
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
     <idea-version since-build="182.0"/>
-
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
-         on how to target different products -->
-    <!-- uncomment to enable plugin in all products
-    <depends>com.intellij.modules.lang</depends>
-    -->
 
     <extensions defaultExtensionNs="com.intellij">
 
@@ -94,6 +87,7 @@
 
     </extensions>
 
+    <depends>com.intellij.modules.lang</depends>
     <depends>org.jetbrains.kotlin</depends>
     <depends>org.jetbrains.android</depends>
 
