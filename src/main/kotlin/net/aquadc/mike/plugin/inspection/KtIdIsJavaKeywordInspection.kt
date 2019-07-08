@@ -6,10 +6,7 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import net.aquadc.mike.plugin.SortedArray
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.idea.quickfix.RenameIdentifierFix
-import org.jetbrains.kotlin.psi.KtDeclaration
-import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.kotlin.psi.KtPsiUtil
-import org.jetbrains.kotlin.psi.KtVisitorVoid
+import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.isPublic
 
 
@@ -31,13 +28,27 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
         object : KtVisitorVoid() {
             override fun visitDeclaration(dcl: KtDeclaration) {
-                if (dcl is KtParameter) return // named parameters are unusable from Java\
+                if (dcl is KtParameter) return // named parameters are unusable from Java
                 if (!dcl.isPublic) return // also ignore local and private variables and functions
 
-                val name = dcl.name ?: return // invalid (or anonymous?)
+                val jvmNameExpr = dcl.annotationEntries
+                    .firstOrNull { it.calleeExpression?.constructorReferenceExpression?.getReferencedName() == "JvmName" }
+                    ?.valueArguments?.singleOrNull()?.getArgumentExpression()
+
+                val name =
+                    if (jvmNameExpr == null) dcl.name ?: return // invalid (or anonymous?)
+                    else (jvmNameExpr as? KtStringTemplateExpression)?.entries?.let { entries ->
+                        buildString {
+                            for (e in entries) {
+                                if (e is KtLiteralStringTemplateEntry) append(e.node.text)
+                                else return
+                            }
+                        }
+                    } ?: return // string template (invalid) or complex compile-time expression (rare; give up)
+
                 val identifier = KtPsiUtil.unquoteIdentifier(name)
                 if (identifier in javaKeywords) {
-                    val highlight = (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl
+                    val highlight = jvmNameExpr ?: (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl
 
                     holder.registerProblem(
                         highlight, "Identifier \"$identifier\" is a Java keyword", RenameIdentifierFix()

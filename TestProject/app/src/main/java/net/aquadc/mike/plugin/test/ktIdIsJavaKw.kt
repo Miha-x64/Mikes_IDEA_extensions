@@ -22,3 +22,13 @@ fun Const(default: Unit) {
     `package`()
     goto.hashCode()
 }
+
+@JvmName("renamed")
+fun short() {
+
+}
+
+@JvmName("float")
+fun zzz() {
+
+}
