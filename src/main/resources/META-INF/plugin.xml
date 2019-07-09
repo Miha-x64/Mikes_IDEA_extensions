@@ -1,7 +1,8 @@
-<idea-plugin>
+<idea-plugin url="https://github.com/Miha-x64/Mikes_IDEA_extensions">
 
     <id>net.aquadc.mike.plugin</id>
     <name>Mike's IDEA extensions</name>
+    <category>Inspection</category>
     <vendor email="silizium@ok.de" url="http://aquadc.net/">Mike</vendor>
 
     <description><![CDATA[
@@ -28,7 +29,7 @@
         <li>&lt;include layout="?themeAttribute"&gt;</li>
       </ul>
 
-      <a href="http://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
+      <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
     ]]></description>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
