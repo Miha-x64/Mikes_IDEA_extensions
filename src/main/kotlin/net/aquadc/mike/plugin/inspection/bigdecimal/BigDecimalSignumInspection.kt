@@ -56,7 +56,7 @@ class BigDecimalSignumInspection : AbstractBaseJavaLocalInspectionTool(), Cleanu
             problemsHolder.registerProblem(
                 call,
                 "BigDecimal.compareTo(ZERO) can be replaced with signum()",
-                BIG_DECIMAL_SIGNUM_QUICK_FIX
+                BigDecimalSignumQuickFix
             )
         }
     }
@@ -66,8 +66,6 @@ class BigDecimalSignumInspection : AbstractBaseJavaLocalInspectionTool(), Cleanu
 
         private val COMPARE_METHOD =
             instanceCall("java.math.BigDecimal", "compareTo").parameterTypes("java.math.BigDecimal")
-        private val BIG_DECIMAL_SIGNUM_QUICK_FIX =
-            BigDecimalSignumQuickFix()
     }
 }
 

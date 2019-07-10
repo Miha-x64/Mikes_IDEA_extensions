@@ -7,7 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiMethodCallExpression
 import com.siyeh.ig.PsiReplacementUtil
 
-class BigDecimalSignumQuickFix : LocalQuickFix {
+object BigDecimalSignumQuickFix : LocalQuickFix {
 
     override fun getFamilyName(): String {
         return "Replace BigDecimal instantiation with constant"
