@@ -28,6 +28,8 @@
       <ul>
         <li>&lt;include layout="?themeAttribute"&gt;</li>
       </ul>
+
+      <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
     ]]></description>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
@@ -84,9 +86,23 @@
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.KtInlineFunctionLeaksAnonymousDeclaration" />
 
+        <localInspection
+            language="JAVA"
+            shortName="BigDecimalConstant" displayName="BigDecimal instantiation can be replaced with constant"
+            groupPath="Java" groupName="Performance"
+            enabledByDefault="true" cleanupTool="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.inspection.bigdecimal.BigDecimalConstantInspection"/>
+
+        <localInspection
+            language="JAVA"
+            shortName="BigDecimalSignum" displayName="BigDecimal.compareTo(ZERO) can be replaced with signum()"
+            groupPath="Java" groupName="Performance"
+            enabledByDefault="true" cleanupTool="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.inspection.bigdecimal.BigDecimalSignumInspection"/>
     </extensions>
 
     <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
     <depends>org.jetbrains.android</depends>
 
