@@ -27,8 +27,6 @@
       <ul>
         <li>&lt;include layout="?themeAttribute"&gt;</li>
       </ul>
-
-      <a href="http://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
     ]]></description>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
