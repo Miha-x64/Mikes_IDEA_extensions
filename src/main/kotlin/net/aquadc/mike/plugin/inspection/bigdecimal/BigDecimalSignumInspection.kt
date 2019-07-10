@@ -27,7 +27,7 @@ class BigDecimalSignumInspection : AbstractBaseJavaLocalInspectionTool(), Cleanu
         return BigDecimalInspectionVisitor(holder, isOnTheFly)
     }
 
-    internal inner class BigDecimalInspectionVisitor(
+    private class BigDecimalInspectionVisitor(
         private val problemsHolder: ProblemsHolder,
         private val onTheFly: Boolean
     ) : JavaElementVisitor() {

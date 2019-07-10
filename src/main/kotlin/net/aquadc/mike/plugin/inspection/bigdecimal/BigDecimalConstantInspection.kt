@@ -25,7 +25,7 @@ class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), Clea
         return BigDecimalInspectionVisitor(holder, isOnTheFly)
     }
 
-    internal inner class BigDecimalInspectionVisitor(
+    private class BigDecimalInspectionVisitor(
         private val problemsHolder: ProblemsHolder,
         private val onTheFly: Boolean
     ) : JavaElementVisitor() {
@@ -117,13 +117,11 @@ class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), Clea
                 // that's ok
                 return null
             }
-            when (number.toInt()) {
-                0 -> return "BigDecimal.ZERO"
-                1 -> return "BigDecimal.ONE"
-                10 -> return "BigDecimal.TEN"
-                else ->
-                    // that's ok
-                    return null
+            return when (number.toInt()) {
+                0 -> "BigDecimal.ZERO"
+                1 -> "BigDecimal.ONE"
+                10 -> "BigDecimal.TEN"
+                else -> null // that's ok
             }
         }
 
@@ -131,32 +129,12 @@ class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), Clea
             return d == d.toInt().toDouble()
         }
 
-        private fun isSpecialCaseLiteral(expression: PsiLiteralExpression): Boolean {
-            val constVal = ExpressionUtils.computeConstantExpression(expression)
-            if (constVal is Int) {
-                val i = constVal.toInt()
-                return i >= 0 && i <= 10 || i == 100 || i == 1000
-            } else if (constVal is Long) {
-                val l = constVal.toLong()
-                return l >= 0L && l <= 2L
-            } else if (constVal is Double) {
-                val d = constVal.toDouble()
-                return d == 1.0 || d == 0.0
-            } else if (constVal is Float) {
-                val f = constVal.toFloat()
-                return f == 1.0f || f == 0.0f
-            }
-            return false
-        }
-
         private fun strToBigDecimalLiteral(str: String): String? {
             return when (str) {
                 "0" -> "BigDecimal.ZERO"
                 "1" -> "BigDecimal.ONE"
                 "10" -> "BigDecimal.TEN"
-                else ->
-                    // that's ok
-                    null
+                else -> null // that's ok
             }
         }
     }
