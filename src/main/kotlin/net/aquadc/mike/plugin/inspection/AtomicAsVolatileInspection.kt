@@ -37,9 +37,9 @@ class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkField(field: UField, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor>? {
         val src = field.sourceElement ?: return null
-        val rawType = PsiUtil.resolveClassInType(field.type) ?: return null
+        val qualifiedName = PsiUtil.resolveClassInType(field.type)?.qualifiedName ?: return null
 
-        return if (rawType.qualifiedName in atomics && isAtomicAbused(src)) {
+        return if (qualifiedName in atomics && isAtomicAbused(src)) {
             problem(field, manager, isOnTheFly, "${field.type.presentableText} can be replaced with volatile")
         } else null
     }
