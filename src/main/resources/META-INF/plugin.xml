@@ -1,7 +1,8 @@
-<idea-plugin>
+<idea-plugin url="https://github.com/Miha-x64/Mikes_IDEA_extensions">
 
     <id>net.aquadc.mike.plugin</id>
     <name>Mike's IDEA extensions</name>
+    <category>Inspection</category>
     <vendor email="silizium@ok.de" url="http://aquadc.net/">Mike</vendor>
 
     <description><![CDATA[
