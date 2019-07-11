@@ -3,6 +3,12 @@
 
 Some great inspections, quickfixes, tools. Well, only inspections at the moment.
 
+  <h3>Java inspections</h3>
+  <ul>
+    <li>BigDecimal instantiation can be replaced with constant <em>by <a href="http://github.com/stokito/">stokito</a></em></li>
+    <li>BigDecimal.compareTo(ZERO) can be replaced with signum() <em>by <a href="http://github.com/stokito/">stokito</a></em></li>
+  </ul>
+
   <h3>UAST (Java + Kotlin) inspections</h3>
   <ul>
     <li>Atomic can be replaced with volatile</li>

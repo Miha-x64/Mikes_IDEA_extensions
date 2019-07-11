@@ -7,6 +7,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiExpression
 import com.siyeh.ig.PsiReplacementUtil
 
+/**
+ * @author stokito
+ */
 class BigDecimalConstantQuickFix(private val replacementText: String) : LocalQuickFix {
 
     override fun getFamilyName(): String {

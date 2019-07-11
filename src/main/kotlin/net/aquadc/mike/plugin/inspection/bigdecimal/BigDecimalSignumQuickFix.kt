@@ -7,7 +7,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiMethodCallExpression
 import com.siyeh.ig.PsiReplacementUtil
 
+/**
+ * @author stokito
+ */
 object BigDecimalSignumQuickFix : LocalQuickFix {
+
+    private val LOG = Logger.getInstance(BigDecimalSignumQuickFix::class.java)
 
     override fun getFamilyName(): String {
         return "Replace BigDecimal instantiation with constant"
@@ -28,7 +33,4 @@ object BigDecimalSignumQuickFix : LocalQuickFix {
         return "$`var`.signum()"
     }
 
-    companion object {
-        private val LOG = Logger.getInstance(BigDecimalSignumQuickFix::class.java)
-    }
 }

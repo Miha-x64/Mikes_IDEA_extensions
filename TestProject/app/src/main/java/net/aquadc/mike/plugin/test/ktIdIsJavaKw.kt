@@ -32,3 +32,7 @@ fun short() {
 fun zzz() {
 
 }
+
+val zzz: (Enum<*>) -> Unit = { enum ->
+
+}

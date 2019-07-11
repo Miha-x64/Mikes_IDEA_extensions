@@ -18,16 +18,16 @@ import com.intellij.psi.PsiType.*
  * BigDecimal.valueOf(0) -> BigDecimal.ZERO
  * new BigDecimal(0) -> BigDecimal.ZERO
  * </pre>
+ * @author stokito
  */
 class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), CleanupLocalInspectionTool {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return BigDecimalInspectionVisitor(holder, isOnTheFly)
+        return BigDecimalInspectionVisitor(holder)
     }
 
     private class BigDecimalInspectionVisitor(
-        private val problemsHolder: ProblemsHolder,
-        private val onTheFly: Boolean
+        private val problemsHolder: ProblemsHolder
     ) : JavaElementVisitor() {
 
         /**
@@ -51,12 +51,9 @@ class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), Clea
                 return
             }
             val argumentList = expression.argumentList
-            val arguments = argumentList!!.expressions
-            if (arguments.size != 1) {
-                // that's ok
-                return
-            }
-            val arg = arguments[0]
+            val arg = argumentList!!.expressions.singleOrNull()
+                ?: return // that's ok
+
             val type = arg.type
             if (INT != type && LONG != type && FLOAT != type && DOUBLE != type
                 && !type!!.equalsToText(JAVA_LANG_STRING)
@@ -71,9 +68,9 @@ class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), Clea
             val constVal = ExpressionUtils.computeConstantExpression(arg)
             val bigDecimalLiteral: String?
             if (constVal is Number) {
-                bigDecimalLiteral = numberToBigDecimalLiteral((constVal as Number?)!!)
+                bigDecimalLiteral = numberToBigDecimalLiteral(constVal)
             } else if (constVal is String) {
-                bigDecimalLiteral = strToBigDecimalLiteral((constVal as String?)!!)
+                bigDecimalLiteral = strToBigDecimalLiteral(constVal)
             } else {
                 bigDecimalLiteral = null // that's ok e.g. 12.34
             }
@@ -107,8 +104,8 @@ class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), Clea
                 LOG.error("WTF? " + constVal!!.javaClass.simpleName)
                 return null
             }
-            val number = constVal as Number?
-            return numberToBigDecimalLiteral(number!!)
+
+            return numberToBigDecimalLiteral(constVal)
         }
 
         private fun numberToBigDecimalLiteral(number: Number): String? {
@@ -148,4 +145,3 @@ class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), Clea
         )
     }
 }
-

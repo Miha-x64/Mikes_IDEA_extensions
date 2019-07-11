@@ -20,16 +20,16 @@ import com.siyeh.ig.callMatcher.CallMatcher.instanceCall
  * ZERO.compareTo(bd) //TODO -1 * one.signum()
  * Ignored: int i4 = bd.compareTo(BigDecimal.valueOf(2));
  * </pre>
+ * @author stokito
  */
 class BigDecimalSignumInspection : AbstractBaseJavaLocalInspectionTool(), CleanupLocalInspectionTool {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return BigDecimalInspectionVisitor(holder, isOnTheFly)
+        return BigDecimalInspectionVisitor(holder)
     }
 
     private class BigDecimalInspectionVisitor(
-        private val problemsHolder: ProblemsHolder,
-        private val onTheFly: Boolean
+        private val problemsHolder: ProblemsHolder
     ) : JavaElementVisitor() {
 
         override fun visitMethodCallExpression(call: PsiMethodCallExpression) {
