@@ -54,14 +54,14 @@
         <localInspection
             language="XML"
             shortName="androidIncludeLayoutByThemeAttr" displayName="Using &lt;include&gt; with layout from theme attribute"
-            groupPath="Android" groupName=""
+            groupName="Android"
             enabledByDefault="true" level="ERROR"
             implementationClass="net.aquadc.mike.plugin.inspection.AndroidIncludeLayoutByThemeAttrInspection" />
 
         <localInspection
             language="UAST"
             shortName="atomicAsVolatile" displayName="Atomic can be replaced with volatile"
-            groupPath="JVM languages" groupName=""
+            groupName="JVM languages"
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.AtomicAsVolatileInspection" />
 
