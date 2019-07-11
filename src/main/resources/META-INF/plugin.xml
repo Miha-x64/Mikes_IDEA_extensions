@@ -58,13 +58,6 @@
             implementationClass="net.aquadc.mike.plugin.inspection.KtIdIsJavaKeywordInspection" />
 
         <localInspection
-            language="XML"
-            shortName="androidIncludeLayoutByThemeAttr" displayName="Using &lt;include&gt; with layout from theme attribute"
-            groupName="Android"
-            enabledByDefault="true" level="ERROR"
-            implementationClass="net.aquadc.mike.plugin.inspection.AndroidIncludeLayoutByThemeAttrInspection" />
-
-        <localInspection
             language="UAST"
             shortName="atomicAsVolatile" displayName="Atomic can be replaced with volatile"
             groupName="JVM languages"
@@ -110,7 +103,7 @@
     <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
-    <depends>org.jetbrains.android</depends>
+    <depends optional="true" config-file="withAndroid.xml">org.jetbrains.android</depends>
 
     <actions>
     </actions>

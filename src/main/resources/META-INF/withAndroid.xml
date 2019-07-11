@@ -1,0 +1,14 @@
+<idea-plugin>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <localInspection
+                language="XML"
+                shortName="androidIncludeLayoutByThemeAttr" displayName="Using &lt;include&gt; with layout from theme attribute"
+                groupName="Android"
+                enabledByDefault="true" level="ERROR"
+                implementationClass="net.aquadc.mike.plugin.inspection.android.IncludeLayoutByThemeAttrInspection" />
+
+    </extensions>
+
+</idea-plugin>
