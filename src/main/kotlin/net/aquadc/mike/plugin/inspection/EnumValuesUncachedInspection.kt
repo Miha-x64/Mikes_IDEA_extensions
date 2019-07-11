@@ -35,7 +35,7 @@ class EnumValuesUncachedInspection : LocalInspectionTool() {
 
                                 val meth = expression.methodExpression
                                 if (meth.referenceName == "values" && meth.resolve()?.getContainingClass()?.isEnum == true) {
-                                    holder.registerProblem(meth, "values call!")
+                                    holder.registerProblem(meth, "Calling Enum values() without caching")
                                 }
                             }
                         })
