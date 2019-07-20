@@ -16,7 +16,7 @@ plugins {
 }
 
 group 'net.aquadc.mike'
-version '0.4'
+version '0.5'
 
 repositories {
     maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
