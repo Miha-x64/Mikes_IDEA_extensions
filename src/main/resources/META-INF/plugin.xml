@@ -101,6 +101,12 @@
             implementationClass="net.aquadc.mike.plugin.inspection.bigdecimal.BigDecimalSignumInspection"/>
     </extensions>
 
+    <project-components>
+        <component>
+            <implementation-class>net.aquadc.mike.plugin.interfaces.UpcastHints</implementation-class>
+        </component>
+    </project-components>
+
     <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
