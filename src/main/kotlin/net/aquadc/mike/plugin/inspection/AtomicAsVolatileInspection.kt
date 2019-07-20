@@ -1,7 +1,6 @@
 package net.aquadc.mike.plugin.inspection
 
 import com.intellij.codeInspection.*
-import com.intellij.openapi.util.Conditions
 import com.intellij.psi.*
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
@@ -13,10 +12,11 @@ import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.kotlin.KotlinUField
+import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import java.util.concurrent.atomic.*
 
 
-class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool() {
+class AtomicAsVolatileInspection : UastInspection() {
 
     private val atomics = SortedArray.of(
         // boxes
@@ -31,17 +31,25 @@ class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool() {
         "get", "set"
     )
 
-    override fun getProblemElement(psiElement: PsiElement): PsiNamedElement? {
-        return PsiTreeUtil.findFirstParent(psiElement, Conditions.instanceOf(PsiField::class.java)) as PsiNamedElement?
-    }
+    override fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor =
+        object : AbstractUastNonRecursiveVisitor() {
+            override fun visitField(node: UField): Boolean {
+                checkField(holder, node)
+                return true
+            }
 
-    override fun checkField(field: UField, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor>? {
-        val src = field.sourceElement ?: return null
-        val qualifiedName = PsiUtil.resolveClassInType(field.type)?.qualifiedName ?: return null
+        }
 
-        return if (qualifiedName in atomics && isAtomicAbused(src)) {
-            problem(field, manager, isOnTheFly, "${field.type.presentableText} can be replaced with volatile")
-        } else null
+    private fun checkField(holder: ProblemsHolder, field: UField) {
+        val src = field.sourceElement ?: return
+        val qualifiedName = PsiUtil.resolveClassInType(field.type)?.qualifiedName ?: return
+
+        if (qualifiedName in atomics && isAtomicAbused(src)) {
+            holder.registerProblem(
+                field.uTypeElement,
+                "${field.type.presentableText} can be replaced with volatile"
+            )
+        }
     }
 
     private fun isAtomicAbused(src: PsiElement): Boolean {
@@ -59,13 +67,6 @@ class AtomicAsVolatileInspection : AbstractBaseUastLocalInspectionTool() {
         })
         return complete && volatile
     }
-
-    private fun problem(field: UField, manager: InspectionManager, isOnTheFly: Boolean, text: String) = arrayOf(
-        manager.createProblemDescriptor(
-            field.uTypeElement, text, isOnTheFly,
-            LocalQuickFix.EMPTY_ARRAY, ProblemHighlightType.GENERIC_ERROR_OR_WARNING
-        )
-    )
 
     private val UField.uTypeElement: PsiElement get() =
         ((this as? KotlinUField)?.sourcePsi as? KtProperty)?.typeReference?.typeElement ?: // Kotlin explicit type, or

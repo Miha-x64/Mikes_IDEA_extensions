@@ -1,9 +1,27 @@
 package net.aquadc.mike.plugin.inspection
 
+import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.LocalInspectionToolSession
+import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.uast.UastVisitorAdapter
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
+
+abstract class UastInspection : LocalInspectionTool() {
+
+    final override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
+        UastVisitorAdapter(uVisitor(holder, isOnTheFly), true)
+
+    final override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean, session: LocalInspectionToolSession): PsiElementVisitor =
+        UastVisitorAdapter(uVisitor(holder, isOnTheFly), true)
+
+    abstract fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor
+
+}
 
 abstract class KtAnonymousFunctionVisitor : KtVisitorVoid() {
 
