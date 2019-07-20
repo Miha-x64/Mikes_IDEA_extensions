@@ -1,3 +1,4 @@
+@file:Suppress("unused")
 
 class enum
 
@@ -9,6 +10,7 @@ fun `package`() {
 
 }
 
+@JvmName("float")
 fun iAmNotAKeyword() {
     fun long() {}
     val double = 1
@@ -28,7 +30,6 @@ fun short() {
 
 }
 
-@JvmName("float")
 fun zzz() {
 
 }
