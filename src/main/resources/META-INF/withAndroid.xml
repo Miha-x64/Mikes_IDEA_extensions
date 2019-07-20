@@ -9,6 +9,13 @@
                 enabledByDefault="true" level="ERROR"
                 implementationClass="net.aquadc.mike.plugin.inspection.android.IncludeLayoutByThemeAttrInspection" />
 
+        <localInspection
+                language="UAST"
+                shortName="androidTargetApiShouldBeRequires" displayName="@TargetApi should be replaced with @RequiresApi"
+                groupName="Android"
+                enabledByDefault="true" level="WARNING"
+                implementationClass="net.aquadc.mike.plugin.inspection.android.TargetApiInspection" />
+
     </extensions>
 
 </idea-plugin>

@@ -1,0 +1,23 @@
+<html>
+<body>
+
+<p>
+    Reports use of Android <code>@TargetApi</code> annotation.
+</p>
+<p>
+    <code>@TargetApi</code> just suppresses minSdk errors inside annotated declaration,
+    while <code>@RequiresApi</code> also reports minSdk errors for usages of annotated declaration.
+</p>
+
+<pre><code>
+@TargetApi(99) fun target() {}
+@RequiresApi(99) fun requires() {}
+
+fun whatever() {
+    target() // unfortunately, not an error
+    requires() // red underline, as desired
+}
+</code></pre>
+
+</body>
+</html>

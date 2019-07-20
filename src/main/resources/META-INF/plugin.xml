@@ -33,6 +33,7 @@
       <h3>Android inspections</h3>
       <ul>
         <li>&lt;include layout="?themeAttribute"&gt;</li>
+        <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
       </ul>
 
       <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>

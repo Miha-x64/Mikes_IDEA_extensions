@@ -2,6 +2,7 @@ package net.aquadc.mike.plugin.inspection
 
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalInspectionToolSession
+import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.uast.UastVisitorAdapter
@@ -21,6 +22,13 @@ abstract class UastInspection : LocalInspectionTool() {
 
     abstract fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor
 
+}
+
+abstract class NamedLocalQuickFix(
+    name: String
+) : LocalQuickFix {
+    private val _name = name
+    final override fun getFamilyName(): String = _name
 }
 
 abstract class KtAnonymousFunctionVisitor : KtVisitorVoid() {
