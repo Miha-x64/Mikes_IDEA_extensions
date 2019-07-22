@@ -16,7 +16,7 @@ plugins {
 }
 
 group 'net.aquadc.mike'
-version '0.5'
+version '0.6'
 
 repositories {
     maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
@@ -41,7 +41,5 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
-Android: added '@TargetApi should be replaced with @RequiresApi' inspection and quickfix
-Java: added 'downcast to interface' tooltips
 """
 }
