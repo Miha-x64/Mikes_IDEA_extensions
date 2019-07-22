@@ -1,17 +1,48 @@
 package net.aquadc.mike.plugin.test;
 
-import java.io.Serializable;
-import java.util.Collections;
-import java.util.List;
+import android.app.Activity;
+import android.os.Bundle;
+import android.view.View;
+import kotlin.Function;
 
-public class Interfaces {
+import java.io.Serializable;
+import java.util.*;
+
+public class Interfaces implements Cloneable {
 
     private void a() {
-        a(1, 1, Collections.<Number>emptyList());
+        a(1, 1, 1, Collections.<Number>emptyList(), null, this);
+        InterfacesKt.a(1, 1, Collections.<Number>emptyList(), null, this);
+        collections(
+                new ArrayList(),
+                new ArrayList(),
+                new ArrayList(),
+                new ArrayList(),
+                new ArrayList(),
+                new ArrayList(),
+                new ArrayList()
+        );
     }
 
-    static void a(Serializable a, Comparable b, List<? extends Number> c) {
+    static void collections(ArrayList al, Iterable it, Collection co, List l, RandomAccess a, Cloneable c, Serializable s) {
 
+    }
+
+    static void a(Serializable a, Comparable b, int c, List<? extends Number> d, Function<?> e, Cloneable f) {
+
+    }
+
+    static final class SomeActivity extends Activity implements View.OnClickListener {
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            findViewById(0).setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View view) {
+
+        }
     }
 
 }

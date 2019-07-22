@@ -3,11 +3,15 @@ package net.aquadc.mike.plugin.test
 import java.io.Serializable
 
 
-private fun a() {
-    a(1, 1, emptyList())
-    Interfaces.a(1, 1, emptyList())
+class Iii : Cloneable {
+
+    private fun a() {
+        a(1, 1, emptyList(), {}, this)
+        Interfaces.a(1, 1, emptyList(), {}, this)
+    }
+
 }
 
-private fun a(a: Serializable, b: Comparable<*>, c: List<Number>) {
+fun a(a: Serializable, b: Comparable<*>, c: List<Number>, f: () -> Unit, cl: Cloneable) {
 
 }
