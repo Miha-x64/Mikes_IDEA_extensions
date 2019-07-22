@@ -42,5 +42,6 @@ compileTestKotlin {
 patchPluginXml {
     changeNotes """
 Android: added '@TargetApi should be replaced with @RequiresApi' inspection and quickfix
+Java: added 'downcast to interface' tooltips
 """
 }

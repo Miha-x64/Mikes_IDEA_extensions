@@ -31,4 +31,9 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
     <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
   </ul>
 
+  <h3>Java tooltips</h3>
+  <ul>
+    <li>Downcast to interface, e. g.<br/>setOnClickListener(this<code> as OnClickListener </code>)</li>
+  </ul>
+
   [Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)
