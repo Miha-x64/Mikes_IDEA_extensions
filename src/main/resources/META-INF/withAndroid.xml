@@ -7,14 +7,21 @@
                 shortName="androidIncludeLayoutByThemeAttr" displayName="Using &lt;include&gt; with layout from theme attribute"
                 groupName="Android"
                 enabledByDefault="true" level="ERROR"
-                implementationClass="net.aquadc.mike.plugin.inspection.android.IncludeLayoutByThemeAttrInspection" />
+                implementationClass="net.aquadc.mike.plugin.android.IncludeLayoutByThemeAttrInspection" />
 
         <localInspection
                 language="UAST"
                 shortName="androidTargetApiShouldBeRequires" displayName="@TargetApi should be replaced with @RequiresApi"
                 groupName="Android"
                 enabledByDefault="true" level="WARNING"
-                implementationClass="net.aquadc.mike.plugin.inspection.android.TargetApiInspection" />
+                implementationClass="net.aquadc.mike.plugin.android.TargetApiInspection" />
+
+        <localInspection
+                language="UAST"
+                shortName="reflectPropAnimInspection" displayName="Use of reflective ObjectAnimator/PropertyValuesHolder"
+                groupName="Android"
+                enabledByDefault="true" level="WARNING"
+                implementationClass="net.aquadc.mike.plugin.android.ReflectPropAnimInspection" />
 
     </extensions>
 

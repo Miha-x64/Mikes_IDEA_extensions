@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin.inspection.android
+package net.aquadc.mike.plugin.android
 
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor

@@ -29,6 +29,7 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
   <ul>
     <li>&lt;include layout="?themeAttribute"&gt;</li>
     <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
+    <li>Use of reflective ObjectAnimator/PropertyValuesHolder</li>
   </ul>
 
   <h3>Java tooltips</h3>

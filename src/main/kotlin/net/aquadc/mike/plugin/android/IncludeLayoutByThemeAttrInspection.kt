@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin.inspection.android
+package net.aquadc.mike.plugin.android
 
 import com.android.resources.ResourceFolderType
 import com.intellij.codeInspection.*
