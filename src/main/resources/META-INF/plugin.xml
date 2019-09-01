@@ -39,7 +39,7 @@
 
       <h3>Java tooltips</h3>
       <ul>
-        <li>Downcast to interface, e. g.<br/>setOnClickListener(this<code> as OnClickListener </code>)</li>
+        <li>Upcast to interface, e. g.<br/>setOnClickListener(this<code> as OnClickListener </code>)</li>
       </ul>
 
       <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
