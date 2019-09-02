@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin.inspection
+package net.aquadc.mike.plugin
 
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalInspectionToolSession
@@ -10,7 +10,6 @@ import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiMethodCallExpression
 import com.intellij.uast.UastVisitorAdapter
 import com.siyeh.ig.callMatcher.CallMatcher
-import org.jetbrains.kotlin.idea.intentions.callExpression
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*

@@ -7,8 +7,8 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
-import net.aquadc.mike.plugin.inspection.NamedLocalQuickFix
-import net.aquadc.mike.plugin.inspection.UastInspection
+import net.aquadc.mike.plugin.NamedLocalQuickFix
+import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.uast.UDeclaration

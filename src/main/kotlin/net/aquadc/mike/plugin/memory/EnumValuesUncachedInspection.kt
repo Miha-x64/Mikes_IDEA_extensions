@@ -1,8 +1,9 @@
-package net.aquadc.mike.plugin.inspection
+package net.aquadc.mike.plugin.memory
 
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.JavaRecursiveElementVisitor
 import com.intellij.psi.PsiMethodCallExpression
+import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.j2k.getContainingClass
 import org.jetbrains.uast.UClassInitializer
 import org.jetbrains.uast.UElement

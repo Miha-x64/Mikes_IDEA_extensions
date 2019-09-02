@@ -1,8 +1,11 @@
-package net.aquadc.mike.plugin.inspection
+package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
+import net.aquadc.mike.plugin.KtAnonymousFunctionVisitor
+import net.aquadc.mike.plugin.isInline
+import net.aquadc.mike.plugin.noinlineMessage
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.psi.*
 

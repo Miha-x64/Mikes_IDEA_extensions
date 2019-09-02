@@ -55,7 +55,7 @@
             shortName="ktPropBy" displayName="Property delegation"
             groupPath="Kotlin" groupName="Performance"
             enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.KtPropByInspection" />
+            implementationClass="net.aquadc.mike.plugin.kotlin.KtPropByInspection" />
         <!-- TODO: is there a way to make this run only for production sources? -->
 
         <localInspection
@@ -63,49 +63,49 @@
             shortName="ktIdIsJavaKw" displayName="Declaration name is Java keyword"
             groupPath="Kotlin" groupName="Java interop issues"
             enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.KtIdIsJavaKeywordInspection" />
+            implementationClass="net.aquadc.mike.plugin.kotlin.KtIdIsJavaKeywordInspection" />
 
         <localInspection
             language="UAST"
             shortName="atomicAsVolatile" displayName="Atomic can be replaced with volatile"
             groupName="JVM languages"
             enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.AtomicAsVolatileInspection" />
+            implementationClass="net.aquadc.mike.plugin.memory.AtomicAsVolatileInspection" />
 
         <localInspection
             language="UAST"
             shortName="enumValuesUncached" displayName="Calling Enum values() without caching"
             groupPath="JVM languages" groupName="Performance"
             enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.EnumValuesUncachedInspection" />
+            implementationClass="net.aquadc.mike.plugin.memory.EnumValuesUncachedInspection" />
 
         <localInspection
             language="kotlin"
             shortName="ktNoinlineFunc" displayName="Function won't be inlined"
             groupPath="Kotlin" groupName="Performance"
             enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.KtNoinlineFuncInspection" />
+            implementationClass="net.aquadc.mike.plugin.kotlin.KtNoinlineFuncInspection" />
 
         <localInspection
             language="kotlin"
             shortName="ktInlineFunctionLeaksAnonymous" displayName="Inline function leaks anonymous declaration"
             groupPath="Kotlin" groupName="Performance"
             enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.KtInlineFunctionLeaksAnonymousDeclaration" />
+            implementationClass="net.aquadc.mike.plugin.kotlin.KtInlineFunctionLeaksAnonymousDeclaration" />
 
         <localInspection
             language="JAVA"
             shortName="BigDecimalConstant" displayName="BigDecimal instantiation can be replaced with constant"
             groupPath="Java" groupName="Performance"
             enabledByDefault="true" cleanupTool="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.bigdecimal.BigDecimalConstantInspection"/>
+            implementationClass="net.aquadc.mike.plugin.bigdecimal.BigDecimalConstantInspection"/>
 
         <localInspection
             language="JAVA"
             shortName="BigDecimalSignum" displayName="BigDecimal.compareTo(ZERO) can be replaced with signum()"
             groupPath="Java" groupName="Performance"
             enabledByDefault="true" cleanupTool="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.inspection.bigdecimal.BigDecimalSignumInspection"/>
+            implementationClass="net.aquadc.mike.plugin.bigdecimal.BigDecimalSignumInspection"/>
     </extensions>
 
     <project-components>

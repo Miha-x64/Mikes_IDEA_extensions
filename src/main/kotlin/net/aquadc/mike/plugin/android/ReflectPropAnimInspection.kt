@@ -11,9 +11,9 @@ import com.intellij.psi.util.PsiUtilCore
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import com.siyeh.ig.psiutils.ExpressionUtils
-import net.aquadc.mike.plugin.inspection.NamedLocalQuickFix
-import net.aquadc.mike.plugin.inspection.UastInspection
-import net.aquadc.mike.plugin.inspection.test
+import net.aquadc.mike.plugin.NamedLocalQuickFix
+import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.test
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import java.lang.StringBuilder

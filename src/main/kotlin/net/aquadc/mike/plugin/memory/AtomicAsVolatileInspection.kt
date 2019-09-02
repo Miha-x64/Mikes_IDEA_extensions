@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin.inspection
+package net.aquadc.mike.plugin.memory
 
 import com.intellij.codeInspection.*
 import com.intellij.psi.*
@@ -7,6 +7,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtil
 import com.intellij.util.Processor
 import net.aquadc.mike.plugin.SortedArray
+import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtProperty
