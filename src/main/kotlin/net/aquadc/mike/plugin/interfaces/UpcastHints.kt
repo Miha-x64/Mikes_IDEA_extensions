@@ -13,6 +13,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
+import net.aquadc.mike.plugin.inspection.maxByIf
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 
@@ -113,14 +114,26 @@ class UpcastHintsPass(
     }
 
     private val PsiClass.mainInterface: PsiClass?
+        get() =
+            (if (qualifiedName == null) interfaces.singleOrNull() else null) // anonymous types typically implement single interface
+                ?: mainInterfaceByName ?: mainInterfaceByImplCount
+
+    private val PsiClass.mainInterfaceByName: PsiClass?
         get() {
             if (isInterface) return this
             val name = name ?: return null
             return interfaces.firstOrNull {
                 val iName = it.name
-                iName != null && name.contains(iName)
-            } ?: superClass?.mainInterface
+                iName != null && name.contains(iName) // i. e. ArrayList's main interface is List
+            } ?: superClass?.mainInterfaceByName
+
+            // TODO: WhateverHandler's main is IdleHandler
         }
+
+    // LOL, very simple, ignores how many of them were actually implemented
+    private val PsiClass.mainInterfaceByImplCount: PsiClass?
+        get() = interfaces // ignore single- or two-method interfaces
+            .maxByIf({ it.methods.count { it.modifierList.hasModifierProperty(PsiModifier.ABSTRACT) } }, { it > 2 })
 
     override fun getHintKey(): Key<Boolean> = UPCAST_HINTS_INLAY_KEY
     override fun createRenderer(text: String): HintRenderer = MethodChainHintRenderer(text)

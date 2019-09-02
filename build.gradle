@@ -42,5 +42,6 @@ compileTestKotlin {
 patchPluginXml {
     changeNotes """
 Added reflective ObjectAnimator/PropertyValuesHolder inspection
+Less noise from Upcast hints
 """
 }

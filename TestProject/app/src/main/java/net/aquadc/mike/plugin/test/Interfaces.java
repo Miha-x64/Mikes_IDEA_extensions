@@ -22,6 +22,7 @@ public class Interfaces implements Cloneable {
                 new ArrayList(),
                 new ArrayList()
         );
+        str("", "", "", "");
     }
 
     static void collections(ArrayList al, Iterable it, Collection co, List l, RandomAccess a, Cloneable c, Serializable s) {
@@ -31,6 +32,8 @@ public class Interfaces implements Cloneable {
     static void a(Serializable a, Comparable b, int c, List<? extends Number> d, Function<?> e, Cloneable f) {
 
     }
+
+    static void str(String q, Serializable w, Comparable<String> e, CharSequence r) {}
 
     static final class SomeActivity extends Activity implements View.OnClickListener {
         @Override

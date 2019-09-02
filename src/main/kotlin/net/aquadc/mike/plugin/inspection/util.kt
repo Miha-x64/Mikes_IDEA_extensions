@@ -175,3 +175,20 @@ private fun paramOfNoinline(callee: KtNamedFunction): String =
     "This function cannot be inlined as it is passed to a non-inline function ${callee.name}"
 private fun noinlineParamOfInline(callee: KtNamedFunction, param: KtParameter): String =
     "This function cannot be inlined as it is passed to inline function ${callee.name} as a value for noinline parameter ${param.name}"
+
+inline fun <T, R : Comparable<R>> Array<out T>.maxByIf(selector: (T) -> R, predicate: (R) -> Boolean): T? {
+    var i = 0
+    var hasFirst = false
+    var maxValue: T? = null
+    var maxSelected: R? = null
+    while (i < size) {
+        val value = this[i++]
+        val selected = selector(value)
+        if (predicate(selected) && (!hasFirst || selected > (maxSelected as R))) {
+            hasFirst = true
+            maxValue = value
+            maxSelected = selected
+        }
+    }
+    return maxValue
+}

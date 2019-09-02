@@ -56,6 +56,7 @@
             groupPath="Kotlin" groupName="Performance"
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.inspection.KtPropByInspection" />
+        <!-- TODO: is there a way to make this run only for production sources? -->
 
         <localInspection
             language="kotlin"
