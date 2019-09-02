@@ -11,7 +11,9 @@ import com.intellij.psi.util.PsiUtilCore
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import com.siyeh.ig.psiutils.ExpressionUtils
+import net.aquadc.mike.plugin.inspection.NamedLocalQuickFix
 import net.aquadc.mike.plugin.inspection.UastInspection
+import net.aquadc.mike.plugin.inspection.test
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import java.lang.StringBuilder
@@ -26,30 +28,28 @@ class ReflectPropAnimInspection : UastInspection() {
         object : AbstractUastNonRecursiveVisitor() {
 
             override fun visitExpression(node: UExpression): Boolean {
-                val javaPsi = node.javaPsi as? PsiMethodCallExpression // fuc, this does not work for Kotlin
                 val srcPsi = node.sourcePsi
-                if (javaPsi != null && srcPsi != null) {
+                if (srcPsi != null) {
                     MATCHERS_TO_FIXES
-                        .firstOrNull { it.matcher.test(javaPsi) }
+                        .firstOrNull { it.matcher.test(srcPsi) }
                         ?.let { fixer ->
-                            val fix = fixer.create(javaPsi)
-                            if (fix == null) {
-                                holder.registerProblem(srcPsi, "Reflective property animation")
-                            } else {
-                                holder.registerProblem(srcPsi, "Reflective property animation", fix)
-                            }
+                            report((srcPsi as? PsiMethodCallExpression) // to lazy to support the same for Kotlin
+                                ?.let(fixer::create), srcPsi)
                         }
                 }
 
                 return super.visitExpression(node)
             }
 
-        }
+            private fun report(fix: LocalQuickFix?, srcPsi: PsiElement) {
+                if (fix == null) {
+                    holder.registerProblem(srcPsi, "Reflective property animation")
+                } else {
+                    holder.registerProblem(srcPsi, "Reflective property animation", fix)
+                }
+            }
 
-    private abstract class Fix : LocalQuickFix {
-        final override fun getFamilyName(): String =
-            "Replace property name with explicit Property instance"
-    }
+        }
 
     private class MatcherToFix(
         val matcher: CallMatcher
@@ -75,7 +75,7 @@ class ReflectPropAnimInspection : UastInspection() {
 
             return if (canReplace(args)) {
                 val repl = buildReplacement(call.methodExpression, args, argIndices, replacements)
-                object : Fix() {
+                object : NamedLocalQuickFix("Replace property name with explicit Property instance") {
                     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
                         PsiReplacementUtil.replaceExpressionAndShorten(descriptor.psiElement as PsiExpression, repl)
                     }
