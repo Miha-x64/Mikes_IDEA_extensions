@@ -43,5 +43,6 @@ patchPluginXml {
     changeNotes """
 Added reflective ObjectAnimator/PropertyValuesHolder inspection
 Less noise from Upcast hints
+Enum.values() without caching inspection supported for Kotlin files
 """
 }

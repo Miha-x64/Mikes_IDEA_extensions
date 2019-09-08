@@ -12,7 +12,11 @@ enum class EnumValuesKotlin {
     }
 
     companion object {
-        private val VALS = values()
+        private val VALS = values() // ok
+        private val VALS2: Array<EnumValuesKotlin>
+        init {
+            VALS2 = values() // ok
+        }
     }
 
 }
