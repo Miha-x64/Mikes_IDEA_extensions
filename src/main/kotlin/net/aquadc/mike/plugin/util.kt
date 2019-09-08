@@ -4,10 +4,7 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalInspectionToolSession
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiElementVisitor
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.*
 import com.intellij.uast.UastVisitorAdapter
 import com.siyeh.ig.callMatcher.CallMatcher
 import org.jetbrains.kotlin.idea.references.mainReference
@@ -65,7 +62,7 @@ fun CallMatcher.test(expr: KtExpression): Boolean {
         if (args.size < myParameters!!.size) return false
     }*/
     val method = (refExpr as? KtNameReferenceExpression)?.references
-        ?.firstNotNullResult { it.resolve() } as? PsiMethod ?: return false
+        ?.firstNotNullResult(PsiReference::resolve) as? PsiMethod ?: return false
 
     return method.isCorrectArgCount(args) && methodMatches(method)
 }
