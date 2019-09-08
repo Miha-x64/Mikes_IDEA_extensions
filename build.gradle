@@ -16,7 +16,7 @@ plugins {
 }
 
 group 'net.aquadc.mike'
-version '0.6'
+version '0.7'
 
 repositories {
     maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
@@ -41,8 +41,5 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
-Added reflective ObjectAnimator/PropertyValuesHolder inspection
-Less noise from Upcast hints
-Enum.values() without caching inspection supported for Kotlin files
 """
 }
