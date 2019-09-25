@@ -80,22 +80,22 @@ abstract class NamedLocalQuickFix(
     final override fun getFamilyName(): String = _name
 }
 
-abstract class KtAnonymousFunctionVisitor : KtVisitorVoid() {
+abstract class KtFunctionObjectVisitor : KtVisitorVoid() {
 
     final override fun visitNamedFunction(function: KtNamedFunction) {
         super.visitNamedFunction(function)
-        if (function.isLocal) visitAnonymousFunction(function) // btw, this can be named, too
+        if (function.isLocal) visitFunctionObject(function) // btw, this can be named, too
     }
     final override fun visitCallableReferenceExpression(expression: KtCallableReferenceExpression) {
         super.visitCallableReferenceExpression(expression)
-        visitAnonymousFunction(expression)
+        visitFunctionObject(expression)
     }
     final override fun visitLambdaExpression(lambdaExpression: KtLambdaExpression) {
         super.visitLambdaExpression(lambdaExpression)
-        visitAnonymousFunction(lambdaExpression)
+        visitFunctionObject(lambdaExpression)
     }
 
-    protected abstract fun visitAnonymousFunction(expression: KtExpression)
+    protected abstract fun visitFunctionObject(expression: KtExpression)
 
 }
 

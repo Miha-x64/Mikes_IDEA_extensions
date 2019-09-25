@@ -2,7 +2,7 @@ package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
-import net.aquadc.mike.plugin.KtAnonymousFunctionVisitor
+import net.aquadc.mike.plugin.KtFunctionObjectVisitor
 import net.aquadc.mike.plugin.containingFunction
 import net.aquadc.mike.plugin.isInline
 import net.aquadc.mike.plugin.noinlineMessage
@@ -14,9 +14,9 @@ import org.jetbrains.kotlin.psi.psiUtil.isPublic
 class KtInlineFunctionLeaksAnonymousDeclaration : AbstractKotlinInspection() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
-        object : KtAnonymousFunctionVisitor() {
+        object : KtFunctionObjectVisitor() {
 
-            override fun visitAnonymousFunction(expression: KtExpression) {
+            override fun visitFunctionObject(expression: KtExpression) {
                 expression.containingFunction
                     ?.takeIf(KtFunction::isInline)
                     ?.takeIf(KtFunction::isPublic)
