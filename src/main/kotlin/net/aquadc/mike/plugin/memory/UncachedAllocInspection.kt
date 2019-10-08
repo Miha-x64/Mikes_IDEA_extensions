@@ -13,7 +13,7 @@ import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 
-class EnumValuesUncachedInspection : UastInspection() {
+class UncachedAllocInspection : UastInspection() {
 
     override fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor =
         object : AbstractUastNonRecursiveVisitor() {
@@ -30,19 +30,16 @@ class EnumValuesUncachedInspection : UastInspection() {
                     return
                 }
 
-                val methodRef = when (expr) {
-                    is PsiMethodCallExpression -> {
-                        if (expr.methodExpression.referenceName != "values") return
-                        if (expr.typeArguments.isNotEmpty() || !expr.argumentList.isEmpty) return
-                        expr.methodExpression.reference
-                    }
-                    is KtCallExpression -> {
-                        val reference = expr.referenceExpression()
-                        if ((reference as? KtNameReferenceExpression)?.getReferencedName() != "values") return
-                        if (expr.typeArguments.isNotEmpty() || expr.valueArguments.isNotEmpty() || expr.lambdaArguments.isNotEmpty()) return
-                        reference.mainReference
-                    }
-                    else -> null
+                val ref = when (expr) {
+                    is PsiMethodCallExpression ->
+                        if (expr.looksLikeEnumValues) expr.methodExpression.reference else null
+                    is PsiNewExpression ->
+                        if (expr.looksLikeNewGson) expr.resolveConstructor() else null
+                    is KtCallExpression ->
+                        if (expr.looksLikeEnumValues || expr.looksLineNewGson) expr.referenceExpression()!!.mainReference
+                        else null
+                    else ->
+                        null
                 } ?: return
 
                 // resolve
@@ -58,12 +55,29 @@ class EnumValuesUncachedInspection : UastInspection() {
                         }
                     }) return
 
-                // resolve (b): resolve values() method
-                val method = methodRef.resolve() ?: return
-                if (method.isJavaEnumValuesMethod || method.isKotlinEnumValuesMethod) {
-                    holder.registerProblem(expr, "Calling Enum values() without caching")
+                // resolve (b): resolve call expression reference
+                if (ref is PsiReference && ref.resolve()?.let { method -> method.isJavaEnumValuesMethod || method.isKotlinEnumValuesMethod || method.isNewGson } == true ||
+                        ref is PsiMethod && ref.isNewGson) {
+                    holder.registerProblem(expr, "This allocation should be cached")
                 }
             }
+
+            private val PsiMethodCallExpression.looksLikeEnumValues: Boolean
+                get() = methodExpression.referenceName == "values" && typeArguments.isEmpty() && argumentList.isEmpty
+
+            private val KtCallExpression.looksLikeEnumValues: Boolean
+                get() = typeArguments.isEmpty() && valueArguments.isEmpty() && lambdaArguments.isEmpty() &&
+                        (referenceExpression() as? KtNameReferenceExpression)?.getReferencedName() == "values"
+
+
+            private val PsiNewExpression.looksLikeNewGson: Boolean
+                get() = typeArguments.isEmpty() && argumentList.let { it == null || it.isEmpty } &&
+                        classReference.let { it != null && it.referenceName == "Gson" }
+
+            private val KtCallExpression.looksLineNewGson: Boolean
+                get() = typeArguments.isEmpty() && valueArguments.isEmpty() && lambdaArguments.isEmpty() &&
+                        (referenceExpression() as? KtNameReferenceExpression)?.getReferencedName() == "Gson"
+
 
             private val PsiElement.isStaticFinalField: Boolean
                 get() = this is PsiField && hasModifierProperty(PsiModifier.STATIC) && hasModifierProperty(PsiModifier.FINAL)
@@ -79,6 +93,11 @@ class EnumValuesUncachedInspection : UastInspection() {
 
             private val PsiElement.isKotlinEnumValuesMethod: Boolean
                 get() = /* wtf?! */ this is KtClass && isEnum()
+
+            private val PsiElement.isNewGson: Boolean
+                get() = this is PsiMethod && isConstructor &&
+                        containingClass?.qualifiedName == "com.google.gson.Gson" &&
+                        typeParameters.isEmpty() && parameterList.isEmpty
 
         }
 

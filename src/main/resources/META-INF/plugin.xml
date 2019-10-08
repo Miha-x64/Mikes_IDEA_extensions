@@ -17,7 +17,7 @@
       <h3>UAST (Java + Kotlin) inspections</h3>
       <ul>
         <li>Atomic can be replaced with volatile</li>
-        <li>Calling Enum values() without caching</li>
+        <li>Allocation should be cached (Enum.values(), new Gson(), ...)</li>
       </ul>
 
       <h3>Kotlin inspections</h3>
@@ -75,10 +75,10 @@
 
         <localInspection
             language="UAST"
-            shortName="enumValuesUncached" displayName="Calling Enum values() without caching"
+            shortName="uncachedAlloc" displayName="Allocation should be cached"
             groupPath="JVM languages" groupName="Performance"
             enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.memory.EnumValuesUncachedInspection" />
+            implementationClass="net.aquadc.mike.plugin.memory.UncachedAllocInspection" />
 
         <localInspection
             language="kotlin"
@@ -108,12 +108,12 @@
             enabledByDefault="true" cleanupTool="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.bigdecimal.BigDecimalSignumInspection"/>
 
-        <localInspection
+        <!--localInspection
             language="UAST"
             shortName="SortedAnno" displayName="@Sorted annotation"
             groupPath="Java" groupName="Performance"
             enabledByDefault="true" level="ERROR"
-            implementationClass="net.aquadc.mike.plugin.SortedAnnoInspection" />
+            implementationClass="net.aquadc.mike.plugin.SortedAnnoInspection" /-->
     </extensions>
 
     <project-components>

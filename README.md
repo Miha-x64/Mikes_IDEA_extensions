@@ -12,7 +12,7 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
   <h3>UAST (Java + Kotlin) inspections</h3>
   <ul>
     <li>Atomic can be replaced with volatile</li>
-    <li>Calling Enum values() without caching</li>
+    <li>Allocation should be cached (Enum.values(), new Gson(), ...)</li>
   </ul>
 
   <h3>Kotlin inspections</h3>

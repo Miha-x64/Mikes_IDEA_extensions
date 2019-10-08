@@ -2,15 +2,18 @@
 <body>
 
 <p>
-    Reports use of <code>values()</code> method on Enum types.
+    Reports allocations which should be cached e. g. Enum.values(), new Gson().
 </p>
 
 <p>
-    <code>values()</code> is internally implemented as <code>return $VALUES.clone();</code>.
+    Gson instances are heavyweight and expensive to create. It's recommended to use a single instance.
+</p>
+
+<p>
+    <code>Enum.values()</code> is internally implemented as <code>return $VALUES.clone();</code>.
     It's recommended co call <code>values()</code> only once and use this array instance further.
     Sample:
 </p>
-
 <pre>
     private static final ThisEnum[] VALS = values();
 
