@@ -41,6 +41,7 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
+Smaller highlight area for noinline functions
 Less noise from upcast hints
 @Override [from Supertype] hints
 detecting not only uncached Enum.values() but also new Gson()
