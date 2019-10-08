@@ -14,6 +14,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import net.aquadc.mike.plugin.maxByIf
+import org.jetbrains.kotlin.j2k.getContainingMethod
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 
@@ -87,7 +88,12 @@ class UpcastHintsPass(
                     collector
                 )
             })
-        }*/
+        }*/ else if (element is PsiAnnotation) {
+            if (element.nameReferenceElement?.qualifiedName != "java.lang.Override") return
+            val meth = element.getContainingMethod() ?: return
+            val className = meth.findSuperMethods().firstOrNull()?.containingClass?.name ?: return
+            collector(element.endOffset, "from $className")
+        }
     }
 
     private val PsiElement.functionParams

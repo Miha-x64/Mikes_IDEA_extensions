@@ -34,7 +34,8 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
 
   <h3>Java tooltips</h3>
   <ul>
-    <li>Upcast to interface, e. g.<br/>setOnClickListener(this<code> as OnClickListener </code>)</li>
+    <li>Upcast to interface, e. g.<br/>putExtra(list<code> as Serializable</code>)</li>
+    <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code></li>
   </ul>
 
   [Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)
