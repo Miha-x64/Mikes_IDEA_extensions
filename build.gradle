@@ -41,5 +41,6 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
+Less noise from upcast hints
 """
 }

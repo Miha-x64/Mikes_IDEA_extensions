@@ -23,11 +23,14 @@ public class Interfaces implements Cloneable {
                 new ArrayList()
         );
         str("", "", "", "");
+        consumeSerializable(new ArrayList<Void>()); // don't show, it's obvious
     }
 
     static void collections(ArrayList al, Iterable it, Collection co, List l, RandomAccess a, Cloneable c, Serializable s) {
 
     }
+
+    static void consumeSerializable(Serializable s) {}
 
     static void a(Serializable a, Comparable b, int c, List<? extends Number> d, Function<?> e, Cloneable f) {
 

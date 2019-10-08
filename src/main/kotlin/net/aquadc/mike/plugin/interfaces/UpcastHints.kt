@@ -56,8 +56,10 @@ class UpcastHintsPass(
 
             val params = element.methodExpression.reference?.resolve()?.functionParams ?: return
             args.forEachIndexed(fun(idx: Int, arg: PsiExpression) {
+                val parameterType = params.getOrNull(idx)?.second ?: return
+                if (element.methodExpression.referenceName?.contains(parameterType.name ?: return) ?: return) return
                 visitParameter(
-                    params.getOrNull(idx)?.second ?: return,
+                    parameterType,
                     when (val it = arg.type) {
                         PsiType.NULL -> null
                         is PsiClassType -> it.resolve() ?: return
