@@ -32,10 +32,10 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
     <li>Use of reflective ObjectAnimator/PropertyValuesHolder</li>
   </ul>
 
-  <h3>Java tooltips</h3>
+  <h3>Tooltips/hints</h3>
   <ul>
-    <li>Upcast to interface, e. g.<br/>putExtra(list<code> as Serializable</code>)</li>
-    <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code></li>
+    <li>Upcast to interface, e. g.<br/>putExtra(list<code> as Serializable</code>) (Java Only)</li>
+    <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code>,<br/>override <code>Runnable</code> fun run()</li>
   </ul>
 
   [Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)

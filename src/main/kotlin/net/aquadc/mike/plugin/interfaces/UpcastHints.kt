@@ -14,9 +14,14 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import net.aquadc.mike.plugin.maxByIf
+import org.jetbrains.kotlin.idea.references.mainReference
+import org.jetbrains.kotlin.j2k.getContainingClass
 import org.jetbrains.kotlin.j2k.getContainingMethod
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElementOfType
 
 class UpcastHints(
     project: Project, registrar: TextEditorHighlightingPassRegistrar
@@ -51,74 +56,91 @@ class UpcastHintsPass(
     override fun isAvailable(virtualFile: VirtualFile): Boolean = true
 
     override fun collectElementHints(element: PsiElement, collector: (offset: Int, hint: String) -> Unit) {
-        if (element is PsiMethodCallExpression) {
-            val args = element.argumentList.expressions
-            if (args.isEmpty()) return
+        when (element) {
+            is PsiMethodCallExpression -> {
+                val args = element.argumentList.expressions
+                if (args.isEmpty()) return
 
-            val params = element.methodExpression.reference?.resolve()?.functionParams ?: return
-            args.forEachIndexed(fun(idx: Int, arg: PsiExpression) {
-                val parameterType = params.getOrNull(idx)?.second ?: return
-                if (element.methodExpression.referenceName?.contains(parameterType.name ?: return) ?: return) return
-                visitParameter(
-                    parameterType,
-                    when (val it = arg.type) {
-                        PsiType.NULL -> null
-                        is PsiClassType -> it.resolve() ?: return
-                        is PsiPrimitiveType -> it.getBoxedType(arg)?.resolve() ?: return
-                        else -> return
-                    },
-                    arg.endOffset,
-                    collector
-                )
-            })
-        } /*else if (element is KtCallExpression) {
-            val args = element.valueArguments
-            if (args.isEmpty()) return
-            val params = element.calleeExpression?.mainReference?.resolve()?.functionParams ?: return
+                val params = element.methodExpression.reference?.resolve()?.functionParams ?: return
+                args.forEachIndexed(fun(idx: Int, arg: PsiExpression) {
+                    val parameterType = params.getOrNull(idx)?.second ?: return
+                    if (element.methodExpression.referenceName?.contains(parameterType.typeName ?: return) ?: return) return
+                    visitParameter(parameterType, arg, arg.endOffset, collector)
+                })
+            }
+            /*is KtCallExpression -> {
+                val args = element.valueArguments
+                if (args.isEmpty()) return
+                val params = element.calleeExpression?.mainReference?.resolve()?.functionParams ?: return
 
-            args.forEachIndexed(fun(idx: Int, arg: KtValueArgument) {
-                val (_, type) =
-                    (if (arg.name != null) params.firstOrNull { it.first == arg.name } else params.getOrNull(idx)) ?: return
-                type ?: return
-                val typeConstructor = arg.getArgumentExpression()?.let { expr -> expr.analyze().getType(expr) }?.constructor ?: return
-                visitParameter(
-                    type,
-                    TODO(),
-                    arg.endOffset,
-                    collector
-                )
-            })
-        }*/ else if (element is PsiAnnotation) {
-            if (element.nameReferenceElement?.qualifiedName != "java.lang.Override") return
-            val meth = element.getContainingMethod() ?: return
-            val className = meth.findSuperMethods().firstOrNull()?.containingClass?.name ?: return
-            collector(element.endOffset, "from $className")
+                args.forEachIndexed(fun(idx: Int, arg: KtValueArgument) {
+                    val type =
+                        (if (arg.name != null) params.firstOrNull { it.first == arg.name } else params.getOrNull(idx))?.second ?: return
+                    visitParameter(
+                        type,
+                        arg.getArgumentExpression()?.toUElementOfType<UExpression>()?.javaPsi as? PsiExpression ?: return,
+                        //                          this does not work and will always be null ^^^^^^^
+                        arg.endOffset,
+                        collector
+                    )
+                })
+            }*/
+            is PsiAnnotation -> {
+                if (element.nameReferenceElement?.qualifiedName != "java.lang.Override") return
+                val meth = element.getContainingMethod() ?: return
+                val declaringType = meth.findSuperMethods().firstOrNull()?.containingClass ?: return
+                visitOverride(element, declaringType, collector, element, true)
+            }
+            is KtModifierList -> {
+                val override = element.getModifier(KtTokens.OVERRIDE_KEYWORD) ?: return
+                val func = element.parent as? KtNamedFunction ?: return
+                if (func.receiverTypeReference != null) return // ignore extensions
+                val asJavaMethod = func.toUElementOfType<UMethod>()?.javaPsi
+                val declaringType = asJavaMethod?.findSuperMethods()?.firstOrNull()?.containingClass ?: return
+                visitOverride(asJavaMethod, declaringType, collector, override, false)
+            }
         }
+    }
+
+    private fun visitOverride(
+        javaElement: PsiElement,
+        declaringType: PsiClass,
+        collector: (offset: Int, hint: String) -> Unit,
+        hintAfter: PsiElement,
+        java: Boolean
+    ) {
+        if (!declaringType.isInterface) return // such a hint is useless in single class inheritance model
+        (javaElement.getContainingClass() ?: return).mainInterface?.let { main ->
+            if (main == declaringType || main.isInheritor(declaringType, true)) return
+        }
+        val className = declaringType.name ?: return
+        collector(hintAfter.endOffset, if (java) "from $className" else className)
     }
 
     private val PsiElement.functionParams
         get() =
             if (this is PsiMethod) parameters.map {
                 null to (it.type as? JvmReferenceType)?.resolve() as? PsiClass
-            } /*else if (this is KtNamedFunction) valueParameters.map {
+            } else if (this is KtNamedFunction) valueParameters.map {
                 val type = it.typeReference?.typeElement
-                it.name to (type as? KtFunctionType ?: type?.ktType?.referenceExpression?.mainReference?.resolve())
-            }*/ // also may be typealias, ignore this
+                it.name to ((type as? KtUserType)?.referenceExpression?.mainReference?.resolve() ?: type as? KtFunctionType ?: type?.mainReference?.resolve())
+            } // also may be typealias, ignore this
             else null
 
-    /*private val KtTypeElement?.ktType
-        get() =
-            if (this is KtUserType) this
-            else if (this is KtNullableType) (innerType as? KtUserType)
-            else if (this is KtFunctionType) TODO()
-            else null*/
-
-    private fun visitParameter(parameterType: PsiClass, argumentType: PsiClass?, offset: Int, collector: (offset: Int, hint: String) -> Unit) {
-        if (!parameterType.isInterface) return
-        argumentType?.mainInterface?.let { main ->
-            if (main == parameterType || main.isInheritor(parameterType, true)) return
+    private fun visitParameter(parameterType: PsiElement, argument: PsiExpression, offset: Int, collector: (offset: Int, hint: String) -> Unit) {
+        if (parameterType is PsiClass) {
+            if (!parameterType.isInterface) return
+            val argumentType = when (val it = argument.type) {
+                PsiType.NULL -> null
+                is PsiClassType -> it.resolve() ?: return
+                is PsiPrimitiveType -> it.getBoxedType(argument)?.resolve() ?: return
+                else -> return
+            }
+            argumentType?.mainInterface?.let { main ->
+                if (main == parameterType || main.isInheritor(parameterType, true)) return
+            }
         }
-        collector(offset, "as ${parameterType.name}")
+        collector(offset, "as ${parameterType.typeName}")
     }
 
     private val PsiClass.mainInterface: PsiClass?
@@ -142,6 +164,12 @@ class UpcastHintsPass(
     private val PsiClass.mainInterfaceByImplCount: PsiClass?
         get() = interfaces // ignore single- or two-method interfaces
             .maxByIf({ it.methods.count { it.modifierList.hasModifierProperty(PsiModifier.ABSTRACT) } }, { it > 2 })
+
+    private val PsiElement.typeName: String? get() = when (this) {
+        is PsiClass -> name
+        is KtFunctionType -> toString()
+        else -> null
+    }
 
     override fun getHintKey(): Key<Boolean> = UPCAST_HINTS_INLAY_KEY
     override fun createRenderer(text: String): HintRenderer = MethodChainHintRenderer(text)
