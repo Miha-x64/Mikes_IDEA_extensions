@@ -16,7 +16,7 @@ plugins {
 }
 
 group 'net.aquadc.mike'
-version '0.7'
+version '0.8'
 
 repositories {
     maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
@@ -41,11 +41,5 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
-Smaller highlight area for noinline functions
-Less noise from upcast hints
-@Override [from Supertype], override [Supertype] fun hints
-detecting not only uncached Enum.values() but also new Gson()
-adding import for @TargetApi annotation in Java
-upgraded property delegation inspection to match Kotlin 1.3.60 changes
 """
 }
