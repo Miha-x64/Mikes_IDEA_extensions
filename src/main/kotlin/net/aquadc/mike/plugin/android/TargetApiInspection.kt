@@ -7,6 +7,8 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
+import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
@@ -45,24 +47,24 @@ class TargetApiInspection : UastInspection() {
     ) : NamedLocalQuickFix("Replace with $annotation") {
 
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-            val el = descriptor.psiElement
-            when (el) {
-                is PsiAnnotation -> {
-                    val text = el.findAttributeValue("value")?.text ?: ""
-                    el.replace(
-                        JavaPsiFacade.getElementFactory(el.project)
-                            .createAnnotationFromText("$annotation($text)", null)
+            when (val el = descriptor.psiElement) {
+                is PsiAnnotation ->
+                    JavaCodeStyleManager.getInstance(project).shortenClassReferences(
+                        el.replace(
+                            JavaPsiFacade.getElementFactory(el.project).createAnnotationFromText(
+                                "$annotation(${el.findAttributeValue("value")?.text ?: ""})", null
+                            )
+                        )
                     )
-                }
-                is KtAnnotationEntry -> {
-                    val text = el.valueArguments?.getOrNull(0)?.asElement()?.text
-                    el.replace(
-                        KtPsiFactory(project).createAnnotationEntry("$annotation($text)")
-                    )
-                }
-                else -> {
+                is KtAnnotationEntry ->
+                    el.replace(KtPsiFactory(el).createAnnotationEntry(
+                        "$annotation(${el.valueArguments.getOrNull(0)?.asElement()?.text ?: ""})"
+                    ))
+                else ->
                     Logger.getInstance(TargetApiInspection::class.java).error("Not an annotation: ${el.javaClass.name}; $el")
-                }
+                        .let { null }
+            }?.let { replacement ->
+                CodeStyleManager.getInstance(project).reformat(replacement)
             }
         }
 

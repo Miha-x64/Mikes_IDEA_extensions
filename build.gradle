@@ -43,7 +43,8 @@ patchPluginXml {
     changeNotes """
 Smaller highlight area for noinline functions
 Less noise from upcast hints
-@Override [from Supertype] hints
+@Override [from Supertype], override [Supertype] fun hints
 detecting not only uncached Enum.values() but also new Gson()
+adding import for @TargetApi annotation in Java
 """
 }
