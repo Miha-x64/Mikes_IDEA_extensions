@@ -1,21 +1,16 @@
 <html>
 <body>
 <p>
-    Reports cases of property delegation.
-    Property delegation slows down initialization and should be avoided in applications which should start up fast.
+    Reports cases of heavyweight property delegation.
+    Property delegation to noinline function(s) causes (reflective) <code>KProperty</code> creation
+    which slows down initialization and should be avoided in applications which should start up fast.
 </p>
 
 <p>
-    The cause of this slowdown it that all delegation operator functions accept <code>KProperty</code> instances...
+    The fix is either to delegate to inline functions (optimized since Kotlin 1.3.60)
+    or to delegate manually.
 </p>
-<pre>
-operator fun getValue(thisRef: R, property: KProperty<*>): T
-operator fun setValue(thisRef: R, property: KProperty<*>, value: T)
-operator fun provideDelegate(thisRef: R, prop: KProperty<*>): Delegate
-</pre>
-<p>
-    ...even if do not need them. These <code>KProperty</code> instances are created via reflection.
-</p>
+
 <p>See these issues in Kotlin YouTrack:</p>
 <ul>
     <li><a href="https://youtrack.jetbrains.com/issue/KT-14513">Suboptimal compilation of lazy delegated properties with inline getValue</a></li>

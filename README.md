@@ -17,7 +17,7 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
 
   <h3>Kotlin inspections</h3>
   <ul>
-    <li>Property delegation</li>
+    <li>Heavyweight property delegation</li>
     <li>Declaration name is Java keyword</li>
     <li>Inline function leaks anonymous declaration</li>
     <li>Function won't be inlined;
