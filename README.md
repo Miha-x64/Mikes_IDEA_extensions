@@ -27,7 +27,8 @@ Some great inspections, quickfixes, tools. Well, only inspections at the moment.
 
   <h3>Android inspections</h3>
   <ul>
-    <li>&lt;include layout="?themeAttribute"&gt;</li>
+    <li>&lt;include layout="?themeAttribute"&gt; requires Marshmallow</li>
+    <li>&lt;drawable android:tint and android:tintMode&gt; require Lollipop</li>
     <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
     <li>Use of reflective ObjectAnimator/PropertyValuesHolder</li>
   </ul>

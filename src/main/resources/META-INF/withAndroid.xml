@@ -10,6 +10,13 @@
                 implementationClass="net.aquadc.mike.plugin.android.IncludeLayoutByThemeAttrInspection" />
 
         <localInspection
+                language="XML"
+                shortName="androidBitmapTint" displayName="Using &lt;bitmap android:tint&gt;"
+                groupName="Android"
+                enabledByDefault="true" level="ERROR"
+                implementationClass="net.aquadc.mike.plugin.android.BitmapTintInspection" />
+
+        <localInspection
                 language="UAST"
                 shortName="androidTargetApiShouldBeRequires" displayName="@TargetApi should be replaced with @RequiresApi"
                 groupName="Android"
