@@ -3,6 +3,7 @@ package net.aquadc.mike.plugin.memory
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.TreeElement
+import com.siyeh.ig.fixes.IntroduceConstantFix
 import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -51,14 +52,17 @@ class UncachedAllocInspection : UastInspection() {
                         }
                     } || expr.getParentOfType<KtBinaryExpression>(true).let {
                         it != null && it.operationToken == KtTokens.EQ && it.left.let {
-                            it is KtNameReferenceExpression && it.reference?.resolve().let { it == null || it.isStaticFinalField || it.isFileOrObjVal }
+                            it is KtNameReferenceExpression && it.reference?.resolve()
+                                .let { it == null || it.isStaticFinalField || it.isFileOrObjVal }
                         }
                     }) return
 
                 // resolve (b): resolve call expression reference
                 if (ref is PsiReference && ref.resolve()?.let { method -> method.isJavaEnumValuesMethod || method.isKotlinEnumValuesMethod || method.isNewGson } == true ||
                         ref is PsiMethod && ref.isNewGson) {
-                    holder.registerProblem(expr, "This allocation should be cached")
+                    holder.registerProblem(
+                        expr, "This allocation should be cached", IntroduceConstantFix()
+                    )
                 }
             }
 
