@@ -43,5 +43,6 @@ patchPluginXml {
     changeNotes """
 added minSdk check for layout=?attr
 added inspection for <bitmap tint
+fixed noinline function inspection to ignore return type
 """
 }

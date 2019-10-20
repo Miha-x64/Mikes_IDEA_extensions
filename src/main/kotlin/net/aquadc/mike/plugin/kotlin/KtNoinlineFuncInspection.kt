@@ -2,7 +2,6 @@ package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import net.aquadc.mike.plugin.isInline
 import net.aquadc.mike.plugin.noinlineMessage
@@ -42,9 +41,10 @@ class KtNoinlineFuncInspection : AbstractKotlinInspection() {
             override fun visitFunctionType(type: KtFunctionType) {
                 super.visitFunctionType(type)
 
-                type.context
-                    .let { it as? KtTypeReference }
-                    ?.let { it.context as? KtNamedFunction } // this means that we're receiver
+                val typeRef = type.context as? KtTypeReference ?: return
+                typeRef
+                    .let { it.context as? KtNamedFunction } // this means that we're receiver or return type
+                    ?.takeIf { it.receiverTypeReference == typeRef }
                     ?.takeIf(KtNamedFunction::isInline)
                     ?.let { _ ->
                         holder.registerProblem(
