@@ -45,5 +45,6 @@ added minSdk check for layout=?attr
 added inspection for <bitmap tint
 fixed noinline function inspection to ignore return type
 added IntroduceConstantFix to UncachedAlloc inspection
+better main interface inference heuristic
 """
 }

@@ -146,7 +146,7 @@ class UpcastHintsPass(
     private val PsiClass.mainInterface: PsiClass?
         get() =
             (if (qualifiedName == null) interfaces.singleOrNull() else null) // anonymous types typically implement single interface
-                ?: mainInterfaceByName ?: mainInterfaceByImplCount
+                ?: mainInterfaceByName ?: mainInterfaceByImplCount ?: interfaces.takeIf { superClass == null }?.singleOrNull()
 
     private val PsiClass.mainInterfaceByName: PsiClass?
         get() {
