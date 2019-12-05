@@ -48,7 +48,7 @@
     ]]></description>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="182.0"/>
+    <idea-version since-build="183.2940.10"/>
 
     <extensions defaultExtensionNs="com.intellij">
 

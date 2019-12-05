@@ -9,6 +9,7 @@ import com.intellij.codeInsight.hints.ModificationStampHolder
 import com.intellij.lang.jvm.types.JvmReferenceType
 import com.intellij.openapi.components.AbstractProjectComponent
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.Inlay
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
@@ -175,7 +176,7 @@ class UpcastHintsPass(
     override fun createRenderer(text: String): HintRenderer = MethodChainHintRenderer(text)
 
     private class MethodChainHintRenderer(text: String) : HintRenderer(text) {
-        override fun getContextMenuGroupId() = "UpcastHintsContextMenu"
+        override fun getContextMenuGroupId(inlay: Inlay<*>) = "UpcastHintsContextMenu"
     }
 
     companion object {
