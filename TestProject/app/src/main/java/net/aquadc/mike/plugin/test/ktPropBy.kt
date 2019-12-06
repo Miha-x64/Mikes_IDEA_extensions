@@ -1,4 +1,4 @@
-@file:Suppress("unused", "ktNoinlineFunc")
+@file:Suppress("unused", "ktNoinlineFunc", "NOTHING_TO_INLINE")
 
 import kotlin.properties.Delegates
 import kotlin.properties.ReadOnlyProperty

@@ -13,10 +13,10 @@ public class ReflectPropAnimJava {
         new ObjectAnimator().setProperty(View.ALPHA);
         new ObjectAnimator().getPropertyName();
         ObjectAnimator.ofFloat(new View(null), "translationX", new float[]{});
-        ObjectAnimator.ofInt(new Object(), "translationX", "translationY", null);
+        ObjectAnimator.ofInt(new Object(), "translationX", "translationY", null); // unfixable because arg[0] is Object
         ObjectAnimator.ofInt(null, (Property<?, Integer>) null);
         ObjectAnimator.ofInt(null, null, (Property<?, Integer>) null, null);
         Property.of(View.class, Float.class, "translationX");
-        Property.of(Object.class, Float.class, "translationX");
+        Property.of(Object.class, Float.class, "translationX"); // unfixable
     }
 }

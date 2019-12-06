@@ -8,6 +8,7 @@ import kotlin.Function;
 import java.io.Serializable;
 import java.util.*;
 
+@SuppressWarnings({"WeakerAccess", "SameParameterValue", "unused"})
 public class Interfaces implements Cloneable {
 
     private void a() {
@@ -23,7 +24,7 @@ public class Interfaces implements Cloneable {
                 new ArrayList()
         );
         str("", "", "", "");
-        consumeSerializable(new ArrayList<Void>()); // don't show, it's obvious
+        consumeSerializable(new ArrayList<Void>()); // don't show, it's obvious from method name
     }
 
     static void collections(ArrayList al, Iterable it, Collection co, List l, RandomAccess a, Cloneable c, Serializable s) {

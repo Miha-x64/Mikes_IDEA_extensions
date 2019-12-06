@@ -7,10 +7,9 @@ import com.intellij.codeInsight.daemon.impl.HintRenderer
 import com.intellij.codeInsight.hints.ElementProcessingHintPass
 import com.intellij.codeInsight.hints.ModificationStampHolder
 import com.intellij.lang.jvm.types.JvmReferenceType
-import com.intellij.openapi.components.AbstractProjectComponent
+import com.intellij.openapi.components.ProjectComponent
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.Inlay
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
@@ -25,8 +24,8 @@ import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 
 class UpcastHints(
-    project: Project, registrar: TextEditorHighlightingPassRegistrar
-) : AbstractProjectComponent(project), TextEditorHighlightingPassFactory {
+    registrar: TextEditorHighlightingPassRegistrar
+) : ProjectComponent, TextEditorHighlightingPassFactory {
 
     init {
         registrar.registerTextEditorHighlightingPass(this, null, null, false, -1)

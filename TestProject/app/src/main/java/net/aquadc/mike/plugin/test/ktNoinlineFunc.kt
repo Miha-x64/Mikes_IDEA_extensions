@@ -1,3 +1,4 @@
+@file:Suppress("unused", "UNUSED_VARIABLE")
 package net.aquadc.mike.plugin.test
 
 
