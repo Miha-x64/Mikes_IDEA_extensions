@@ -45,10 +45,7 @@ fun CallMatcher.test(expr: KtExpression): Boolean {
     } else if (expr is KtBinaryExpression) {
         val op = expr.operationToken
         if (op == KtTokens.EQ) {
-            val refExpr =
-                (expr.left as? KtDotQualifiedExpression)?.selectorExpression?.referenceExpression()
-                    ?: expr.left as? KtReferenceExpression
-                    ?: return false
+            val refExpr = expr.leftRef ?: return false
             refExpr to 1
         } else {
             return false
@@ -66,6 +63,13 @@ fun CallMatcher.test(expr: KtExpression): Boolean {
 
     return method.isCorrectArgCount(args) && methodMatches(method)
 }
+
+val KtBinaryExpression.leftRef: KtReferenceExpression?
+    get() = (left as? KtDotQualifiedExpression)?.selectorExpression?.referenceExpression()
+        ?: left as? KtReferenceExpression
+
+val KtBinaryExpression.leftQual: KtExpression?
+    get() = (left as? KtDotQualifiedExpression)?.receiverExpression
 
 // this is more correct than original CallMatcher check
 private fun PsiMethod.isCorrectArgCount(args: Int): Boolean {

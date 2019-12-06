@@ -11,16 +11,29 @@ import com.intellij.psi.util.PsiUtilCore
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import com.siyeh.ig.psiutils.ExpressionUtils
-import net.aquadc.mike.plugin.NamedLocalQuickFix
-import net.aquadc.mike.plugin.UastInspection
-import net.aquadc.mike.plugin.test
+import net.aquadc.mike.plugin.*
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.caches.resolve.findModuleDescriptor
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.getQualifiedExpressionForReceiver
+import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
+import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
-import java.lang.StringBuilder
 
 
 typealias ReplacementBuilder =
-        (meth: PsiReferenceExpression, args: Array<PsiExpression>, argIndices: IntArray, replacements: Array<out String>) -> String
+        (qualifier: String?, callee: String, args: List<PsiElement>, argIndices: IntArray, replacements: Array<out String>) -> String
+
+private interface ArgsPredicate {
+    fun java(args: Array<PsiExpression>): Boolean
+    fun kotlin(args: List<KtExpression>): Boolean
+}
+private val dontMindArgs = object : ArgsPredicate {
+    override fun java(args: Array<PsiExpression>): Boolean = true
+    override fun kotlin(args: List<KtExpression>): Boolean = true
+}
 
 class ReflectPropAnimInspection : UastInspection() {
 
@@ -33,8 +46,11 @@ class ReflectPropAnimInspection : UastInspection() {
                     MATCHERS_TO_FIXES
                         .firstOrNull { it.matcher.test(srcPsi) }
                         ?.let { fixer ->
-                            report((srcPsi as? PsiMethodCallExpression) // to lazy to support the same for Kotlin
-                                ?.let(fixer::create), srcPsi)
+                            report(when (srcPsi) {
+                                is PsiMethodCallExpression -> fixer.create(srcPsi)
+                                is KtExpression -> fixer.create(srcPsi)
+                                else -> null
+                            }, srcPsi)
                         }
                 }
 
@@ -53,7 +69,7 @@ class ReflectPropAnimInspection : UastInspection() {
 
     private class MatcherToFix(
         val matcher: CallMatcher
-      , private val canReplace: (args: Array<PsiExpression>) -> Boolean
+      , private val canReplace: ArgsPredicate
       , private val argIndices: IntArray
       , private val buildReplacement: ReplacementBuilder
     ) {
@@ -73,11 +89,64 @@ class ReflectPropAnimInspection : UastInspection() {
             @Suppress("UNCHECKED_CAST")
             replacements as Array<String>
 
-            return if (canReplace(args)) {
-                val repl = buildReplacement(call.methodExpression, args, argIndices, replacements)
-                object : NamedLocalQuickFix("Replace property name with explicit Property instance") {
-                    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                        PsiReplacementUtil.replaceExpressionAndShorten(descriptor.psiElement as PsiExpression, repl)
+            return if (canReplace.java(args)) {
+                val qual = call.methodExpression.qualifierExpression
+                call.methodExpression.referenceName?.let { callee ->
+                    val repl = buildReplacement(qual?.text, callee, args.asList(), argIndices, replacements)
+                    object : NamedLocalQuickFix(FIX_NAME) {
+                        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+                            PsiReplacementUtil.replaceExpressionAndShorten(
+                                descriptor.psiElement as PsiExpression,
+                                repl
+                            )
+                        }
+                    }
+                }
+            } else null
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        fun create(expr: KtExpression): LocalQuickFix? {
+            val args = when (expr) {
+                is KtCallExpression -> expr.valueArguments.map(KtValueArgument::getArgumentExpression)
+                is KtBinaryExpression -> listOf(expr.right)
+                else -> return null
+            }
+            val replacements = arrayOfNulls<String>(argIndices.size)
+            for ((index, argIndex) in argIndices.withIndex()) {
+                args[argIndex]?.let { arg ->
+                    val const = ConstantExpressionEvaluator.getConstant(arg, arg.analyze(BodyResolveMode.PARTIAL))
+                    val constValue = const?.toConstantValue(expr.findModuleDescriptor().builtIns.stringType)
+                    replacements[index] = VIEW_PROPERTY_FIXES[constValue?.stringTemplateValue() ?: return null]
+                } ?: return null
+            }
+
+            args as List<KtExpression/*!!*/>
+            replacements as Array<String/*!!*/>
+
+            val jArgs = args.map { it.toUElement()?.javaPsi as PsiExpression? }
+            return if (canReplace.kotlin(args)) {
+                val qual: String?
+                val callee: KtExpression?
+                when (expr) {
+                    is KtCallExpression -> {
+                        qual = expr.getQualifiedExpressionForReceiver()?.text
+                        callee = expr.calleeExpression
+                    }
+                    is KtBinaryExpression -> {
+                        qual = expr.leftQual?.text
+                        callee = expr.leftRef
+                    }
+                    else -> error("unreachable")
+                }
+                (callee as? KtNameReferenceExpression)?.getReferencedName()?.let { callee ->
+                    val repl = buildReplacement(qual, callee, args, argIndices, replacements) // todo: replacement could be binary expressions, too
+                    object : NamedLocalQuickFix(FIX_NAME) {
+                        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+                            descriptor.psiElement.let {
+                                it.replace(KtPsiFactory(it).createExpression(repl))
+                            }
+                        }
                     }
                 }
             } else null
@@ -85,6 +154,8 @@ class ReflectPropAnimInspection : UastInspection() {
     }
 
     private companion object {
+        private const val FIX_NAME = "Replace property name with explicit Property instance"
+
         private const val AA = "android.animation"
         private const val TObjectAnimator = "$AA.ObjectAnimator"
         private const val TPropValsHolder = "$AA.PropertyValuesHolder"
@@ -92,27 +163,32 @@ class ReflectPropAnimInspection : UastInspection() {
         private const val TView = "android.view.View"
         private const val TObject = "java.lang.Object"
         private const val TString = "java.lang.String"
-        private val overload: ReplacementBuilder = { meth, args, indices, replacements ->
+        private val overload: ReplacementBuilder = { qual, meth, args, indices, replacements ->
             buildString {
-                appendQualifier(meth).append(meth.referenceName).appendArgs(args, indices, replacements)
+                appendQualifier(qual).append(meth).appendArgs(args, indices, replacements)
             }
         }
-        private val firstArgMustBeView = { (arg): Array<PsiExpression> ->
-            arg.type?.let { arg.getTypeByName(TView).isAssignableFrom(it) } == true
+        private val firstArgMustBeView = object : ArgsPredicate {
+            override fun java(args: Array<PsiExpression>): Boolean = args[0].let { arg ->
+                arg.type?.let { arg.getTypeByName(TView).isAssignableFrom(it) } == true
+            }
+            override fun kotlin(args: List<KtExpression>): Boolean = true // TODO
         }
-        private val firstArgMustBeViewClass = { (arg): Array<PsiExpression> ->
-            ((arg.type as? PsiClassType)?.typeArguments()?.firstOrNull() as? PsiType)?.let {
-                arg.getTypeByName(TView).isAssignableFrom(it)
-            } == true
+        private val firstArgMustBeViewClass = object : ArgsPredicate {
+            override fun java(args: Array<PsiExpression>): Boolean = args[0].let { arg ->
+                ((arg.type as? PsiClassType)?.typeArguments()?.firstOrNull() as? PsiType)?.let {
+                    arg.getTypeByName(TView).isAssignableFrom(it)
+                } == true
+            }
+            override fun kotlin(args: List<KtExpression>): Boolean = true // TODO
         }
-        val justTrue = { _: Any? -> true }
         private val MATCHERS_TO_FIXES = arrayOf(
             MatcherToFix(
                 CallMatcher.anyOf(
                     CallMatcher.exactInstanceCall(TObjectAnimator, "setPropertyName").parameterTypes(TString)
                   , CallMatcher.exactInstanceCall(TPropValsHolder, "setPropertyName").parameterTypes(TString)
-                ), justTrue, intArrayOf(0) /* raw type, nothing to check */) { meth, args, indices, replacements ->
-                buildString { appendQualifier(meth).append("setProperty").appendArgs(args, indices, replacements) }
+                ), dontMindArgs, intArrayOf(0) /* raw type, nothing to check */) { qual, _, args, indices, replacements ->
+                buildString { appendQualifier(qual).append("setProperty").appendArgs(args, indices, replacements) }
             }
           , MatcherToFix(
                 CallMatcher.anyOf(
@@ -144,10 +220,10 @@ class ReflectPropAnimInspection : UastInspection() {
               , CallMatcher.staticCall(TPropValsHolder, "ofObject").parameterTypes(TString, "$AA.TypeEvaluator", "java.lang.Object[]")
               , CallMatcher.staticCall(TPropValsHolder, "ofObject").parameterTypes(TString, "$AA.TypeConverter<android.graphics.PointF,?>", TPath)
               , CallMatcher.staticCall(TPropValsHolder, "ofKeyframe").parameterTypes(TString, "$AA.Keyframe[]")
-            ), justTrue /* too complicated, just don't mind :) */, intArrayOf(0), overload)
+            ), dontMindArgs /* too complicated, just don't mind :) */, intArrayOf(0), overload)
           , MatcherToFix(CallMatcher.anyOf(
                 CallMatcher.staticCall("android.util.Property", "of").parameterTypes("java.lang.Class<T>", "java.lang.Class<V>", TString)
-            ), firstArgMustBeViewClass, intArrayOf(2)) { _, _, _, repl -> TView + '.' + repl[0] }
+            ), firstArgMustBeViewClass, intArrayOf(2)) { _, _, _, _, repl -> TView + '.' + repl[0] }
         )
 
         private fun PsiElement.getTypeByName(name: String): PsiClassType =
@@ -170,12 +246,12 @@ class ReflectPropAnimInspection : UastInspection() {
           , "scaleY" to "SCALE_Y"
         )
 
-        private fun StringBuilder.appendQualifier(meth: PsiReferenceExpression): StringBuilder {
-            meth.qualifierExpression?.let { append(it.text).append('.') }
+        private fun StringBuilder.appendQualifier(qual: String?): StringBuilder {
+            qual?.let { append(it).append('.') }
             return this
         }
         private fun StringBuilder.appendArgs(
-            args: Array<PsiExpression>, indices: IntArray, replacements: Array<out String>
+            args: List<PsiElement>, indices: IntArray, replacements: Array<out String>
         ) {
             append('(')
             if (args.isNotEmpty()) {
