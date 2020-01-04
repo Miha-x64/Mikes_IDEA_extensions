@@ -6,6 +6,7 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import net.aquadc.mike.plugin.SortedArray
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.idea.quickfix.RenameIdentifierFix
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.isPublic
 
@@ -20,7 +21,7 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
                     "goto const " + // reserved
                     "strictfp " + // 1.2
                     "assert " + // 1.4
-                    "enum " + // 5
+                    "enum " + // 1.5
                     "_" // 9
             ).split(' ')
     )
@@ -31,6 +32,22 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
                 if (dcl is KtParameter) return // named parameters are unusable from Java
                 if (!dcl.isPublic) return // also ignore local and private variables and functions
 
+                if (dcl is KtProperty) {
+                    if (!dcl.hasModifier(KtTokens.CONST_KEYWORD) &&
+                        dcl.annotationEntries.firstOrNull {
+                            it.calleeExpression?.constructorReferenceExpression?.getReferencedName() == "JvmField"
+                        } == null) {
+
+                        dcl.getter?.let(::analyze)
+                        dcl.setter?.let(::analyze)
+                        return // ignore non-field properties, i. e. getter-setter pairs, but keep eye on their get/set
+                    }
+                }
+
+                analyze(dcl)
+            }
+
+            private fun analyze(dcl: KtDeclaration) {
                 val jvmNameExpr = dcl.annotationEntries
                     .firstOrNull { it.calleeExpression?.constructorReferenceExpression?.getReferencedName() == "JvmName" }
                     ?.valueArguments?.singleOrNull()?.getArgumentExpression()

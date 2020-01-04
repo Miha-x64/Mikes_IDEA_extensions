@@ -16,7 +16,7 @@ plugins {
 }
 
 group 'net.aquadc.mike'
-version '0.8'
+version '0.9'
 
 repositories {
     maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
@@ -41,12 +41,6 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
-added minSdk check for layout=?attr
-added inspection for <bitmap tint
-fixed noinline function inspection to ignore return type
-added IntroduceConstantFix to UncachedAlloc inspection
-better main interface inference heuristic
-property animation quickfix for Kotlin
-migrated off deprecated API (by jb-dmitry)
+Kotlin id is Java keyword: ignoring props with normal getter-setter, looking into @JvmName getter-setter
 """
 }

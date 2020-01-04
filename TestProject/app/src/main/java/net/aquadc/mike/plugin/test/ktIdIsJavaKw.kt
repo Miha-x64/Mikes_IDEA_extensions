@@ -3,6 +3,12 @@
 class enum
 
 val int = 10
+const val long = 10
+@JvmField val double = 10
+
+var float = 10
+    @JvmName("float") get
+    @JvmName("double") set
 
 object goto
 
