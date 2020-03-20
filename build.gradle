@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.3.50'
+    ext.kotlin_version = '1.3.70'
     repositories {
         maven { url "https://plugins.gradle.org/m2/" }
         maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
@@ -12,11 +12,11 @@ buildscript {
 
 plugins {
     id "org.jetbrains.intellij" version "0.4.9"
-    id 'org.jetbrains.kotlin.jvm' version '1.3.40-eap-67'
+    id 'org.jetbrains.kotlin.jvm' version "$kotlin_version"
 }
 
 group 'net.aquadc.mike'
-version '0.9'
+version '0.10'
 
 repositories {
     maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
@@ -41,6 +41,5 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
-Kotlin id is Java keyword: ignoring props with normal getter-setter, looking into @JvmName getter-setter
 """
 }
