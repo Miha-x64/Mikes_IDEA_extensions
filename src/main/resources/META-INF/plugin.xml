@@ -38,6 +38,11 @@
         <li>Use of reflective ObjectAnimator/PropertyValuesHolder</li>
       </ul>
 
+      <h3>RegExp inspections</h3>
+      <ul>
+        <li>Bad Cyrillic character range</li>
+      </ul>
+
       <h3>Tooltips/hints</h3>
       <ul>
         <li>Upcast to interface, e. g.<br/>putExtra(list<code> as Serializable</code>) (Java Only)</li>
@@ -115,6 +120,13 @@
             groupPath="Java" groupName="Performance"
             enabledByDefault="true" level="ERROR"
             implementationClass="net.aquadc.mike.plugin.SortedAnnoInspection" /-->
+
+        <localInspection
+            language="RegExp"
+            shortName="BadCyrillicRegexp" displayName="Bad Cyrillic character range"
+            groupName="RegExp"
+            enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.regexp.BadCyrillicRegexp" />
     </extensions>
 
     <project-components>
