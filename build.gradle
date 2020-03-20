@@ -42,5 +42,6 @@ compileTestKotlin {
 patchPluginXml {
     changeNotes """
 added BadCyrillicRegexp inspection
+shut up false-positive KtInlineFunctionLeaksAnonymousDeclaration
 """
 }
