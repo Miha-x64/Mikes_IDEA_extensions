@@ -27,8 +27,8 @@ class KtNoinlineFuncInspection : AbstractKotlinInspection() {
             }
             override fun visitCallableReferenceExpression(expression: KtCallableReferenceExpression) {
                 super.visitCallableReferenceExpression(expression)
-                noinlineMessage(expression)?.let { message ->
-                    holder.registerProblem(expression.doubleColonTokenReference, "$message; noinline callable references are a bit more expensive than noinline lambdas.", ProblemHighlightType.GENERIC_ERROR_OR_WARNING)
+                noinlineMessage(expression)?.let {
+                    holder.registerProblem(expression.doubleColonTokenReference, it, ProblemHighlightType.WEAK_WARNING)
                 }
             }
             override fun visitLambdaExpression(lambdaExpression: KtLambdaExpression) {

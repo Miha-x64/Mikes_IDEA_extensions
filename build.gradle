@@ -43,5 +43,6 @@ patchPluginXml {
     changeNotes """
 added BadCyrillicRegexp inspection
 shut up false-positive KtInlineFunctionLeaksAnonymousDeclaration
+less severity of ktNoinlineFunc for :: which are gonna be optimized
 """
 }
