@@ -8,6 +8,12 @@
                 groupName="Android"
                 enabledByDefault="true" level="ERROR"
                 implementationClass="net.aquadc.mike.plugin.android.IncludeLayoutByThemeAttrInspection" />
+        <localInspection
+                language="XML"
+                shortName="androidViewClassByRes" displayName="Using &lt;view&gt; with class from resources"
+                groupName="Android"
+                enabledByDefault="true" level="ERROR"
+                implementationClass="net.aquadc.mike.plugin.android.ViewClassFromResourcesInspection" />
 
         <localInspection
                 language="XML"

@@ -12,4 +12,8 @@
 
     <include layout="?layoutId" />
 
+    <view class="?viewName" />
+
+    <view class="@string/viewName" />
+
 </LinearLayout>
