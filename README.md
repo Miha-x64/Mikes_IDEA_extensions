@@ -1,7 +1,7 @@
 
 ## Mike's IDEA extensions
 
-Some great inspections, quickfixes, tools. Well, only inspections at the moment.
+Some great inspections, quickfixes, tools.
 
   <h3>Java inspections</h3>
   <ul>

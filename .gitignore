@@ -4,3 +4,4 @@
 # Project exclude paths
 /out/
 /out/production/classes/
+local.properties

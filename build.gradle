@@ -16,7 +16,7 @@ plugins {
 }
 
 group 'net.aquadc.mike'
-version '0.10'
+version '0.11'
 
 repositories {
     maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
@@ -41,9 +41,5 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
-added BadCyrillicRegexp inspection
-added androidViewClassByRes inspection
-shut up false-positive KtInlineFunctionLeaksAnonymousDeclaration
-less severity of ktNoinlineFunc for :: which are gonna be optimized
 """
 }
