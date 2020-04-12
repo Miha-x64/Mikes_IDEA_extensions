@@ -26,7 +26,7 @@ class AtomicAsVolatileInspection : UastInspection() {
         // updaters
         AtomicIntegerFieldUpdater::class.java.name,
         AtomicLongFieldUpdater::class.java.name,
-        AtomicReferenceFieldUpdater::class.java.name
+        AtomicReferenceFieldUpdater::class.java.name,
     )
     private val volatileActions = arrayOf(
         "get", "set"

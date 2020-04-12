@@ -68,10 +68,10 @@ class ReflectPropAnimInspection : UastInspection() {
         }
 
     private class MatcherToFix(
-        val matcher: CallMatcher
-      , private val canReplace: ArgsPredicate
-      , private val argIndices: IntArray
-      , private val buildReplacement: ReplacementBuilder
+        val matcher: CallMatcher,
+        private val canReplace: ArgsPredicate,
+        private val argIndices: IntArray,
+        private val buildReplacement: ReplacementBuilder
     ) {
         fun create(call: PsiMethodCallExpression): LocalQuickFix? {
             val args = call.argumentList.expressions
@@ -183,47 +183,43 @@ class ReflectPropAnimInspection : UastInspection() {
             override fun kotlin(args: List<KtExpression>): Boolean = true // TODO
         }
         private val MATCHERS_TO_FIXES = arrayOf(
-            MatcherToFix(
-                CallMatcher.anyOf(
-                    CallMatcher.exactInstanceCall(TObjectAnimator, "setPropertyName").parameterTypes(TString)
-                  , CallMatcher.exactInstanceCall(TPropValsHolder, "setPropertyName").parameterTypes(TString)
-                ), dontMindArgs, intArrayOf(0) /* raw type, nothing to check */) { qual, _, args, indices, replacements ->
+            MatcherToFix(CallMatcher.anyOf(
+                CallMatcher.exactInstanceCall(TObjectAnimator, "setPropertyName").parameterTypes(TString),
+                CallMatcher.exactInstanceCall(TPropValsHolder, "setPropertyName").parameterTypes(TString),
+            ), dontMindArgs, intArrayOf(0) /* raw type, nothing to check */) { qual, _, args, indices, replacements ->
                 buildString { appendQualifier(qual).append("setProperty").appendArgs(args, indices, replacements) }
-            }
-          , MatcherToFix(
-                CallMatcher.anyOf(
-                    CallMatcher.staticCall(TObjectAnimator, "ofInt").parameterTypes(TObject, TString, "int[]")
-                  , CallMatcher.staticCall(TObjectAnimator, "ofMultiInt").parameterTypes(TObject, TString, null /* int[][] | Path */)
-                  , CallMatcher.staticCall(TObjectAnimator, "ofMultiInt").parameterTypes(TObject, TString, "$AA.TypeConverter<T,int[]>", "$AA.TypeEvaluator<T>", "T[]")
-                  , CallMatcher.staticCall(TObjectAnimator, "ofArgb").parameterTypes(TObject, TString, "int[]")
-                  , CallMatcher.staticCall(TObjectAnimator, "ofFloat").parameterTypes(TObject, TString, "float[]")
-                  , CallMatcher.staticCall(TObjectAnimator, "ofMultiFloat").parameterTypes(TObject, TString, null /* float[][] | Path */)
-                  , CallMatcher.staticCall(TObjectAnimator, "ofMultiFloat").parameterTypes(TObject, TString, "$AA.TypeConverter<T,float[]>", "$AA.TypeEvaluator<T>", "T[]")
-                  , CallMatcher.staticCall(TObjectAnimator, "ofObject").parameterTypes(TObject, TString, "$AA.TypeEvaluator", "java.lang.Object[]")
-                  , CallMatcher.staticCall(TObjectAnimator, "ofObject").parameterTypes(TObject, TString, "$AA.TypeConverter<android.graphics.PointF,?>", TPath)
-                )
-              , firstArgMustBeView, intArrayOf(1), overload
-            )
-          , MatcherToFix(CallMatcher.anyOf(
-                CallMatcher.staticCall(TObjectAnimator, "ofInt").parameterTypes(TObject, TString, TString, TPath)
-              , CallMatcher.staticCall(TObjectAnimator, "ofFloat").parameterTypes(TObject, TString, TString, TPath)
-            ), firstArgMustBeView, intArrayOf(1, 2), overload)
-          , MatcherToFix(CallMatcher.anyOf(
-                CallMatcher.staticCall(TPropValsHolder, "ofInt").parameterTypes(TString, "int[]")
-              , CallMatcher.staticCall(TPropValsHolder, "ofMultiInt").parameterTypes(TString, null /* int[][] | Path */)
-              , CallMatcher.staticCall(TPropValsHolder, "ofMultiInt").parameterTypes(TString, "$AA.TypeConverter<V,int[]>", "$AA.TypeEvaluator<V>", "V[]")
-              , CallMatcher.staticCall(TPropValsHolder, "ofMultiInt").parameterTypes(TString, "$AA.TypeConverter<T,int[]>", "$AA.TypeEvaluator<T>", "$AA.Keyframe[]")
-              , CallMatcher.staticCall(TPropValsHolder, "ofFloat").parameterTypes(TString, "float[]")
-              , CallMatcher.staticCall(TPropValsHolder, "ofMultiFloat").parameterTypes(TString, null /* float[][] | Path */)
-              , CallMatcher.staticCall(TPropValsHolder, "ofMultiFloat").parameterTypes(TString, "$AA.TypeConverter<V,float[]>", "$AA.TypeEvaluator<V>", "V[]")
-              , CallMatcher.staticCall(TPropValsHolder, "ofMultiFloat").parameterTypes(TString, "$AA.TypeConverter<T,float[]>", "$AA.TypeEvaluator<T>", "$AA.Keyframe[]")
-              , CallMatcher.staticCall(TPropValsHolder, "ofObject").parameterTypes(TString, "$AA.TypeEvaluator", "java.lang.Object[]")
-              , CallMatcher.staticCall(TPropValsHolder, "ofObject").parameterTypes(TString, "$AA.TypeConverter<android.graphics.PointF,?>", TPath)
-              , CallMatcher.staticCall(TPropValsHolder, "ofKeyframe").parameterTypes(TString, "$AA.Keyframe[]")
-            ), dontMindArgs /* too complicated, just don't mind :) */, intArrayOf(0), overload)
-          , MatcherToFix(CallMatcher.anyOf(
-                CallMatcher.staticCall("android.util.Property", "of").parameterTypes("java.lang.Class<T>", "java.lang.Class<V>", TString)
-            ), firstArgMustBeViewClass, intArrayOf(2)) { _, _, _, _, repl -> TView + '.' + repl[0] }
+            },
+            MatcherToFix(CallMatcher.anyOf(
+                CallMatcher.staticCall(TObjectAnimator, "ofInt").parameterTypes(TObject, TString, "int[]"),
+                CallMatcher.staticCall(TObjectAnimator, "ofMultiInt").parameterTypes(TObject, TString, null /* int[][] | Path */),
+                CallMatcher.staticCall(TObjectAnimator, "ofMultiInt").parameterTypes(TObject, TString, "$AA.TypeConverter<T,int[]>", "$AA.TypeEvaluator<T>", "T[]"),
+                CallMatcher.staticCall(TObjectAnimator, "ofArgb").parameterTypes(TObject, TString, "int[]"),
+                CallMatcher.staticCall(TObjectAnimator, "ofFloat").parameterTypes(TObject, TString, "float[]"),
+                CallMatcher.staticCall(TObjectAnimator, "ofMultiFloat").parameterTypes(TObject, TString, null /* float[][] | Path */),
+                CallMatcher.staticCall(TObjectAnimator, "ofMultiFloat").parameterTypes(TObject, TString, "$AA.TypeConverter<T,float[]>", "$AA.TypeEvaluator<T>", "T[]"),
+                CallMatcher.staticCall(TObjectAnimator, "ofObject").parameterTypes(TObject, TString, "$AA.TypeEvaluator", "java.lang.Object[]"),
+                CallMatcher.staticCall(TObjectAnimator, "ofObject").parameterTypes(TObject, TString, "$AA.TypeConverter<android.graphics.PointF,?>", TPath),
+            ), firstArgMustBeView, intArrayOf(1), overload),
+            MatcherToFix(CallMatcher.anyOf(
+                CallMatcher.staticCall(TObjectAnimator, "ofInt").parameterTypes(TObject, TString, TString, TPath),
+                CallMatcher.staticCall(TObjectAnimator, "ofFloat").parameterTypes(TObject, TString, TString, TPath),
+            ), firstArgMustBeView, intArrayOf(1, 2), overload),
+            MatcherToFix(CallMatcher.anyOf(
+                CallMatcher.staticCall(TPropValsHolder, "ofInt").parameterTypes(TString, "int[]"),
+                CallMatcher.staticCall(TPropValsHolder, "ofMultiInt").parameterTypes(TString, null /* int[][] | Path */),
+                CallMatcher.staticCall(TPropValsHolder, "ofMultiInt").parameterTypes(TString, "$AA.TypeConverter<V,int[]>", "$AA.TypeEvaluator<V>", "V[]"),
+                CallMatcher.staticCall(TPropValsHolder, "ofMultiInt").parameterTypes(TString, "$AA.TypeConverter<T,int[]>", "$AA.TypeEvaluator<T>", "$AA.Keyframe[]"),
+                CallMatcher.staticCall(TPropValsHolder, "ofFloat").parameterTypes(TString, "float[]"),
+                CallMatcher.staticCall(TPropValsHolder, "ofMultiFloat").parameterTypes(TString, null /* float[][] | Path */),
+                CallMatcher.staticCall(TPropValsHolder, "ofMultiFloat").parameterTypes(TString, "$AA.TypeConverter<V,float[]>", "$AA.TypeEvaluator<V>", "V[]"),
+                CallMatcher.staticCall(TPropValsHolder, "ofMultiFloat").parameterTypes(TString, "$AA.TypeConverter<T,float[]>", "$AA.TypeEvaluator<T>", "$AA.Keyframe[]"),
+                CallMatcher.staticCall(TPropValsHolder, "ofObject").parameterTypes(TString, "$AA.TypeEvaluator", "java.lang.Object[]"),
+                CallMatcher.staticCall(TPropValsHolder, "ofObject").parameterTypes(TString, "$AA.TypeConverter<android.graphics.PointF,?>", TPath),
+                CallMatcher.staticCall(TPropValsHolder, "ofKeyframe").parameterTypes(TString, "$AA.Keyframe[]"),
+            ), dontMindArgs /* too complicated, just don't mind :) */, intArrayOf(0), overload),
+            MatcherToFix(CallMatcher.anyOf(
+                CallMatcher.staticCall("android.util.Property", "of").parameterTypes("java.lang.Class<T>", "java.lang.Class<V>", TString),
+            ), firstArgMustBeViewClass, intArrayOf(2)) { _, _, _, _, repl -> TView + '.' + repl[0] },
         )
 
         private fun PsiElement.getTypeByName(name: String): PsiClassType =
@@ -232,18 +228,18 @@ class ReflectPropAnimInspection : UastInspection() {
             }
 
         private val VIEW_PROPERTY_FIXES = hashMapOf(
-            "alpha" to "ALPHA"
-          , "translationX" to "TRANSLATION_X"
-          , "translationY" to "TRANSLATION_Y"
-          , "translationZ" to "TRANSLATION_Z"
-          , "x" to "X"
-          , "y" to "Y"
-          , "z" to "Z"
-          , "rotation" to "ROTATION"
-          , "rotationX" to "ROTATION_X"
-          , "rotationY" to "ROTATION_Y"
-          , "scaleX" to "SCALE_X"
-          , "scaleY" to "SCALE_Y"
+            "alpha" to "ALPHA",
+            "translationX" to "TRANSLATION_X",
+            "translationY" to "TRANSLATION_Y",
+            "translationZ" to "TRANSLATION_Z",
+            "x" to "X",
+            "y" to "Y",
+            "z" to "Z",
+            "rotation" to "ROTATION",
+            "rotationX" to "ROTATION_X",
+            "rotationY" to "ROTATION_Y",
+            "scaleX" to "SCALE_X",
+            "scaleY" to "SCALE_Y",
         )
 
         private fun StringBuilder.appendQualifier(qual: String?): StringBuilder {
