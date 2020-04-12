@@ -20,9 +20,9 @@ Some great inspections, quickfixes, tools.
     <li>Heavyweight property delegation</li>
     <li>Declaration name is Java keyword</li>
     <li>Inline function leaks anonymous declaration</li>
-    <li>Function won't be inlined;
-      noinline callable references are a bit more expensive than noinline lambdas;
+    <li>Anonymous function won't be inlined;
       function cannot be inlined if it is a receiver of an extension function</li>
+    <li>Nullable argument to string concatenation</li>
   </ul>
 
   <h3>Android inspections</h3>

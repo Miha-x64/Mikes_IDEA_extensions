@@ -44,5 +44,8 @@ compileTestKotlin {
 }
 patchPluginXml {
     changeNotes """
+<ul>
+<li>Added 'Nullable argument to string concatenation' inspection</li>
+</ul>
 """
 }

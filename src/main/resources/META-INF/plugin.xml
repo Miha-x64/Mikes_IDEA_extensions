@@ -27,6 +27,7 @@
         <li>Inline function leaks anonymous declaration</li>
         <li>Anonymous function won't be inlined;
           function cannot be inlined if it is a receiver of an extension function</li>
+        <li>Nullable argument to string concatenation</li>
       </ul>
 
       <h3>Android inspections</h3>
@@ -92,6 +93,13 @@
             groupPath="Kotlin" groupName="Performance"
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.kotlin.KtNoinlineFuncInspection" />
+
+        <localInspection
+            language="kotlin"
+            shortName="ktConcatNullable" displayName="Nullable argument to string concatenation"
+            groupPath="Kotlin" groupName="Probable bugs"
+            enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.kotlin.ConcatNullable" />
 
         <localInspection
             language="kotlin"
