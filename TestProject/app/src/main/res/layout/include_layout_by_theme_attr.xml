@@ -10,10 +10,11 @@
         android:layout_height="wrap_content"
         android:textAppearance="?android:textAppearanceLarge" />
 
-    <include layout="?layoutId" />
+    <include layout="?error" />
+    <include layout="@string/ok" />
 
     <view class="?viewName" />
-
     <view class="@string/viewName" />
+    <view class="android.view.View" />
 
 </LinearLayout>
