@@ -46,6 +46,7 @@ patchPluginXml {
     changeNotes """
 <ul>
 <li>Added 'Nullable argument to string concatenation' inspection</li>
+<li>Stopped reporting 'identifier is Java ketword' for functions with reified type parameters</li>
 </ul>
 """
 }

@@ -12,9 +12,7 @@ var float = 10
 
 object goto
 
-fun `package`() {
-
-}
+fun `package`() {}
 
 @JvmName("float")
 fun iAmNotAKeyword() {
@@ -22,9 +20,10 @@ fun iAmNotAKeyword() {
     val double = 1
 }
 
-fun `const`() {
+fun `const`() {}
+inline fun goto() {}
+inline fun <reified T> `while`() {}
 
-}
 
 fun Const(default: Unit) {
     `package`()
@@ -32,14 +31,9 @@ fun Const(default: Unit) {
 }
 
 @JvmName("renamed")
-fun short() {
+fun short() {}
 
-}
-
-fun zzz() {
-
-}
+fun zzz() {}
 
 val zzz: (Enum<*>) -> Unit = { enum ->
-
 }

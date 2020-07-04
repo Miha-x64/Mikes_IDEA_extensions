@@ -31,21 +31,25 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
             override fun visitDeclaration(dcl: KtDeclaration) {
                 if (dcl is KtParameter) return // named parameters are unusable from Java
                 if (!dcl.isPublic) return // also ignore local and private variables and functions
+                if (dcl.isFunctionWithReified) return // `reified` makes function invisible for Java
 
-                if (dcl is KtProperty) {
-                    if (!dcl.hasModifier(KtTokens.CONST_KEYWORD) &&
-                        dcl.annotationEntries.firstOrNull {
-                            it.calleeExpression?.constructorReferenceExpression?.getReferencedName() == "JvmField"
-                        } == null) {
+                if (dcl is KtProperty && !dcl.hasModifier(KtTokens.CONST_KEYWORD) && dcl.jvmField == null) {
+                    // keep eye on get/set if field if private
+                    dcl.getter?.let(::analyze)
+                    dcl.setter?.let(::analyze)
+                } else {
+                    // const property || JvmField property || class || function
+                    analyze(dcl)
+                }
+            }
 
-                        dcl.getter?.let(::analyze)
-                        dcl.setter?.let(::analyze)
-                        return // ignore non-field properties, i. e. getter-setter pairs, but keep eye on their get/set
-                    }
+            private val KtProperty.jvmField get(): KtAnnotationEntry? =
+                annotationEntries.firstOrNull {
+                    it.calleeExpression?.constructorReferenceExpression?.getReferencedName() == "JvmField"
                 }
 
-                analyze(dcl)
-            }
+            private val KtDeclaration.isFunctionWithReified get(): Boolean =
+                this is KtFunction && typeParameters.any { it.hasModifier(KtTokens.REIFIED_KEYWORD) }
 
             private fun analyze(dcl: KtDeclaration) {
                 val jvmNameExpr = dcl.annotationEntries
