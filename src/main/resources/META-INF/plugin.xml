@@ -125,13 +125,9 @@
             groupName="RegExp"
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.regexp.BadCyrillicRegexp" />
-    </extensions>
 
-    <project-components>
-        <component>
-            <implementation-class>net.aquadc.mike.plugin.interfaces.UpcastHints</implementation-class>
-        </component>
-    </project-components>
+        <highlightingPassFactory implementation="net.aquadc.mike.plugin.interfaces.UpcastHints" />
+    </extensions>
 
     <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.java</depends>

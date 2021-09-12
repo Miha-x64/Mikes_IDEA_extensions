@@ -1,15 +1,18 @@
+@file:Suppress("UnstableApiUsage")
+
 package net.aquadc.mike.plugin.interfaces
 
 import com.intellij.codeHighlighting.TextEditorHighlightingPass
 import com.intellij.codeHighlighting.TextEditorHighlightingPassFactory
+import com.intellij.codeHighlighting.TextEditorHighlightingPassFactoryRegistrar
 import com.intellij.codeHighlighting.TextEditorHighlightingPassRegistrar
 import com.intellij.codeInsight.daemon.impl.HintRenderer
 import com.intellij.codeInsight.hints.ElementProcessingHintPass
 import com.intellij.codeInsight.hints.ModificationStampHolder
 import com.intellij.lang.jvm.types.JvmReferenceType
-import com.intellij.openapi.components.ProjectComponent
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.Inlay
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
@@ -23,11 +26,9 @@ import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 
-class UpcastHints(
-    registrar: TextEditorHighlightingPassRegistrar
-) : ProjectComponent, TextEditorHighlightingPassFactory {
+class UpcastHints : TextEditorHighlightingPassFactory, TextEditorHighlightingPassFactoryRegistrar {
 
-    init {
+    override fun registerHighlightingPassFactory(registrar: TextEditorHighlightingPassRegistrar, project: Project) {
         registrar.registerTextEditorHighlightingPass(this, null, null, false, -1)
     }
 

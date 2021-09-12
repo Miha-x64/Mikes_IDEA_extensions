@@ -37,5 +37,6 @@ patchPluginXml {
     changeNotes = """<ul>
 <li>Upgrade min IntelliJ to 2020.3, jvmTarget to 11, Kotlin to 1.5.30</li>
 <li>Fix crash in TargetApiInspection</li>
+<li>Upgrade UpcastHints to use modern API</li>
 </ul>"""
 }
