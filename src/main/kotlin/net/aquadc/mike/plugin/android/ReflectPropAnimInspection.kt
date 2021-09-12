@@ -124,7 +124,6 @@ class ReflectPropAnimInspection : UastInspection() {
             args as List<KtExpression/*!!*/>
             replacements as Array<String/*!!*/>
 
-            val jArgs = args.map { it.toUElement()?.javaPsi as PsiExpression? }
             return if (canReplace.kotlin(args)) {
                 val qual: String?
                 val callee: KtExpression?

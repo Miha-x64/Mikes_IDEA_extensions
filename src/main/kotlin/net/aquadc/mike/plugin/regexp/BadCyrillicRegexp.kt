@@ -10,10 +10,12 @@ import org.intellij.lang.regexp.inspection.RegExpReplacementUtil
 import org.intellij.lang.regexp.psi.RegExpCharRange
 import org.intellij.lang.regexp.psi.RegExpElementVisitor
 
-class BadCyrillicRegexp : LocalInspectionTool() {
 
-    private val MSG_LOWER = "Range [а-я] does not correspond to any of Cyrillic alphabets because of missing letters"
-    private val MSG_UPPER = "Range [А-Я] does not correspond to any of Cyrillic alphabets because of missing letters"
+private val MSG_LOWER = msg("а-я")
+private val MSG_UPPER = msg("А-Я")
+private fun msg(range: String) =
+    "Range [$range] does not correspond to any of Cyrillic alphabets because of missing letters"
+class BadCyrillicRegexp : LocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
         object : RegExpElementVisitor() {

@@ -18,7 +18,7 @@ dependencies {
 intellij {
     version = '2020.3'
     plugins = ['java', 'Kotlin', 'android']
-    updateSinceUntilBuild = false
+    updateSinceUntilBuild = true
 }
 compileJava {
     targetCompatibility = '11'
@@ -34,6 +34,7 @@ compileTestKotlin {
     kotlinOptions.jvmTarget = "11"
 }
 patchPluginXml {
+    untilBuild = ''
     changeNotes = """<ul>
 <li>Upgrade min IntelliJ to 2020.3, jvmTarget to 11, Kotlin to 1.5.30</li>
 <li>Fix crash in TargetApiInspection</li>

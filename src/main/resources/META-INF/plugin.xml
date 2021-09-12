@@ -10,8 +10,8 @@
 
       <h3>Java inspections</h3>
       <ul>
-        <li>BigDecimal instantiation can be replaced with constant <em>by <a href="http://github.com/stokito/">stokito</a></em></li>
-        <li>BigDecimal.compareTo(ZERO) can be replaced with signum() <em>by <a href="http://github.com/stokito/">stokito</a></em></li>
+        <li>BigDecimal instantiation can be replaced with constant <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
+        <li>BigDecimal.compareTo(ZERO) can be replaced with signum() <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
       </ul>
 
       <h3>UAST (Java + Kotlin) inspections</h3>
