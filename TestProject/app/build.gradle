@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 29
-    buildToolsVersion "30-rc2"
+    buildToolsVersion "30.0.3"
     defaultConfig {
         applicationId "net.aquadc.mike.plugin.test"
         minSdkVersion 15

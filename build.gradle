@@ -1,25 +1,12 @@
-buildscript {
-    ext.kotlin_version = '1.4-M1'
-    repositories {
-        maven { url "https://plugins.gradle.org/m2/" }
-        maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
-    }
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "gradle.plugin.org.jetbrains.intellij.plugins:gradle-intellij-plugin:0.4.9"
-    }
-}
-
 plugins {
-    id "org.jetbrains.intellij" version "0.4.9"
-    id 'org.jetbrains.kotlin.jvm' version "$kotlin_version"
+    id "org.jetbrains.intellij" version "1.1.6"
+    id 'org.jetbrains.kotlin.jvm' version "1.5.30"
 }
 
 group 'net.aquadc.mike'
-version '0.11'
+version '0.12'
 
 repositories {
-    maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
     mavenCentral()
 }
 
@@ -29,24 +16,25 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version '2018.3'
-    plugins 'Kotlin', 'android'
-    updateSinceUntilBuild false
+    version = '2020.3'
+    plugins = ['java', 'Kotlin', 'android']
+    updateSinceUntilBuild = false
+}
+compileJava {
+    targetCompatibility = '11'
+    sourceCompatibility = '11'
 }
 compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
     kotlinOptions {
-        languageVersion = "1.4"
+        jvmTarget = "11"
+        languageVersion = "1.5"
     }
 }
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
 }
 patchPluginXml {
-    changeNotes """
-<ul>
-<li>Added 'Nullable argument to string concatenation' inspection</li>
-<li>Stopped reporting 'identifier is Java ketword' for functions with reified type parameters</li>
-</ul>
-"""
+    changeNotes = """<ul>
+<li>Upgrade min IntelliJ to 2020.3, jvmTarget to 11, Kotlin to 1.5.30</li>
+</ul>"""
 }

@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/Miha-x64/Mikes_IDEA_extensions">
 
     <id>net.aquadc.mike.plugin</id>
-    <name>Mike's IDEA extensions</name>
+    <name>Mike's IDEA Extensions</name>
     <category>Inspection</category>
     <vendor email="silizium@ok.de" url="http://aquadc.net/">Mike</vendor>
 
@@ -52,9 +52,6 @@
 
       <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
     ]]></description>
-
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="183.2940.10"/>
 
     <extensions defaultExtensionNs="com.intellij">
 
@@ -121,13 +118,6 @@
             groupPath="Java" groupName="Performance"
             enabledByDefault="true" cleanupTool="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.bigdecimal.BigDecimalSignumInspection"/>
-
-        <!--localInspection
-            language="UAST"
-            shortName="SortedAnno" displayName="@Sorted annotation"
-            groupPath="Java" groupName="Performance"
-            enabledByDefault="true" level="ERROR"
-            implementationClass="net.aquadc.mike.plugin.SortedAnnoInspection" /-->
 
         <localInspection
             language="RegExp"
