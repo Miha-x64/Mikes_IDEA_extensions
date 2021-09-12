@@ -23,7 +23,7 @@ class TargetApiInspection : UastInspection() {
     override fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor =
         object : AbstractUastNonRecursiveVisitor() {
             override fun visitDeclaration(node: UDeclaration): Boolean {
-                node.annotations
+                node.uAnnotations
                     .firstOrNull { it.qualifiedName == "android.annotation.TargetApi" }
                     ?.let { anno ->
                         anno.sourcePsiElement?.let { psi ->
