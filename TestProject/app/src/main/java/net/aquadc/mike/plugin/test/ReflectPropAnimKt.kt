@@ -5,7 +5,7 @@ import android.annotation.TargetApi
 import android.util.Property
 import android.view.View
 
-@SuppressWarnings("androidTargetApiShouldBeRequires")
+@Suppress("androidTargetApiShouldBeRequires")
 @TargetApi(21)
 fun anims() {
     ObjectAnimator().setPropertyName("alpha")

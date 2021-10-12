@@ -1,5 +1,6 @@
 package net.aquadc.mike.plugin.android
 
+import com.android.tools.idea.kotlin.tryEvaluateConstant
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
@@ -12,14 +13,9 @@ import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import com.siyeh.ig.psiutils.ExpressionUtils
 import net.aquadc.mike.plugin.*
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
-import org.jetbrains.kotlin.idea.caches.resolve.findModuleDescriptor
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getQualifiedExpressionForReceiver
-import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
-import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 
@@ -115,9 +111,7 @@ class ReflectPropAnimInspection : UastInspection() {
             val replacements = arrayOfNulls<String>(argIndices.size)
             for ((index, argIndex) in argIndices.withIndex()) {
                 args[argIndex]?.let { arg ->
-                    val const = ConstantExpressionEvaluator.getConstant(arg, arg.analyze(BodyResolveMode.PARTIAL))
-                    val constValue = const?.toConstantValue(expr.findModuleDescriptor().builtIns.stringType)
-                    replacements[index] = VIEW_PROPERTY_FIXES[constValue?.stringTemplateValue() ?: return null]
+                    replacements[index] = VIEW_PROPERTY_FIXES[arg.tryEvaluateConstant() ?: return null]
                 } ?: return null
             }
 

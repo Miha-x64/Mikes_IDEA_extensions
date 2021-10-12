@@ -1,10 +1,10 @@
 plugins {
-    id "org.jetbrains.intellij" version "1.1.6"
-    id 'org.jetbrains.kotlin.jvm' version "1.5.30"
+    id "org.jetbrains.intellij" version "1.2.0"
+    id 'org.jetbrains.kotlin.jvm' version "1.5.31"
 }
 
 group 'net.aquadc.mike'
-version '0.12'
+version '0.13'
 
 repositories {
     mavenCentral()
@@ -36,8 +36,6 @@ compileTestKotlin {
 patchPluginXml {
     untilBuild = ''
     changeNotes = """<ul>
-<li>Upgrade min IntelliJ to 2020.3, jvmTarget to 11, Kotlin to 1.5.30</li>
-<li>Fix crash in TargetApiInspection</li>
-<li>Upgrade UpcastHints to use modern API</li>
+<li>Fix NoSuchMethodError in ReflectPropAnimException</li>
 </ul>"""
 }
