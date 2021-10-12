@@ -1,12 +1,15 @@
 package net.aquadc.mike.plugin
 
-import com.intellij.codeInspection.LocalInspectionTool
-import com.intellij.codeInspection.LocalInspectionToolSession
-import com.intellij.codeInspection.LocalQuickFix
-import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.codeInsight.FileModificationService
+import com.intellij.codeInspection.*
+import com.intellij.lang.java.JavaLanguage
+import com.intellij.openapi.project.Project
 import com.intellij.psi.*
+import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.uast.UastVisitorAdapter
+import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
@@ -82,6 +85,24 @@ abstract class NamedLocalQuickFix(
 ) : LocalQuickFix {
     private val _name = name
     final override fun getFamilyName(): String = _name
+}
+
+fun ProblemsHolder.register(srcPsi: PsiElement, text: String, fix: LocalQuickFix? = null): Unit =
+    if (fix == null) registerProblem(srcPsi, text) else registerProblem(srcPsi, text, fix)
+
+class NamedReplacementFix(
+    private val expression: String,
+    name: String = "Replace with $expression",
+) : NamedLocalQuickFix(name) {
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val psi = descriptor.psiElement
+        if (FileModificationService.getInstance().preparePsiElementForWrite(psi)) {
+            if (psi.language === JavaLanguage.INSTANCE)
+                    (psi as? PsiExpression)?.let { PsiReplacementUtil.replaceExpression(it, expression) }
+            else if (psi.language === KotlinLanguage.INSTANCE) CodeStyleManager.getInstance(psi.project)
+                .reformat(psi.replace(KtPsiFactory(psi).createExpression(expression)))
+        }
+    }
 }
 
 abstract class KtFunctionObjectVisitor : KtVisitorVoid() {
