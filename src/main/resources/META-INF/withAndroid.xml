@@ -41,6 +41,11 @@
                 displayName="Use of android.R.attr.enabled instead of state_enabled"
                 implementationClass="net.aquadc.mike.plugin.android.WrongStateAttr" />
 
+        <localInspection
+                shortName="constParseColor" groupName="Android" language="UAST" enabledByDefault="true" level="WARNING"
+                displayName="Color.parseColor(&lt;constant expression&gt;)"
+                implementationClass="net.aquadc.mike.plugin.android.ConstantParseColor" />
+
     </extensions>
 
 </idea-plugin>

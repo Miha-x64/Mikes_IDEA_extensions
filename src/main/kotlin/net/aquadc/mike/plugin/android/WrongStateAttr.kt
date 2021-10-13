@@ -1,20 +1,17 @@
 package net.aquadc.mike.plugin.android
 
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.PsiExpressionStatement
+import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.register
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.UQualifiedReferenceExpression
-import org.jetbrains.uast.USimpleNameReferenceExpression
 import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.UastCallKind.Companion.METHOD_CALL
 import org.jetbrains.uast.UastCallKind.Companion.NESTED_ARRAY_INITIALIZER
 import org.jetbrains.uast.UastCallKind.Companion.NEW_ARRAY_WITH_INITIALIZER
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
-import org.jetbrains.kotlin.idea.KotlinLanguage.INSTANCE as Kotlin
 
 /**
  * @author Mike Gorünóv
@@ -22,15 +19,9 @@ import org.jetbrains.kotlin.idea.KotlinLanguage.INSTANCE as Kotlin
 class WrongStateAttr : UastInspection() {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean
-    ): AbstractUastNonRecursiveVisitor = object : AbstractUastNonRecursiveVisitor() {
-        override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean =
-            node.sourcePsi?.language === Kotlin // ugly workaround to skip KtDotQualifiedExpression
-        override fun visitSimpleNameReferenceExpression(node: USimpleNameReferenceExpression) =
-            true
-        override fun visitCallExpression(node: UCallExpression): Boolean =
-            if (node.sourcePsi is PsiExpressionStatement) {
-                true // some wisdom from IDEA sources, not sure whether it is useful
-            } else if (node.kind === UastCallKind.CONSTRUCTOR_CALL &&
+    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
+        override fun visitCallExpr(node: UCallExpression): Boolean =
+            if (node.kind === UastCallKind.CONSTRUCTOR_CALL &&
                 node.resolvedClassFqn == "android.content.res.ColorStateList"
             ) {
                 // android.content.res.ColorStateList.ColorStateList(int[][], int[])

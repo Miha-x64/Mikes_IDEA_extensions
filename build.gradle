@@ -38,5 +38,6 @@ patchPluginXml {
     changeNotes = """<ul>
 <li>Fix NoSuchMethodError in ReflectPropAnimException</li>
 <li>Add WrongStateAttr inspection for Android</li>
+<li>Add ConstParseColor inspection for Android</li>
 </ul>"""
 }

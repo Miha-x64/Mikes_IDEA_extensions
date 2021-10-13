@@ -15,6 +15,9 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UQualifiedReferenceExpression
+import org.jetbrains.uast.USimpleNameReferenceExpression
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 
@@ -29,6 +32,20 @@ abstract class UastInspection : LocalInspectionTool() {
     abstract fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor
 
 }
+
+abstract class FunctionCallVisitor : AbstractUastNonRecursiveVisitor() {
+    final override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean =
+        node.sourcePsi?.language === KotlinLanguage.INSTANCE // ugly workaround to skip KtDotQualifiedExpression
+    final override fun visitSimpleNameReferenceExpression(node: USimpleNameReferenceExpression) =
+        true
+    final override fun visitCallExpression(node: UCallExpression): Boolean =
+        node.sourcePsi is PsiExpressionStatement // some wisdom from IDEA sources, not sure whether it is useful
+                || visitCallExpr(node)
+    abstract fun visitCallExpr(node: UCallExpression): Boolean
+}
+
+val UCallExpression.resolvedClassFqn: String?
+    get() = resolve()?.containingClass?.qualifiedName
 
 fun CallMatcher.test(expr: PsiElement): Boolean = when (expr) {
     is PsiMethodCallExpression -> test(expr)
@@ -91,16 +108,19 @@ fun ProblemsHolder.register(srcPsi: PsiElement, text: String, fix: LocalQuickFix
     if (fix == null) registerProblem(srcPsi, text) else registerProblem(srcPsi, text, fix)
 
 class NamedReplacementFix(
-    private val expression: String,
+    expression: String,
+    private val javaExpression: String = expression,
+    private val kotlinExpression: String = expression,
     name: String = "Replace with $expression",
+    private val psi: PsiElement? = null,
 ) : NamedLocalQuickFix(name) {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val psi = descriptor.psiElement
+        val psi = psi ?: descriptor.psiElement
         if (FileModificationService.getInstance().preparePsiElementForWrite(psi)) {
             if (psi.language === JavaLanguage.INSTANCE)
-                    (psi as? PsiExpression)?.let { PsiReplacementUtil.replaceExpression(it, expression) }
+                    (psi as? PsiExpression)?.let { PsiReplacementUtil.replaceExpression(it, javaExpression) }
             else if (psi.language === KotlinLanguage.INSTANCE) CodeStyleManager.getInstance(psi.project)
-                .reformat(psi.replace(KtPsiFactory(psi).createExpression(expression)))
+                .reformat(psi.replace(KtPsiFactory(psi).createExpression(kotlinExpression)))
         }
     }
 }
