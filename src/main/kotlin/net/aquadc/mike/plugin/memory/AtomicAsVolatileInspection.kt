@@ -16,7 +16,9 @@ import org.jetbrains.uast.kotlin.KotlinUField
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import java.util.concurrent.atomic.*
 
-
+/**
+ * @author Mike Gorünóv
+ */
 class AtomicAsVolatileInspection : UastInspection() {
 
     private val atomics = SortedArray.of(
@@ -38,7 +40,6 @@ class AtomicAsVolatileInspection : UastInspection() {
                 checkField(holder, node)
                 return true
             }
-
         }
 
     private fun checkField(holder: ProblemsHolder, field: UField) {

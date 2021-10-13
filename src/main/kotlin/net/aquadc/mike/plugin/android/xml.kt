@@ -12,7 +12,9 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 import java.text.MessageFormat
 
-
+/**
+ * @author Mike Gorünóv
+ */
 class IncludeLayoutByThemeAttrInspection : LocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
@@ -22,6 +24,9 @@ class IncludeLayoutByThemeAttrInspection : LocalInspectionTool() {
         )
 }
 
+/**
+ * @author Mike Gorünóv
+ */
 class ViewClassFromResourcesInspection : LocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
@@ -31,6 +36,9 @@ class ViewClassFromResourcesInspection : LocalInspectionTool() {
         )
 }
 
+/**
+ * @author Mike Gorünóv
+ */
 class BitmapTintInspection : LocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
@@ -51,34 +59,32 @@ private class XmlAttrVisitor(
 ) : PsiElementVisitor() {
 
     override fun visitFile(file: PsiFile) {
-        if (requiredSdk < 0 || file.androidFacet?.isLowerThan(requiredSdk) == true) {
-            if (file is XmlFile && file.hasExpectedType()) {
-                file.accept(object : XmlRecursiveElementVisitor() {
-                    override fun visitXmlAttribute(attribute: XmlAttribute) {
-                        if (attribute.parent.name == tag) {
-                            val attr = attribute.findExpectedAttr()
-                            if (attr != null) {
-                                if (prohibitedPrefixes == null || attribute.value.isProhibited(prohibitedPrefixes)) {
-                                    holder.registerProblem(
-                                        attribute.originalElement,
-                                        MessageFormat.format(message, attr)
-                                    )
-                                }
+        if ((requiredSdk < 0 || file.androidFacet?.isLowerThan(requiredSdk) == true) &&
+            file is XmlFile && file.hasExpectedType())
+            file.accept(object : XmlRecursiveElementVisitor() {
+                override fun visitXmlAttribute(attribute: XmlAttribute) {
+                    if (attribute.parent.name == tag) {
+                        val attr = attribute.findExpectedAttr()
+                        if (attr != null) {
+                            if (prohibitedPrefixes == null || attribute.value.isProhibited(prohibitedPrefixes)) {
+                                holder.registerProblem(
+                                    attribute.originalElement,
+                                    MessageFormat.format(message, attr)
+                                )
                             }
                         }
                     }
+                }
 
-                    private fun XmlAttribute.findExpectedAttr(): String? = name.let { name ->
-                        val colon = name.indexOf(':') + 1
-                        val cleanName = if (colon > 1) name.substring(colon) else name
-                        attrs.firstOrNull { it == cleanName }
-                    }
+                private fun XmlAttribute.findExpectedAttr(): String? = name.let { name ->
+                    val colon = name.indexOf(':') + 1
+                    val cleanName = if (colon > 1) name.substring(colon) else name
+                    attrs.firstOrNull { it == cleanName }
+                }
 
-                    private fun String?.isProhibited(prohibitedPrefixes: CharArray) =
-                        this != null && this.isNotEmpty() && this[0] in prohibitedPrefixes
-                })
-            }
-        }
+                private fun String?.isProhibited(prohibitedPrefixes: CharArray) =
+                    this != null && this.isNotEmpty() && this[0] in prohibitedPrefixes
+            })
     }
 
     private fun PsiFile.hasExpectedType() =

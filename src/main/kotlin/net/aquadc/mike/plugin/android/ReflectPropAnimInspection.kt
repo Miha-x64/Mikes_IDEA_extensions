@@ -19,7 +19,7 @@ import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 
-typealias ReplacementBuilder =
+private typealias ReplacementBuilder =
         (qualifier: String?, callee: String, args: List<PsiElement>, argIndices: IntArray, replacements: Array<out String>) -> String
 
 private interface ArgsPredicate {
@@ -31,37 +31,41 @@ private val dontMindArgs = object : ArgsPredicate {
     override fun kotlin(args: List<KtExpression>): Boolean = true
 }
 
+/**
+ * @author Mike Gorünóv
+ */
 class ReflectPropAnimInspection : UastInspection() {
 
-    override fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor =
-        object : AbstractUastNonRecursiveVisitor() {
+    override fun uVisitor(
+        holder: ProblemsHolder, isOnTheFly: Boolean,
+    ): AbstractUastNonRecursiveVisitor = object : AbstractUastNonRecursiveVisitor() {
 
-            override fun visitExpression(node: UExpression): Boolean {
-                val srcPsi = node.sourcePsi
-                if (srcPsi != null) {
-                    MATCHERS_TO_FIXES
-                        .firstOrNull { it.matcher.test(srcPsi) }
-                        ?.let { fixer ->
-                            report(when (srcPsi) {
-                                is PsiMethodCallExpression -> fixer.create(srcPsi)
-                                is KtExpression -> fixer.create(srcPsi)
-                                else -> null
-                            }, srcPsi)
-                        }
-                }
-
-                return super.visitExpression(node)
+        override fun visitExpression(node: UExpression): Boolean {
+            val srcPsi = node.sourcePsi
+            if (srcPsi != null) {
+                MATCHERS_TO_FIXES
+                    .firstOrNull { it.matcher.test(srcPsi) }
+                    ?.let { fixer ->
+                        report(when (srcPsi) {
+                            is PsiMethodCallExpression -> fixer.create(srcPsi)
+                            is KtExpression -> fixer.create(srcPsi)
+                            else -> null
+                        }, srcPsi)
+                    }
             }
 
-            private fun report(fix: LocalQuickFix?, srcPsi: PsiElement) {
-                if (fix == null) {
-                    holder.registerProblem(srcPsi, "Reflective property animation")
-                } else {
-                    holder.registerProblem(srcPsi, "Reflective property animation", fix)
-                }
-            }
-
+            return true
         }
+
+        private fun report(fix: LocalQuickFix?, srcPsi: PsiElement) {
+            if (fix == null) {
+                holder.registerProblem(srcPsi, "Reflective property animation")
+            } else {
+                holder.registerProblem(srcPsi, "Reflective property animation", fix)
+            }
+        }
+
+    }
 
     private class MatcherToFix(
         val matcher: CallMatcher,

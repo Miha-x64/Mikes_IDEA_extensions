@@ -16,6 +16,9 @@ import org.jetbrains.uast.UastCallKind.Companion.NEW_ARRAY_WITH_INITIALIZER
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import org.jetbrains.kotlin.idea.KotlinLanguage.INSTANCE as Kotlin
 
+/**
+ * @author Mike Gorünóv
+ */
 class WrongStateAttr : UastInspection() {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean

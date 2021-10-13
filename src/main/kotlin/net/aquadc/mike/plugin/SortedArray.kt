@@ -1,10 +1,7 @@
 package net.aquadc.mike.plugin
 
 
-inline class SortedArray<E : Comparable<E>>
-    @Deprecated("private") constructor(
-    private val array: Array<*>
-) {
+/*wannabe inline*/ class SortedArray<E : Comparable<E>> private constructor(private val array: Array<*>) {
 
     operator fun contains(value: E): Boolean =
         array.binarySearch(value) >= 0

@@ -12,31 +12,32 @@ import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.psiUtil.isPublic
 
+/**
+ * @author Mike Gorünóv
+ */
 class KtInlineFunctionLeaksAnonymousDeclaration : AbstractKotlinInspection() {
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
-        object : KtFunctionObjectVisitor() {
+    override fun buildVisitor(
+        holder: ProblemsHolder, isOnTheFly: Boolean,
+    ): PsiElementVisitor = object : KtFunctionObjectVisitor() {
 
-            override fun visitFunctionObject(expression: KtExpression) {
-                expression.containingFunction
-                    ?.takeIf(KtFunction::isInline)
-                    ?.takeIf(KtFunction::isPublic)
-                    ?.takeIf { noinlineMessage(expression) != null }
-                    ?.takeIf { !expression.containsCrossinlinesFrom(it) }
-                    ?.let {
-                        holder.registerProblem(expression,
-                            "This anonymous declaration will be copied to the call-site of enclosing inline function if called from another module"
-                        )
-                    }
-            }
+        override fun visitFunctionObject(expression: KtExpression): Unit = expression.containingFunction
+            ?.takeIf { it.isInline && it.isPublic }
+            ?.takeIf { noinlineMessage(expression) != null }
+            ?.takeIf { !expression.containsCrossinlinesFrom(it) }
+            ?.let { holder.registerProblem(
+                expression,
+                "This anonymous declaration will be copied to the call-site of enclosing inline function " +
+                        "if called from another module"
+            ) } ?: Unit
 
-            private fun KtExpression.containsCrossinlinesFrom(func: KtFunction): Boolean {
-                val xInlines = func.valueParameters.filter { it.hasModifier(KtTokens.CROSSINLINE_KEYWORD) }
-                if (xInlines.isEmpty()) return false
+        private fun KtExpression.containsCrossinlinesFrom(func: KtFunction): Boolean {
+            val xInlines = func.valueParameters.filter { it.hasModifier(KtTokens.CROSSINLINE_KEYWORD) }
+            if (xInlines.isEmpty()) return false
 
-                // todo
+            // todo
 
-                return true
-            }
+            return true
         }
+    }
 }

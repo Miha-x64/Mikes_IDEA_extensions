@@ -26,6 +26,9 @@ import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 
+/**
+ * @author Mike Gorünóv
+ */
 class UpcastHints : TextEditorHighlightingPassFactory, TextEditorHighlightingPassFactoryRegistrar {
 
     override fun registerHighlightingPassFactory(registrar: TextEditorHighlightingPassRegistrar, project: Project) {
@@ -48,7 +51,7 @@ class UpcastHints : TextEditorHighlightingPassFactory, TextEditorHighlightingPas
 
 }
 
-class UpcastHintsPass(
+private class UpcastHintsPass(
     modificationStampHolder: ModificationStampHolder,
     rootElement: PsiElement,
     editor: Editor
@@ -125,8 +128,7 @@ class UpcastHintsPass(
             } else if (this is KtNamedFunction) valueParameters.map {
                 val type = it.typeReference?.typeElement
                 it.name to ((type as? KtUserType)?.referenceExpression?.mainReference?.resolve() ?: type as? KtFunctionType ?: type?.mainReference?.resolve())
-            } // also may be typealias, ignore this
-            else null
+            } else null // also may be typealias, ignore this
 
     private fun visitParameter(parameterType: PsiElement, argument: PsiExpression, offset: Int, collector: (offset: Int, hint: String) -> Unit) {
         if (parameterType is PsiClass) {

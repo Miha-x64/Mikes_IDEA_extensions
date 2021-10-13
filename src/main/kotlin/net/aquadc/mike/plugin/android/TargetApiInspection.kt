@@ -17,25 +17,28 @@ import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.sourcePsiElement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-
+/**
+ * @author Mike Gorünóv
+ */
 class TargetApiInspection : UastInspection() {
 
-    override fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor =
-        object : AbstractUastNonRecursiveVisitor() {
-            override fun visitDeclaration(node: UDeclaration): Boolean {
-                node.uAnnotations
-                    .firstOrNull { it.qualifiedName == "android.annotation.TargetApi" }
-                    ?.let { anno ->
-                        anno.sourcePsiElement?.let { psi ->
-                            holder.registerProblem(
-                                psi, "@TargetApi should be replaced with @RequiresApi", *fixes
-                            )
-                        }
+    override fun uVisitor(
+        holder: ProblemsHolder, isOnTheFly: Boolean,
+    ): AbstractUastNonRecursiveVisitor = object : AbstractUastNonRecursiveVisitor() {
+        override fun visitDeclaration(node: UDeclaration): Boolean {
+            node.uAnnotations
+                .firstOrNull { it.qualifiedName == "android.annotation.TargetApi" }
+                ?.let { anno ->
+                    anno.sourcePsiElement?.let { psi ->
+                        holder.registerProblem(
+                            psi, "@TargetApi should be replaced with @RequiresApi", *fixes
+                        )
                     }
+                }
 
-                return super.visitDeclaration(node)
-            }
+            return true
         }
+    }
 
     private val fixes = arrayOf<LocalQuickFix>(
         ReplaceTargetWithRequires("@androidx.annotation.RequiresApi"),
