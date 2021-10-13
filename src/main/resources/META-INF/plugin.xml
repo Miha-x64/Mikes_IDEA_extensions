@@ -5,59 +5,11 @@
     <category>Inspection</category>
     <vendor email="silizium@ok.de" url="http://aquadc.net/">Mike</vendor>
 
-    <description><![CDATA[
-      Some great inspections, quickfixes, tools.
-
-      <h3>Java inspections</h3>
-      <ul>
-        <li>BigDecimal instantiation can be replaced with constant <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
-        <li>BigDecimal.compareTo(ZERO) can be replaced with signum() <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
-      </ul>
-
-      <h3>UAST (Java + Kotlin) inspections</h3>
-      <ul>
-        <li>Atomic can be replaced with volatile</li>
-        <li>Allocation should be cached (Enum.values(), new Gson(), ...)</li>
-      </ul>
-
-      <h3>Kotlin inspections</h3>
-      <ul>
-        <li>Heavyweight property delegation</li>
-        <li>Declaration name is Java keyword</li>
-        <li>Inline function leaks anonymous declaration</li>
-        <li>Anonymous function won't be inlined;
-          function cannot be inlined if it is a receiver of an extension function</li>
-        <li>Nullable argument to string concatenation</li>
-      </ul>
-
-      <h3>Android inspections</h3>
-      <ul>
-        <li>&lt;include layout="?themeAttribute"&gt; requires Marshmallow</li>
-        <li>&lt;view class="@resource or ?themeAttribute"&gt; is not supported</li>
-        <li>&lt;drawable android:tint and android:tintMode&gt; require Lollipop</li>
-        <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
-        <li>Use of reflective ObjectAnimator/PropertyValuesHolder</li>
-      </ul>
-
-      <h3>RegExp inspections</h3>
-      <ul>
-        <li>Bad Cyrillic character range</li>
-      </ul>
-
-      <h3>Tooltips/hints</h3>
-      <ul>
-        <li>Upcast to interface, e. g.<br/>putExtra(list<code> as Serializable</code>) (Java Only)</li>
-        <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code>,<br/>override <code>Runnable</code> fun run()</li>
-      </ul>
-
-      <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>
-    ]]></description>
-
     <extensions defaultExtensionNs="com.intellij">
 
         <localInspection
             language="kotlin"
-            shortName="ktPropBy" displayName="Property delegation"
+            shortName="ktPropBy" displayName="Heavyweight property delegation"
             groupPath="Kotlin" groupName="Performance"
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.kotlin.KtPropByInspection" />

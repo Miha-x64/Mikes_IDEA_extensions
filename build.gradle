@@ -1,3 +1,6 @@
+import java.nio.file.Files
+import java.util.stream.Collectors
+
 plugins {
     id "org.jetbrains.intellij" version "1.2.0"
     id 'org.jetbrains.kotlin.jvm' version "1.5.31"
@@ -35,10 +38,16 @@ compileTestKotlin {
 }
 patchPluginXml {
     untilBuild = ''
+    pluginDescription = Files.lines(project.file('README.md').toPath())
+        .dropWhile(s -> !s.startsWith("#")).dropWhile(s -> s.startsWith("#"))
+        .collect(Collectors.joining("\n")).trim().replace(
+            '[Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)',
+            '<a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>'
+        )
     changeNotes = """<ul>
-<li>Fix NoSuchMethodError in ReflectPropAnimException</li>
-<li>Add WrongStateAttr inspection for Android</li>
-<li>Add ConstParseColor inspection for Android</li>
-<li>Add ColorInt preview in gutter</li>
+<li>Fixed NoSuchMethodError in ReflectPropAnimException</li>
+<li>Added WrongStateAttr inspection for Android</li>
+<li>Added ConstParseColor inspection for Android</li>
+<li>Added ColorInt preview in gutter</li>
 </ul>"""
 }
