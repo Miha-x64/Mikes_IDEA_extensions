@@ -46,6 +46,11 @@
                 displayName="Color.parseColor(&lt;constant expression&gt;)"
                 implementationClass="net.aquadc.mike.plugin.android.ConstantParseColor" />
 
+        <codeInsight.lineMarkerProvider
+                language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
+        <codeInsight.lineMarkerProvider
+                language="kotlin" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
+
     </extensions>
 
 </idea-plugin>

@@ -39,5 +39,6 @@ patchPluginXml {
 <li>Fix NoSuchMethodError in ReflectPropAnimException</li>
 <li>Add WrongStateAttr inspection for Android</li>
 <li>Add ConstParseColor inspection for Android</li>
+<li>Add ColorInt preview in gutter</li>
 </ul>"""
 }

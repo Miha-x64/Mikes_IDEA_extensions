@@ -10,6 +10,8 @@ public class ParseColorJava {
     private final int white = parseColor("#FFFFFF");
     private final int blue = parseColor("#FF0000FF");
     private final int orange = parseColor("#FFFF8855");
-    private final int bad = parseColor("");
+    private final int transparentOrange = parseColor("#88FF8855");
+    private final int fuchsia = parseColor("fuchsia");
+    private final int bad = parseColor("nope");
     private final int nonConst = parseColor(String.valueOf(bad));
 }
