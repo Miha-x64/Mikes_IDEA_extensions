@@ -1,9 +1,11 @@
 <html>
 <body>
 <p>
-    Reports use of <code>android.R.attr.enabled</code>
-    with TODO list
-    where <code>android.R.attr.state_enabled</code> is expected.
+    Reports use of invalid state attributes such as
+    <code>android.R.attr.checkable</code>, <code>android.R.attr.checked</code>, <code>android.R.attr.enabled</code> with
+    <code>ColorStateList()</code>, <code>StateListAnimator.addState</code>, and <code>StateListDrawable.addState</code>
+    where state attributes such as <code>android.R.attr.state_checkable</code>,
+    <code>android.R.attr.state_checked</code>, <code>android.R.attr.state_enabled</code> are expected.
 </p>
 <p>
     It's easy to confuse these attributes and specify a nonexistent state.
