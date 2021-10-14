@@ -5,12 +5,12 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
-import org.jetbrains.kotlin.idea.debugger.sequence.psi.receiverType
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.js.descriptorUtils.getJetTypeFqName
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
+import org.jetbrains.kotlin.resolve.calls.callUtil.getResolvedCall
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.isNullable
@@ -41,7 +41,8 @@ class ConcatNullable : AbstractKotlinInspection() {
             val fn = (expression.referenceExpression() as? KtNameReferenceExpression)?.getReferencedName()
             val ret = expression.resolveCalleeType() ?: return
             if (ret == "kotlin.String" && fn == "plus") {
-                expression.receiverType()?.let { type ->
+                expression.getResolvedCall(expression.analyze(BodyResolveMode.PARTIAL))
+                    ?.let { it.dispatchReceiver ?: it.extensionReceiver }?.type?.let { type ->
                     val receiver = (expression.parent as? KtQualifiedExpression)?.receiverExpression
                     (receiver ?: expression.calleeExpression)?.let { highlight ->
                         checkNullability(holder, highlight, "receiver of", type)

@@ -128,13 +128,13 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
     private fun PsiElement.constantValue(): Any? = when (this) {
         is PsiLiteralExpression ->
             takeIf {
-                text.startsWith("0x") && type == PsiType.INT ||
+                textContains('x') && type == PsiType.INT ||
                         type == containingFile.run { PsiType.getJavaLangString(manager, getElementResolveScope(this)) }
             }?.value
         is KtStringTemplateExpression ->
             analyze().get(BindingContext.COMPILE_TIME_VALUE, this)?.getValue(TypeUtils.NO_EXPECTED_TYPE)
         is KtConstantExpression ->
-            takeIf { node.elementType == KtNodeTypes.INTEGER_CONSTANT && text.startsWith("0x") }?.let {
+            takeIf { node.elementType == KtNodeTypes.INTEGER_CONSTANT && textContains('x') }?.let {
                 parseNumericLiteral(text, node.elementType)
             }
         else -> null
