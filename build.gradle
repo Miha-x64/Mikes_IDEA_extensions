@@ -7,7 +7,7 @@ plugins {
 }
 
 group 'net.aquadc.mike'
-version '0.13'
+version '0.14'
 
 repositories {
     mavenCentral()
@@ -45,9 +45,6 @@ patchPluginXml {
             '<a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>'
         )
     changeNotes = """<ul>
-<li>Fixed NoSuchMethodError in ReflectPropAnimException</li>
-<li>Added WrongStateAttr inspection for Android</li>
-<li>Added ConstParseColor inspection for Android</li>
-<li>Added ColorInt preview in gutter</li>
+<li>Fixed WrongStateAttr for negative states</li>
 </ul>"""
 }

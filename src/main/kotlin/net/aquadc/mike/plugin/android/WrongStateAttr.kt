@@ -12,6 +12,7 @@ import org.jetbrains.uast.UastCallKind.Companion.METHOD_CALL
 import org.jetbrains.uast.UastCallKind.Companion.NESTED_ARRAY_INITIALIZER
 import org.jetbrains.uast.UastCallKind.Companion.NEW_ARRAY_WITH_INITIALIZER
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
+import kotlin.math.absoluteValue
 
 /**
  * @author Mike Gorünóv
@@ -46,13 +47,17 @@ class WrongStateAttr : UastInspection() {
         private fun UExpression.check(holder: ProblemsHolder) {
             asArrayOf("int")?.valueArguments?.forEach {
                 it.sourcePsi?.let { src ->
-                    (it.evaluate() as? Int)?.takeIf { it !in STATES }?.let { value ->
-                        val name = NAMES.getOrNull(COLLISIONS.indexOf(value))
-                        val subj = name?.let { "android.R.attr.$name" } ?: "0x" + value.toString(16)
-                        holder.register(
-                            src, "$subj is not a state",
-                            name?.let { NamedReplacementFix("android.R.attr.state_$name") },
-                        )
+                    (it.evaluate() as? Int)?.let { value ->
+                        val absVal = value.absoluteValue
+                        if (absVal !in STATES) {
+                            val name = NAMES.getOrNull(COLLISIONS.indexOf(absVal))
+                            val subj = name?.let { "android.R.attr.$name" } ?: "0x${absVal.toString(16)}"
+                            val sign = if (value < 0) "-" else ""
+                            holder.register(
+                                src, "$subj is not a state",
+                                name?.let { NamedReplacementFix("${sign}android.R.attr.state_$name") },
+                            )
+                        }
                     }
                 }
             }
