@@ -6,6 +6,7 @@ import android.graphics.Color.parseColor
 
 
 private val black = Color.parseColor("black")
+private val red = Color.RED
 private val white = Color.parseColor("#FFFFFF")
 private val blue = parseColor("#FF0000FF")
 private val orange = 0xFFFF8855.toInt()

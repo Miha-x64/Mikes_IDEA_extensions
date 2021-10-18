@@ -51,6 +51,11 @@
         <codeInsight.lineMarkerProvider
                 language="kotlin" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
 
+        <lang.foldingBuilder
+                language="JAVA" implementationClass="net.aquadc.mike.plugin.android.ColorIntLiteralFolding" />
+        <lang.foldingBuilder
+                language="kotlin" implementationClass="net.aquadc.mike.plugin.android.ColorIntLiteralFolding" />
+
     </extensions>
 
 </idea-plugin>
