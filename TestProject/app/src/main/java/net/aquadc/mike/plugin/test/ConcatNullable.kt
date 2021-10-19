@@ -2,10 +2,10 @@ package net.aquadc.mike.plugin.test
 
 @Suppress("unused")
 fun concatNullable() {
-//    val ok = "" + "" + 1 + Any()
-//    val left = null + ""
-//    val right = "" + null
-//    val within = "" + null + 1
+    val ok = "" + "" + 1 + Any()
+    val left = null + ""
+    val right = "" + null
+    val within = "" + null + 1
 
     var peq1: String? = null
     peq1 += ""
@@ -28,6 +28,10 @@ fun concatNullable() {
     buildString {
         append("").append(peq1).append(null as Any?).append(1).append(Any())
     }
+    if (peq1 != null)
+        buildString {
+            append(peq1)
+        }
 
     val dontTrigger = ArrayList<Any?>()
     dontTrigger += Any() as Any?

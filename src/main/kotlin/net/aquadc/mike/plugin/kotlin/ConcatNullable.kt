@@ -1,7 +1,6 @@
 package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
@@ -10,9 +9,8 @@ import org.jetbrains.kotlin.js.descriptorUtils.getJetTypeFqName
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
-import org.jetbrains.kotlin.resolve.calls.callUtil.getResolvedCall
+import org.jetbrains.kotlin.resolve.bindingContextUtil.getDataFlowInfoBefore
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
-import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.isNullable
 
 /**
@@ -26,11 +24,9 @@ class ConcatNullable : AbstractKotlinInspection() {
             if (token == KtTokens.PLUS || token == KtTokens.PLUSEQ) {
                 val left = expression.left
                 val right = expression.right
-                if (left != null || right != null) {
-                    if (expression.resolveCalleeType() == "kotlin.String") {
-                        left?.let { checkNullability(holder, it, "operand") }
-                        right?.let { checkNullability(holder, it, "operand") }
-                    }
+                if ((left != null || right != null) && expression.resolveCalleeType() == "kotlin.String") {
+                    left?.let { checkNullability(holder, it, "Nullable operand of String concatenation") }
+                    right?.let { checkNullability(holder, it, "Nullable operand of String concatenation") }
                 }
             }
         }
@@ -41,16 +37,15 @@ class ConcatNullable : AbstractKotlinInspection() {
             val fn = (expression.referenceExpression() as? KtNameReferenceExpression)?.getReferencedName()
             val ret = expression.resolveCalleeType() ?: return
             if (ret == "kotlin.String" && fn == "plus") {
-                expression.getResolvedCall(expression.analyze(BodyResolveMode.PARTIAL))
-                    ?.let { it.dispatchReceiver ?: it.extensionReceiver }?.type?.let { type ->
-                    val receiver = (expression.parent as? KtQualifiedExpression)?.receiverExpression
-                    (receiver ?: expression.calleeExpression)?.let { highlight ->
-                        checkNullability(holder, highlight, "receiver of", type)
-                    }
+                ((expression.parent as? KtQualifiedExpression)?.receiverExpression ?: expression.calleeExpression)
+                    ?.let { checkNullability(holder, it, "Nullable receiver of String concatenation") }
+                arg.getArgumentExpression()?.let {
+                    checkNullability(holder, it, "Nullable argument to String concatenation")
                 }
-                arg.getArgumentExpression()?.let { checkNullability(holder, it, "argument") }
             } else if (ret == "java.lang.StringBuilder" && fn == "append") {
-                arg.getArgumentExpression()?.let { checkNullability(holder, it, "argument") }
+                arg.getArgumentExpression()?.let {
+                    checkNullability(holder, it, "Appending nullable value to StringBuilder")
+                }
             }
         }
 
@@ -58,12 +53,13 @@ class ConcatNullable : AbstractKotlinInspection() {
         private fun KtElement.resolveCalleeType() =
             resolveToCall(BodyResolveMode.PARTIAL)?.candidateDescriptor?.returnType?.unwrap()?.getJetTypeFqName(false)
 
-        private fun checkNullability(holder: ProblemsHolder, a: KtExpression, what: String) {
-            checkNullability(holder, a, what, a.analyze(BodyResolveMode.PARTIAL).getType(a) ?: return)
-        }
-        private fun checkNullability(holder: ProblemsHolder, el: PsiElement, what: String, type: KotlinType) {
-            // TODO smartcast
-            if (type.isNullable()) holder.registerProblem(el, "Nullable $what to string concatenation")
+        private fun checkNullability(holder: ProblemsHolder, expr: KtExpression, message: String) {
+            val ctx = expr.analyze(BodyResolveMode.FULL)
+            val ni = ctx.getDataFlowInfoBefore(expr).completeNullabilityInfo
+            if (ni.size() > 1) throw UnsupportedOperationException(ni.toString())
+
+            if (ni.values().firstOrNull()?.canBeNull() ?: ctx.getType(expr)?.isNullable() == true)
+                holder.registerProblem(expr, message)
         }
     }
 }

@@ -49,5 +49,6 @@ patchPluginXml {
 <li>Сolors: improved performance and preview accuracy, added preview for `@ColorInt` constant references</li>
 <li>Added folding of int literals which suspected to be colors</li>
 <li>Removed XML-related inspections superceded by Android Lint</li>
+<li>Improved accuracy of “Nullable argument to String concatenation”, less false-positives</li>
 </ul>"""
 }

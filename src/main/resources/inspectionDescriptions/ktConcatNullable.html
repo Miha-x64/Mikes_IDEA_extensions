@@ -1,16 +1,17 @@
 <html>
 <body>
 
-<p>Reports nullable arguments in string concatenation and StringBuilder.append.</p>
+<p>Reports nullable arguments to string concatenation and <code>StringBuilder.append()</code>.</p>
+
+<p>Typically you want some explicit fallback text instead of "null".</p>
+
+<!-- tooltip end -->
 
 <pre>
-code           | equivalent
+expression     | implicitly becomes
 str + null     | str + "null"
 str + nullable | str + (nullable ?: "null")
 </pre>
-<p>
-    Typically you want not "null" but some explicit fallback text.
-</p>
 
 </body>
 </html>
