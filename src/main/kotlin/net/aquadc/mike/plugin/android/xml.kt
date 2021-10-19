@@ -1,101 +1,87 @@
 package net.aquadc.mike.plugin.android
 
 import com.android.resources.ResourceFolderType
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel
+import com.android.resources.ResourceFolderType.DRAWABLE
+import com.android.resources.ResourceFolderType.LAYOUT
 import com.intellij.codeInspection.*
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.XmlRecursiveElementVisitor
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlFile
-import org.jetbrains.android.facet.AndroidFacet
-import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 import java.text.MessageFormat
+import java.util.*
+import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModelModule
+import org.jetbrains.android.facet.AndroidFacet.getInstance as androidFacetOf
+import org.jetbrains.android.resourceManagers.ModuleResourceManagers.getInstance as moduleResManager
+import java.lang.Character.MIN_VALUE as nullChar
 
 /**
  * @author Mike Gorünóv
  */
-class IncludeLayoutByThemeAttrInspection : LocalInspectionTool() {
+class UnsupportedAttrInspection : LocalInspectionTool() {
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
-        XmlAttrVisitor(
-            holder, ResourceFolderType.LAYOUT, 23, "include", arrayOf("layout"), charArrayOf('?'),
-            "<include layout=\"?themeAttribute\"> support requires Marshmallow"
+    private class Crap(
+        val resType: ResourceFolderType,
+        private val tag: String,
+        private val attr: String,
+        val message: String,
+        val requiredSdk: Int = Int.MAX_VALUE,
+        private val prohibitedFirstChar: Char = nullChar,
+    ) {
+        fun test(minSdk: Int, resType: ResourceFolderType, tag: String, attr: String, xml: XmlAttribute): Boolean {
+            if (this.requiredSdk <= minSdk || this.resType != resType || this.tag != tag || this.attr != attr)
+                return false
+
+            if (prohibitedFirstChar == nullChar)
+                return true // bad attribute, don't even check value
+
+            val value = xml.value?.takeIf(String::isNotEmpty) ?: return false
+            return value[0] == prohibitedFirstChar // bad prefix
+        }
+
+    }
+
+    private companion object {
+        private val knownSdks = intArrayOf(21, 23)
+        private val knownSdkNames = arrayOf("Lollipop", "Marshmallow")
+        private val shitBunch = arrayOf(
+            Crap(
+                DRAWABLE, "bitmap", "tint", requiredSdk = 21,
+                message = "<bitmap android:{0}> {1}",
+            ),
+            Crap(
+                LAYOUT, "include", "layout", requiredSdk = 23, prohibitedFirstChar = '?',
+                message = "<include layout=\"?themeAttribute\"> {1}",
+            ),
         )
-}
+        private val resTypes = shitBunch.mapTo(EnumSet.noneOf(ResourceFolderType::class.java), Crap::resType)
+    }
 
-/**
- * @author Mike Gorünóv
- */
-class ViewClassFromResourcesInspection : LocalInspectionTool() {
-
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
-        XmlAttrVisitor(
-            holder, ResourceFolderType.LAYOUT, -1, "view", arrayOf("class"), charArrayOf('?', '@'),
-            "<view class=\"@resource or ?themeAttribute\"> is not supported"
-        )
-}
-
-/**
- * @author Mike Gorünóv
- */
-class BitmapTintInspection : LocalInspectionTool() {
-
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
-        XmlAttrVisitor(
-            holder, ResourceFolderType.DRAWABLE, 21, "bitmap", arrayOf("tint", "tintMode"), null,
-            "<bitmap android:{0}> support requires Lollipop"
-        )
-}
-
-private class XmlAttrVisitor(
-    private val holder: ProblemsHolder,
-    private val resType: ResourceFolderType,
-    private val requiredSdk: Int,
-    private val tag: String,
-    private val attrs: Array<String>,
-    private val prohibitedPrefixes: CharArray?,
-    private val message: String
-) : PsiElementVisitor() {
-
-    override fun visitFile(file: PsiFile) {
-        if ((requiredSdk < 0 || file.androidFacet?.isLowerThan(requiredSdk) == true) &&
-            file is XmlFile && file.hasExpectedType())
+    override fun buildVisitor(
+        holder: ProblemsHolder, isOnTheFly: Boolean,
+    ): PsiElementVisitor = object : PsiElementVisitor() {
+        override fun visitFile(file: PsiFile) {
+            if (file !is XmlFile) return
+            val af = androidFacetOf(file) ?: return
+            val minSdk = androidModelModule(af)?.minSdkVersion?.apiLevel ?: return
+            val resType = moduleResManager(af).localResourceManager.getFileResourceFolderType(file)
+                ?.takeIf(resTypes::contains) ?: return
             file.accept(object : XmlRecursiveElementVisitor() {
                 override fun visitXmlAttribute(attribute: XmlAttribute) {
-                    if (attribute.parent.name == tag) {
-                        val attr = attribute.findExpectedAttr()
-                        if (attr != null) {
-                            if (prohibitedPrefixes == null || attribute.value.isProhibited(prohibitedPrefixes)) {
-                                holder.registerProblem(
-                                    attribute.originalElement,
-                                    MessageFormat.format(message, attr)
-                                )
-                            }
-                        }
+                    val tag = attribute.parent.name
+                    val attr = attribute.localName
+                    shitBunch.firstOrNull { it.test(minSdk, resType, tag, attr, attribute) }?.let {
+                        val sdkIdx = knownSdks.indexOf(it.requiredSdk)
+                        val cries =
+                            if (sdkIdx < 0) "support is not implemented"
+                            else "support requires SDK ${it.requiredSdk} (${knownSdkNames[sdkIdx]})"
+                        holder.registerProblem(attribute.originalElement, MessageFormat.format(it.message, attr, cries))
                     }
                 }
 
-                private fun XmlAttribute.findExpectedAttr(): String? = name.let { name ->
-                    val colon = name.indexOf(':') + 1
-                    val cleanName = if (colon > 1) name.substring(colon) else name
-                    attrs.firstOrNull { it == cleanName }
-                }
-
-                private fun String?.isProhibited(prohibitedPrefixes: CharArray) =
-                    this != null && this.isNotEmpty() && this[0] in prohibitedPrefixes
             })
+        }
+
     }
-
-    private fun PsiFile.hasExpectedType() =
-        androidFacet?.moduleResManagers?.localResourceManager?.getFileResourceFolderType(this) == resType
 }
-
-private inline val PsiFile.androidFacet: AndroidFacet?
-    get() = AndroidFacet.getInstance(this)
-
-private inline val AndroidFacet.moduleResManagers: ModuleResourceManagers
-    get() = ModuleResourceManagers.getInstance(this)
-
-private fun AndroidFacet.isLowerThan(expected: Int): Boolean? =
-    AndroidModuleModel.get(this)?.minSdkVersion?.apiLevel?.let { it < expected }

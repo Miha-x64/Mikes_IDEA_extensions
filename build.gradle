@@ -48,5 +48,6 @@ patchPluginXml {
 <li>Fixed WrongStateAttr for negative states</li>
 <li>Сolors: improved performance and preview accuracy, added preview for `@ColorInt` constant references</li>
 <li>Added folding of int literals which suspected to be colors</li>
+<li>Removed XML-related inspections superceded by Android Lint</li>
 </ul>"""
 }

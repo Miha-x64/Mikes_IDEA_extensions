@@ -1,0 +1,32 @@
+<html>
+<body>
+<p>
+    Reports use of XML attributes or attribute values which are not supported in current minSdk.
+</p>
+
+<!-- tooltip end -->
+
+<h2><code>&lt;bitmap android:tint&gt;</code></h2>
+<p>Available since Lollipop.</p>
+
+<h2><code>&lt;include layout="?attr"&gt;</code></h2>
+<p>
+    <code>LayoutInflater</code> resolves the value of <code>&lt;include&gt;</code>'s <code>layout</code> attribute correctly
+    only since <a href="https://github.com/aosp-mirror/platform_frameworks_base/commit/33e3cdab5bb20fc265b75b541fd9e1837269cc50"
+>this commit</a>, Android 6.0.1 Marshmallow.
+</p>
+<p>
+    On earlier versions you may use <code>&lt;ViewStub&gt;</code> as a workaround.
+</p>
+
+<hr/>
+
+<p>
+    Given that XML layouts are super crappy and not mature enough even after a decade of Android evolution,
+    I personally recommend you a global fix: throw them away and use
+    <a href="https://github.com/LouisCAD/Splitties/tree/master/modules/views-dsl">Splitties View DSL</a>,
+    or roll your own UI DSL in one hour and 100 LoC which will suit your needs.
+</p>
+
+</body>
+</html>

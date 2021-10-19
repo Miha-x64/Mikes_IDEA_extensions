@@ -4,23 +4,10 @@
 
         <localInspection
                 language="XML"
-                shortName="androidIncludeLayoutByThemeAttr" displayName="Using &lt;include&gt; with layout from theme attribute"
+                shortName="androidUnsupportedXmlAttr" displayName="Unsupported attribute"
                 groupName="Android"
                 enabledByDefault="true" level="ERROR"
-                implementationClass="net.aquadc.mike.plugin.android.IncludeLayoutByThemeAttrInspection" />
-        <localInspection
-                language="XML"
-                shortName="androidViewClassByRes" displayName="Using &lt;view&gt; with class from resources"
-                groupName="Android"
-                enabledByDefault="true" level="ERROR"
-                implementationClass="net.aquadc.mike.plugin.android.ViewClassFromResourcesInspection" />
-
-        <localInspection
-                language="XML"
-                shortName="androidBitmapTint" displayName="Using &lt;bitmap android:tint&gt;"
-                groupName="Android"
-                enabledByDefault="true" level="ERROR"
-                implementationClass="net.aquadc.mike.plugin.android.BitmapTintInspection" />
+                implementationClass="net.aquadc.mike.plugin.android.UnsupportedAttrInspection" />
 
         <localInspection
                 language="UAST"

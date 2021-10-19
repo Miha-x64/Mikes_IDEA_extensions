@@ -28,8 +28,7 @@ Some great inspections, quickfixes, tools.
   <h3>Android inspections</h3>
   <ul>
     <li><code>&lt;include layout="?themeAttribute"&gt;</code> requires Marshmallow</li>
-    <li><code>&lt;view class="@resource or ?themeAttribute"&gt;</code> is not supported</li>
-    <li><code>&lt;drawable android:tint and android:tintMode&gt;</code> require Lollipop</li>
+    <li><code>&lt;drawable android:tint&gt;</code> requires Lollipop</li>
     <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
     <li>Use of reflective <code>ObjectAnimator</code>/<code>PropertyValuesHolder</code></li>
     <li>Use of attributes like <code>android.R.attr.enabled</code> in context where state attributes expected, like <code>android.R.attr.state_enabled</code></li>

@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <bitmap android:tint="#000000" android:tintMode="wat" android:else="ok" />
+    <item>
+        <bitmap
+            android:tint="#000000"
+            android:tintMode="add"
+            android:alpha=".7" />
+    </item>
 </layer-list>
