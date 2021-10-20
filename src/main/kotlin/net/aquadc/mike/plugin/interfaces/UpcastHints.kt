@@ -16,6 +16,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
+import net.aquadc.mike.plugin.HintsSettingsState
 import net.aquadc.mike.plugin.maxByIf
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.j2k.getContainingClass
@@ -36,7 +37,10 @@ class UpcastHints : TextEditorHighlightingPassFactory, TextEditorHighlightingPas
     }
 
     override fun createHighlightingPass(file: PsiFile, editor: Editor): TextEditorHighlightingPass? =
-        if (!editor.isOneLineMode && file.isJKFile && isChanged(editor, file)) UpcastHintsPass(modificationStampHolder, file, editor) else null
+        if (!editor.isOneLineMode && file.isJKFile && isChanged(editor, file)) {
+            val state = HintsSettingsState.instance
+            UpcastHintsPass(modificationStampHolder, file, editor, state.upcast, state.overr)
+        } else null
 
     private fun isChanged(editor: Editor, file: PsiFile) =
         !modificationStampHolder.isNotChanged(editor, file)
@@ -53,15 +57,15 @@ class UpcastHints : TextEditorHighlightingPassFactory, TextEditorHighlightingPas
 
 private class UpcastHintsPass(
     modificationStampHolder: ModificationStampHolder,
-    rootElement: PsiElement,
-    editor: Editor
+    rootElement: PsiElement, editor: Editor,
+    private val upcast: Boolean, private val overr: Boolean,
 ) : ElementProcessingHintPass(rootElement, editor, modificationStampHolder) {
 
     override fun isAvailable(virtualFile: VirtualFile): Boolean = true
 
     override fun collectElementHints(element: PsiElement, collector: (offset: Int, hint: String) -> Unit) {
-        when (element) {
-            is PsiMethodCallExpression -> {
+        when {
+            upcast && element is PsiMethodCallExpression -> {
                 val args = element.argumentList.expressions
                 if (args.isEmpty()) return
 
@@ -72,7 +76,7 @@ private class UpcastHintsPass(
                     visitParameter(parameterType, arg, arg.endOffset, collector)
                 })
             }
-            /*is KtCallExpression -> {
+            /*upcast && element is KtCallExpression -> {
                 val args = element.valueArguments
                 if (args.isEmpty()) return
                 val params = element.calleeExpression?.mainReference?.resolve()?.functionParams ?: return
@@ -89,13 +93,13 @@ private class UpcastHintsPass(
                     )
                 })
             }*/
-            is PsiAnnotation -> {
+            overr && element is PsiAnnotation -> {
                 if (element.nameReferenceElement?.qualifiedName != "java.lang.Override") return
                 val meth = element.getContainingMethod() ?: return
                 val declaringType = meth.findSuperMethods().firstOrNull()?.containingClass ?: return
                 visitOverride(element, declaringType, collector, element, true)
             }
-            is KtModifierList -> {
+            overr && element is KtModifierList -> {
                 val override = element.getModifier(KtTokens.OVERRIDE_KEYWORD) ?: return
                 val func = element.parent as? KtNamedFunction ?: return
                 if (func.receiverTypeReference != null) return // ignore extensions

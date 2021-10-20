@@ -79,6 +79,10 @@
             implementationClass="net.aquadc.mike.plugin.regexp.BadCyrillicRegexp" />
 
         <highlightingPassFactory implementation="net.aquadc.mike.plugin.interfaces.UpcastHints" />
+
+        <applicationConfigurable
+                instance="net.aquadc.mike.plugin.HintsSettingsUi" id="net.aquadc.mike.plugin.HintsSettings"
+                parentId="editor" displayName="Upcast and override hints" />
     </extensions>
 
     <depends>com.intellij.modules.lang</depends>

@@ -7,6 +7,7 @@
     <li>Added folding of int literals which suspected to be colors</li>
     <li>Removed XML-related inspections superseded by Android Lint: <code>&lt;bitmap tintMode</code>, “<code>&lt;view class="@resource or ?themeAttribute"&gt;</code> is not supported”</li>
     <li>Improved accuracy of “Nullable argument to String concatenation”, less false-positives</li>
+    <li>Added settings to disable upcast or override hints</li>
   </ul>
 
 ### 0.13
@@ -52,7 +53,7 @@
     <li>Added inspection for <code>&lt;bitmap tint=</code></li>
     <li>fixed noinline function inspection to ignore return type</li>
     <li>added quickfix to UncachedAlloc inspection</li>
-    <li>Upgraded main interface inference heuristic for inlay hints</li>
+    <li>Upgraded main interface inference heuristic for override hints</li>
     <li>migrate off deprecated API in EditorCustomElementRenderer <em>by <a href="https://github.com/JB-Dmitry">Dmitry Batrak</a></em></li>
     <li>property animation quickfix for Kotlin</li>
 
@@ -62,7 +63,7 @@
 
   <ul>
     <li>Less noise from KtNoinlineFuncInspection and UpcastHints</li>
-    <li>Added Java+Kotlin inlay hints for interface method overrides</li>
+    <li>Added Java+Kotlin hints for interface method overrides</li>
     <li>uncachedEnumValues inspection becomes uncachedAlloc and also detects <code>new Gson()</code></li>
     <li><code>@TargetApi</code> quickfix now adds imports in Java</li>
     <li>Caught up property delegation inspection with Kotlin 1.3.60</li>
@@ -80,7 +81,7 @@
 
   <ul>
     <li>Added Android inspection: <code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
-    <li>Added Java inlay hints: interface upcast</li>
+    <li>Added Java hints for upcast to interface</li>
   </ul>
 
 ### 0.4
