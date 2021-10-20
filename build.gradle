@@ -6,8 +6,10 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version "1.5.31"
 }
 
+def pluginVersion = '0.14'
+
 group 'net.aquadc.mike'
-version '0.14'
+version pluginVersion
 
 repositories {
     mavenCentral()
@@ -44,11 +46,7 @@ patchPluginXml {
             '[Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)',
             '<a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>'
         )
-    changeNotes = """<ul>
-<li>Fixed WrongStateAttr for negative states</li>
-<li>Сolors: improved performance and preview accuracy, added preview for `@ColorInt` constant references</li>
-<li>Added folding of int literals which suspected to be colors</li>
-<li>Removed XML-related inspections superceded by Android Lint</li>
-<li>Improved accuracy of “Nullable argument to String concatenation”, less false-positives</li>
-</ul>"""
+    changeNotes = Files.lines(project.file('CHANGELOG.md').toPath())
+            .dropWhile(s -> !s.startsWith("### $pluginVersion")).skip(1).takeWhile(s -> !s.startsWith("###"))
+            .collect(Collectors.joining("\n")).trim()
 }
