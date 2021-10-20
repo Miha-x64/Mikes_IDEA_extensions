@@ -124,11 +124,11 @@ class ReflectPropAnimInspection : UastInspection() {
 
             return if (canReplace.kotlin(args)) {
                 val qual: String?
-                val callee: KtExpression?
+                val callee: KtReferenceExpression?
                 when (expr) {
                     is KtCallExpression -> {
                         qual = expr.getQualifiedExpressionForReceiver()?.text
-                        callee = expr.calleeExpression
+                        callee = expr.calleeExpression as? KtReferenceExpression
                     }
                     is KtBinaryExpression -> {
                         qual = expr.leftQual?.text
@@ -136,7 +136,7 @@ class ReflectPropAnimInspection : UastInspection() {
                     }
                     else -> error("unreachable")
                 }
-                (callee as? KtNameReferenceExpression)?.getReferencedName()?.let { callee ->
+                callee?.referencedName?.let { callee ->
                     val repl = buildReplacement(qual, callee, args, argIndices, replacements) // todo: replacement could be binary expressions, too
                     object : NamedLocalQuickFix(FIX_NAME) {
                         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
@@ -181,6 +181,7 @@ class ReflectPropAnimInspection : UastInspection() {
         }
         private val MATCHERS_TO_FIXES = arrayOf(
             MatcherToFix(CallMatcher.anyOf(
+                // TODO detect `propertyName = expression`, too
                 CallMatcher.exactInstanceCall(TObjectAnimator, "setPropertyName").parameterTypes(TString),
                 CallMatcher.exactInstanceCall(TPropValsHolder, "setPropertyName").parameterTypes(TString),
             ), dontMindArgs, intArrayOf(0) /* raw type, nothing to check */) { qual, _, args, indices, replacements ->

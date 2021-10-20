@@ -5,6 +5,7 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.TreeElement
 import com.siyeh.ig.fixes.IntroduceConstantFix
 import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
@@ -40,7 +41,9 @@ class UncachedAllocInspection : UastInspection() {
                 is PsiNewExpression ->
                     if (expr.looksLikeNewGson) expr.resolveConstructor() else null
                 is KtCallExpression ->
-                    if (expr.looksLikeEnumValues || expr.looksLineNewGson) expr.referenceExpression()!!.mainReference
+                    if (expr.typeArguments.isEmpty() && expr.valueArguments.isEmpty() && expr.lambdaArguments.isEmpty())
+                        expr.referenceExpression()
+                            ?.takeIf { it.referencedName.let { it == "values" || it == "Gson" } }?.mainReference
                     else null
                 else ->
                     null
@@ -72,18 +75,9 @@ class UncachedAllocInspection : UastInspection() {
         private val PsiMethodCallExpression.looksLikeEnumValues: Boolean
             get() = methodExpression.referenceName == "values" && typeArguments.isEmpty() && argumentList.isEmpty
 
-        private val KtCallExpression.looksLikeEnumValues: Boolean
-            get() = typeArguments.isEmpty() && valueArguments.isEmpty() && lambdaArguments.isEmpty() &&
-                    (referenceExpression() as? KtNameReferenceExpression)?.getReferencedName() == "values"
-
-
         private val PsiNewExpression.looksLikeNewGson: Boolean
             get() = typeArguments.isEmpty() && argumentList.let { it == null || it.isEmpty } &&
                     classReference.let { it != null && it.referenceName == "Gson" }
-
-        private val KtCallExpression.looksLineNewGson: Boolean
-            get() = typeArguments.isEmpty() && valueArguments.isEmpty() && lambdaArguments.isEmpty() &&
-                    (referenceExpression() as? KtNameReferenceExpression)?.getReferencedName() == "Gson"
 
 
         private val PsiElement.isStaticFinalField: Boolean

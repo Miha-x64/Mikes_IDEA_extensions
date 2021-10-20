@@ -2,6 +2,7 @@ package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
+import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
@@ -10,6 +11,7 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.kotlin.resolve.bindingContextUtil.getDataFlowInfoBefore
+import org.jetbrains.kotlin.resolve.calls.callUtil.getResolvedCall
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.isNullable
 
@@ -20,8 +22,7 @@ class ConcatNullable : AbstractKotlinInspection() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor = object : KtVisitorVoid() {
         override fun visitBinaryExpression(expression: KtBinaryExpression) {
-            val token = expression.operationToken
-            if (token == KtTokens.PLUS || token == KtTokens.PLUSEQ) {
+            if (expression.operationToken.let { it == KtTokens.PLUS || it == KtTokens.PLUSEQ }) {
                 val left = expression.left
                 val right = expression.right
                 if ((left != null || right != null) && expression.resolveCalleeType() == "kotlin.String") {
@@ -32,19 +33,28 @@ class ConcatNullable : AbstractKotlinInspection() {
         }
 
         override fun visitCallExpression(expression: KtCallExpression) {
-            val arg = expression.valueArguments.singleOrNull() ?: return // expect plus(1 arg) or append(1 arg)
-
-            val fn = (expression.referenceExpression() as? KtNameReferenceExpression)?.getReferencedName()
+            val fn = expression.referenceExpression()?.referencedName ?: return
             val ret = expression.resolveCalleeType() ?: return
-            if (ret == "kotlin.String" && fn == "plus") {
-                ((expression.parent as? KtQualifiedExpression)?.receiverExpression ?: expression.calleeExpression)
-                    ?.let { checkNullability(holder, it, "Nullable receiver of String concatenation") }
-                arg.getArgumentExpression()?.let {
-                    checkNullability(holder, it, "Nullable argument to String concatenation")
+            val arg = expression.valueArguments.singleOrNull()?.getArgumentExpression() ?: return // expect plus(1 arg) or append(1 arg)
+            when (ret) {
+                "kotlin.String" -> {
+                    if (fn == "plus") {
+                        (expression.parent as? KtQualifiedExpression)?.receiverExpression // null.plus(…)
+                            ?.let { checkNullability(holder, it, "Nullable receiver of String concatenation") }
+                            ?: expression.getResolvedCall(expression.analyze(BodyResolveMode.PARTIAL))
+                                ?.extensionReceiver?.type?.takeIf { it.isNullable() }?.let { // null.apply { plus(…) }
+                                    holder.registerProblem(
+                                        expression.calleeExpression ?: expression,
+                                        "Nullable receiver of String concatenation",
+                                    )
+                                }
+                        checkNullability(holder, arg, "Nullable argument to String concatenation")
+                    } // TODO else if fn == "format"
                 }
-            } else if (ret == "java.lang.StringBuilder" && fn == "append") {
-                arg.getArgumentExpression()?.let {
-                    checkNullability(holder, it, "Appending nullable value to StringBuilder")
+                "java.lang.StringBuilder" -> {
+                    if (fn == "append") {
+                        checkNullability(holder, arg, "Appending nullable value to StringBuilder")
+                    }
                 }
             }
         }
@@ -58,7 +68,7 @@ class ConcatNullable : AbstractKotlinInspection() {
             val ni = ctx.getDataFlowInfoBefore(expr).completeNullabilityInfo
             if (ni.size() > 1) throw UnsupportedOperationException(ni.toString())
 
-            if (ni.values().firstOrNull()?.canBeNull() ?: ctx.getType(expr)?.isNullable() == true)
+            if ((ni.values().firstOrNull()?.canBeNull() ?: ctx.getType(expr)?.isNullable()) == true)
                 holder.registerProblem(expr, message)
         }
     }

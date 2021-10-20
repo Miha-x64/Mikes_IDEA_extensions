@@ -28,10 +28,14 @@ fun concatNullable() {
     buildString {
         append("").append(peq1).append(null as Any?).append(1).append(Any())
     }
-    if (peq1 != null)
+    if (peq1 != null) {
         buildString {
             append(peq1)
         }
+        peq1.apply {
+            plus("")
+        }
+    }
 
     val dontTrigger = ArrayList<Any?>()
     dontTrigger += Any() as Any?

@@ -2,6 +2,9 @@ package net.aquadc.mike.plugin.test
 
 import com.google.gson.Gson
 
+private val VALS = EnumValuesKotlin.values() // ok
+private val GSON = Gson()
+
 enum class EnumValuesKotlin {
     A, B, C;
 
