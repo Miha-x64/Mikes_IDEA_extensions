@@ -1,4 +1,9 @@
 
+### 0.15
+  <ul>
+    <li>Fixed crashes in ConcatNullable and inline/noinline function inspections</li>
+  </ul>
+
 ### 0.14
 
   <ul>

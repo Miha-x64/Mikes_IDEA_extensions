@@ -178,12 +178,12 @@ fun noinlineMessage(expression: KtExpression): String? {
                     if (callee.isInline) {
                         val param = parent.getArgumentName()?.text
                             ?.let { parameterName -> callee.valueParameters.first { it.name == parameterName } }
-                            ?: callee.valueParameters[
+                            ?: callee.valueParameters.getOrNull(
                                     argList?.arguments?.indexOf(parent)
                                         ?: callee.valueParameters.lastIndex // for `func(...) { }` we won't get KtValueArgumentList
-                            ]
+                            )
 
-                        if (param.isNoinline) {
+                        if (param?.isNoinline == true) {
                             noinlineParamOfInline(callee, param)
                         } else null
                     } else {

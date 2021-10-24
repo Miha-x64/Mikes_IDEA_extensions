@@ -66,8 +66,6 @@ class ConcatNullable : AbstractKotlinInspection() {
         private fun checkNullability(holder: ProblemsHolder, expr: KtExpression, message: String) {
             val ctx = expr.analyze(BodyResolveMode.FULL)
             val ni = ctx.getDataFlowInfoBefore(expr).completeNullabilityInfo
-            if (ni.size() > 1) throw UnsupportedOperationException(ni.toString())
-
             if ((ni.values().firstOrNull()?.canBeNull() ?: ctx.getType(expr)?.isNullable()) == true)
                 holder.registerProblem(expr, message)
         }
