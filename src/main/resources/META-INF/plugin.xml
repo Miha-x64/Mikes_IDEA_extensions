@@ -3,7 +3,9 @@
     <id>net.aquadc.mike.plugin</id>
     <name>Mike's IDEA Extensions</name>
     <category>Inspection</category>
-    <vendor email="silizium@ok.de" url="http://aquadc.net/">Mike</vendor>
+    <category>Editor</category>
+    <category>Android</category>
+    <vendor email="mihlo4745@gmail.com" url="https://github.com/Miha-x64/">Mike Gorünóv</vendor>
 
     <extensions defaultExtensionNs="com.intellij">
 
