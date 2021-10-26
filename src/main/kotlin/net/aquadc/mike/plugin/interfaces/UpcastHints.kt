@@ -164,10 +164,12 @@ private class UpcastHintsPass(
             val name = name ?: return null
             return interfaces.firstOrNull {
                 val iName = it.name
-                iName != null && name.contains(iName) // i. e. ArrayList's main interface is List
+                // i.e. ArrayList's main interface is List, CoolHandler's main is IdleHandler
+                val cLastCap = name.indexOfLast(Character::isUpperCase)
+                val iLastCap = iName?.indexOfLast(Character::isUpperCase)
+                iName != null && cLastCap > -1 && iLastCap != null && iLastCap > -1 &&
+                        name.regionMatches(cLastCap, iName, iLastCap, iName.length - iLastCap)
             } ?: superClass?.mainInterfaceByName
-
-            // TODO: WhateverHandler's main is IdleHandler
         }
 
     // LOL, very simple, ignores how many of them were actually implemented
