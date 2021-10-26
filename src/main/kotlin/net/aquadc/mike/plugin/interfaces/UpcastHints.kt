@@ -118,10 +118,13 @@ private class UpcastHintsPass(
         java: Boolean
     ) {
         if (!declaringType.isInterface) return // such a hint is useless in single class inheritance model
-        (javaElement.getContainingClass() ?: return).mainInterface?.let { main ->
+        val containingClass = javaElement.getContainingClass() ?: return
+        containingClass.mainInterface?.let { main ->
             if (main == declaringType || main.isInheritor(declaringType, true)) return
         }
-        val className = declaringType.name ?: return
+        val className = if (declaringType.qualifiedName?.startsWith("kotlin.jvm.functions.Function") == true) "(…) -> …" // TODO
+        else declaringType.name
+        className ?: return
         collector(hintAfter.endOffset, if (java) "from $className" else className)
     }
 

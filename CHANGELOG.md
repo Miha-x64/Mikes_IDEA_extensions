@@ -1,7 +1,8 @@
-
+ 
 ### 0.15
   <ul>
     <li>Fixed crashes in ConcatNullable and inline/noinline function inspections</li>
+    <li>Override hints: showing FunctionN as <code>(…) -> …</code> (without actual type arguments, LOL)</li>
   </ul>
 
 ### 0.14

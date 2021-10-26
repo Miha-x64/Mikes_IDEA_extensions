@@ -2,7 +2,7 @@
 import java.io.Serializable
 
 
-class Iii : AbstractList<Nothing>(), Runnable, Cloneable {
+class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
 
     private fun a() {
         a(1, 1, emptyList(), {}, this)
@@ -12,11 +12,13 @@ class Iii : AbstractList<Nothing>(), Runnable, Cloneable {
         get() = 0
 
     override fun get(index: Int): Nothing {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        throw UnsupportedOperationException()
     }
 
     override fun run() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun invoke() {
     }
 
 }
