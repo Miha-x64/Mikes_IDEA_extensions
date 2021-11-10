@@ -1,4 +1,7 @@
-@file:Suppress("unused")
+@file:Suppress(
+    "unused", "NOTHING_TO_INLINE", "ktNoinlineFunc", "UNUSED_VARIABLE", "UNUSED_PARAMETER", "UNUSED_ANONYMOUS_PARAMETER"
+)
+package com.native.goto.const.float
 
 class enum
 

@@ -1,6 +1,7 @@
 package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiNameIdentifierOwner
 import net.aquadc.mike.plugin.SortedArray
@@ -31,6 +32,11 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
     override fun buildVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): PsiElementVisitor = object : KtVisitorVoid() {
+        override fun visitPackageDirective(directive: KtPackageDirective) {
+            directive.packageNames.forEach {
+                check(it.getReferencedName(), it)
+            }
+        }
         override fun visitDeclaration(dcl: KtDeclaration) {
             if (dcl is KtParameter) return // named parameters are unusable from Java
             if (!dcl.isPublic) return // also ignore local and private variables and functions
@@ -70,10 +76,12 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
                     }
                 } ?: return // string template (invalid) or complex compile-time expression (rare; give up)
 
+            check(name, jvmNameExpr ?: (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl)
+        }
+
+        private fun check(name: String, highlight: PsiElement) {
             val identifier = KtPsiUtil.unquoteIdentifier(name)
             if (identifier in javaKeywords) {
-                val highlight = jvmNameExpr ?: (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl
-
                 holder.registerProblem(
                     highlight, "Identifier \"$identifier\" is a Java keyword", RenameIdentifierFix()
                 )
