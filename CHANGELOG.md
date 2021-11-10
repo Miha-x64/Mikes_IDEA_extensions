@@ -1,4 +1,10 @@
  
+### 0.16
+  <ul>
+    <li>Implemented Kotlin upcast hints. Reworked interface inlay hints so their settings reside with their colleagues</li>
+  </ul>
+
+
 ### 0.15
   <ul>
     <li>Fixed crashes in ConcatNullable and inline/noinline function inspections</li>

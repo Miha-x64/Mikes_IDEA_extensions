@@ -1,11 +1,11 @@
-
+@file:Suppress("ktNoinlineFunc", "UNUSED_PARAMETER")
 import java.io.Serializable
 
 
 class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
 
     private fun a() {
-        a(1, 1, emptyList(), {}, this)
+        a(1, 1, emptyList(), this, this, this)
     }
 
     override val size: Int
@@ -23,6 +23,6 @@ class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
 
 }
 
-fun a(a: Serializable, b: Comparable<*>, c: List<Number>, f: () -> Unit, cl: Cloneable) {
+fun a(a: Serializable, b: Comparable<*>, c: List<Number>, f: () -> Unit, cl: Cloneable, r: Runnable) {
 
 }

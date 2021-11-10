@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 import kotlin.Function;
+import kotlin.jvm.functions.Function1;
 
 import java.io.Serializable;
 import java.util.*;
@@ -33,7 +34,7 @@ public class Interfaces implements Cloneable {
 
     static void consumeSerializable(Serializable s) {}
 
-    static void a(Serializable a, Comparable b, int c, List<? extends Number> d, Function<?> e, Cloneable f) {
+    static void a(Serializable a, Comparable b, int c, List<? extends Number> d, Function1<?, ?> e, Cloneable f) {
 
     }
 
