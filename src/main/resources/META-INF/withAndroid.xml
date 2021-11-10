@@ -37,11 +37,11 @@
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
         <codeInsight.lineMarkerProvider
                 language="kotlin" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
-
         <lang.foldingBuilder
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.ColorIntLiteralFolding" />
         <lang.foldingBuilder
                 language="kotlin" implementationClass="net.aquadc.mike.plugin.android.ColorIntLiteralFolding" />
+        <copyPastePreProcessor implementation="net.aquadc.mike.plugin.android.CopyPasteColor" />
 
     </extensions>
 

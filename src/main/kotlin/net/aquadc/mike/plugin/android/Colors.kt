@@ -4,16 +4,22 @@ import com.android.utils.SparseArray
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
+import com.intellij.codeInsight.editorActions.CopyPastePreProcessor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.ASTNode
 import com.intellij.lang.folding.FoldingBuilderEx
 import com.intellij.lang.folding.FoldingDescriptor
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.RawText
 import com.intellij.openapi.editor.markup.GutterIconRenderer
+import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiPrimitiveType
@@ -29,6 +35,7 @@ import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.resolvedClassFqn
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtConstantExpression
@@ -132,10 +139,12 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
             iconCache[colorInt] ?: ColorIcon(sharedClip, colorInt.toAwtColor()).also { iconCache.put(colorInt, it) }
         }
         return LineMarkerInfo(
-            element.firstChild ?: element, element.textRange,
+            element.firstLeaf, element.textRange,
             icon, null, null, GutterIconRenderer.Alignment.LEFT
         ) { colorInt.toPaddedUpperHex(colorInt.opaque6translucent8, COLOR_PREFIX_HASH, COLOR_ACCESSIBILITY_POSTFIX) }
     }
+
+    private val PsiElement.firstLeaf get(): PsiElement = firstChild?.firstLeaf ?: this
     private inline val Int.worthPreviewing get() = (this ushr 24) > 0x27 || this == 0
 
     private class ColorIcon(
@@ -191,8 +200,7 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
         if (colorInt != 1) {
             val node = (parentOfType<KtDotQualifiedExpression>()?.takeIf {
                 (it.selectorExpression as? KtCallExpression)?.calleeExpression?.textMatches("toInt") == true
-            } ?: this
-            ).node
+            } ?: this).node
             regions.add(
                 FoldingDescriptor(
                     node, node.textRange, null,
@@ -205,6 +213,87 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
     override fun getPlaceholderText(node: ASTNode): String? = null
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
+}
+
+class CopyPasteColor : CopyPastePreProcessor {
+
+    override fun preprocessOnCopy(
+        file: PsiFile?, startOffsets: IntArray?, endOffsets: IntArray?, text: String?
+    ): String? =
+        null
+
+    override fun preprocessOnPaste(
+        project: Project?, file: PsiFile, editor: Editor?, text: String, rawText: RawText?): String {
+        if (file.language.let { it != JavaLanguage.INSTANCE && it != KotlinLanguage.INSTANCE }) return text
+        if (text.length !in 7..50) return text // " background:  rgba( 111 , 111 , 255 , 0.12345 ) ; "
+
+        val data = StringBuilder(text)
+        // trim
+        while (data.isNotEmpty() && data.first().let { it.isWhitespace() || it == ':' }) data.deleteCharAt(0)
+        while (data.isNotEmpty() && data.last().let { it.isWhitespace() || it == ';' }) data.deleteCharAt(data.lastIndex)
+        val separatorIndex = data.indexOf(':')
+        val identifier = if (separatorIndex < 0) null else
+            StringBuilder().append(data, 0, separatorIndex).also { sb ->
+                var iof: Int
+                while (sb.indexOf('-').also { iof = it } >= 0)
+                    sb.deleteCharAt(iof).setCharAt(iof, sb[iof].toUpperCase())
+
+                data.delete(0, separatorIndex + 1)
+                while (data.isNotEmpty() && data.first().isWhitespace()) data.deleteCharAt(0)
+            }
+
+        // reference: https://www.w3schools.com/cssref/css_colors_legal.asp
+        val color = when {
+            data.isEmpty() -> 1
+            data[0] == '#' && data.length == 7 -> data.parseColorString()
+            data[0] == '#' && data.length == 9 -> {
+                // #RRGGBBAA to 0xAARRGGBB
+                val aHi = Character.digit(data[7], 16)
+                val aLo = Character.digit(data[8], 16)
+                data.delete(7, 9)
+                val col = data.parseColorString()
+                if (col == 1 || aHi < 0 || aLo < 0) 1 else (col and 0xFFFFFF) or (aHi shl 28) or (aLo shl 24)
+
+            }
+            data.endsWith(')') -> {
+                data.deleteCharAt(data.lastIndex)
+                if (data.startsWith("rgb(")) data.delete(0, 4).parseChannels()
+                else if (data.startsWith("rgba(")) data.delete(0, 5).parseChannels()
+                else 1
+            }
+            // don't mind HSL(A) at this point
+            else -> 1
+        }
+        return if (color == 1) text else {
+            val hex = color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, EmptyArray.BYTE)
+            val kotlin = file.language == KotlinLanguage.INSTANCE
+            identifier?.insert(0, if (kotlin) "private const val " else "private static final int ")
+                ?.append(" = ")?.append(hex)?.append(if (kotlin) ".toInt()" else ";")?.toString()
+                ?: if (kotlin) data.clear().append(hex).append(".toInt()").toString() else hex
+        }
+    }
+
+    private fun CharSequence.parseChannels(): Int {
+        // sorry, now I will allocate
+        val channels = split(',')
+        var color = when (channels.size) {
+            3 -> 0xFF
+            4 -> channels[3].toFloatOrNull()?.let { (it * 255).toInt() } ?: return 1
+            else -> return 1
+        }
+        for (i in 0..2) {
+            val trimmed = channels[i].trim()
+            color = (color shl 8) or
+                    if (trimmed.endsWith('%'))
+                        trimmed.substring(0, trimmed.lastIndex).toIntOrNull()?.let { it * 255 / 100 } ?: return 1
+                    else
+                        trimmed.toIntOrNull() ?: return 1
+        }
+        return color
+    }
+
+    override fun requiresAllDocumentsToBeCommitted(editor: Editor, project: Project): Boolean =
+        false
 }
 
 // shared
@@ -234,7 +323,7 @@ private fun PsiElement.asReferenceToColorInt(): Int = when (this) {
     ?.computeConstantValue() as? Int ?: 2
 
 private const val Char_UNASSIGNED: Char = 0x2FEF.toChar()
-private fun String.toHexIntLiteralValue(prefix: String, targetLen: Int, skip: Char): Int {
+private fun CharSequence.toHexIntLiteralValue(prefix: String, targetLen: Int, skip: Char): Int {
     if (!startsWith(prefix)) return 1
     val payloadLen = this.length - prefix.length
     if (payloadLen < targetLen || skip != Char_UNASSIGNED && payloadLen > (2*targetLen-1))
@@ -292,7 +381,7 @@ private val colorValues = intArrayOf(
     0xFF00FF00.toInt(), 0xFF800000.toInt(), 0xFF000080.toInt(), 0xFF808000.toInt(),
     0xFF800080.toInt(), 0xFFC0C0C0.toInt(), 0xFF008080.toInt(),
 )
-private fun String?.parseColorString(): Int = // android.graphics.Color#parseColor clone
+private fun CharSequence?.parseColorString(): Int = // android.graphics.Color#parseColor clone
     if (isNullOrBlank())
         1
     else if (this[0] == '#')
@@ -302,4 +391,5 @@ private fun String?.parseColorString(): Int = // android.graphics.Color#parseCol
             else -> 1
         }
     else
-        colorNames.indexOf(toLowerCase(Locale.ROOT)).let { index -> if (index < 0) 1 else colorValues[index] }
+        colorNames.indexOf(toString().toLowerCase(Locale.ROOT))
+            .let { index -> if (index < 0) 1 else colorValues[index] }

@@ -2,6 +2,7 @@
 ### 0.16
   <ul>
     <li>Implemented Kotlin upcast hints. Reworked interface inlay hints so their settings reside with their colleagues</li>
+    <li>Transforming colors from CSS (#RRGGBB, #RRGGBBAA, rgb[a](r, g, b[, a])) to 0xAARRGGBB on paste</li>
   </ul>
 
 
