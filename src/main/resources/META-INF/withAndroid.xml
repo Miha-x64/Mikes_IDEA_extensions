@@ -33,6 +33,11 @@
                 displayName="Color.parseColor(&lt;constant expression&gt;)"
                 implementationClass="net.aquadc.mike.plugin.android.ConstantParseColor" />
 
+        <localInspection
+            shortName="inflateWDlgFragCntrAsParent" groupName="Android" language="UAST" enabledByDefault="true"
+            level="WARNING" displayName="Layout inflation with DialogFragment container as parent"
+            implementationClass="net.aquadc.mike.plugin.android.InflateWithDialogFragmentContainerAsParent" />
+
         <codeInsight.lineMarkerProvider
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
         <codeInsight.lineMarkerProvider

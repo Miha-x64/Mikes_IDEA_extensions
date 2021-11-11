@@ -1,0 +1,43 @@
+<html>
+<body>
+
+<p>
+    <code>DialogFragment</code>s have no container.
+    Calling <code>inflate</code> with <code>null</code> parent makes <code>layout_</code> attributes to be ignored,
+    so the resulting view has no margins, constraints etc.
+</p>
+
+<!-- tooltip end -->
+
+<p>
+    There's a popular workaround: wrap the layout in a <code>FrameLayout</code> with no <code>layout_</code> attributes
+    specified and specify them for its child or use root layout paddings instead of margins.
+    This is error-prone since it's very easy to forget that a specific layout is cursed and the root container
+    is not that useless as it looks.
+</p>
+<p>
+    The better way is to create one global <code>FrameLayout</code> instance which will serve as a foster parent.
+    Pass it to <code>inflate()</code> so it can generate <code>LayoutParams</code>
+    for the root view of the layout being inflated. Like this:
+    <code>inflater.inflateWithFosterParent(R.id.something)</code>. Or, if you use ViewBinding:
+    <code>inflater.withFosterParent(SomethingBinding::inflate)</code>.
+</p>
+<p>
+    Here's a “library” part of this solution which you can dump into any landfill like “utils.kt”, “extensions.kt”,
+    or any other.
+</p>
+<pre><code lang="Kotlin">@SuppressLint("StaticFieldLeak")
+private var _fosterParent: ViewGroup? = null
+
+val Context.fosterParent: ViewGroup
+    get() = _fosterParent ?: FrameLayout(applicationContext).also { _fosterParent = it }
+
+fun LayoutInflater.inflateWithFosterParent(@LayoutRes layout: Int): View =
+    inflate(layout, context.fosterParent, false)
+
+inline fun &lt;B> LayoutInflater.withFosterParent(inflate: (LayoutInflater, ViewGroup?, Boolean) -> B): B =
+    inflate.invoke(this, context.fosterParent, false)
+</code></pre>
+
+</body>
+</html>
