@@ -5,7 +5,7 @@
     <li>Transforming colors from CSS (#RRGGBB, #RRGGBBAA, rgb[a](r, g, b[, a])) to 0xAARRGGBB on paste</li>
     <li>“Kotlin identifier is a Java keyword”: detecting keywords in a package directive</li>
     <li>Android: reporting use of <code>container</code> parameter in <code>AnyDialogFragment.onCreateView</code> which is always null</li>
-    <li>BigDecimalConstant: BigInteger and Kotlin support, inspection description</li>
+    <li>BigDecimalConstant, BigDecimalSignum: BigInteger and Kotlin support, inspection description</li>
   </ul>
 
 

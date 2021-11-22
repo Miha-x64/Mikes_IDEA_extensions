@@ -11,7 +11,8 @@ public class BigIntegersJava {
         System.out.println(BigInteger.valueOf(0));
         System.out.println(new BigDecimal("1"));
         System.out.println(new BigInteger("1"));
-        System.out.println(new BigDecimal("1").compareTo(BigDecimal.ZERO));
+        System.out.println(BigDecimal.ONE.compareTo(BigDecimal.ZERO));
+        System.out.println(BigInteger.ONE.compareTo(BigInteger.ZERO));
     }
 
 }

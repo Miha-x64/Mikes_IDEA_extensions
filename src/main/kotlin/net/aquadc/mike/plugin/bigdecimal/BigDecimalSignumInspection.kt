@@ -1,12 +1,17 @@
 package net.aquadc.mike.plugin.bigdecimal
 
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.openapi.diagnostic.Logger
-import com.intellij.psi.*
-
+import com.intellij.psi.PsiField
+import com.siyeh.ig.callMatcher.CallMatcher.anyOf
 import com.siyeh.ig.callMatcher.CallMatcher.instanceCall
+import net.aquadc.mike.plugin.FunctionCallVisitor
+import net.aquadc.mike.plugin.NamedReplacementFix
+import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.test
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UResolvable
+import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 /**
  * BigDecimal.compareTo(ZERO) can be replaced with signum()
@@ -20,52 +25,36 @@ import com.siyeh.ig.callMatcher.CallMatcher.instanceCall
  * ZERO.compareTo(bd) //TODO -1 * one.signum()
  * Ignored: int i4 = bd.compareTo(BigDecimal.valueOf(2));
  * </pre>
- * @author stokito
+ * @author stokito (original BigDecimal inspection for Java)
+ * @author Mike Gorünóv (Kotlin and BigInteger support, inspection description)
  */
-class BigDecimalSignumInspection : AbstractBaseJavaLocalInspectionTool(), CleanupLocalInspectionTool {
+class BigDecimalSignumInspection : UastInspection(), CleanupLocalInspectionTool {
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return BigDecimalInspectionVisitor(holder)
-    }
+    override fun uVisitor(
+        holder: ProblemsHolder, isOnTheFly: Boolean,
+    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
 
-    private class BigDecimalInspectionVisitor(
-        private val problemsHolder: ProblemsHolder
-    ) : JavaElementVisitor() {
-
-        override fun visitMethodCallExpression(call: PsiMethodCallExpression) {
-            if (!COMPARE_METHOD.test(call)) return
-            val argumentList = call.argumentList
-            val arguments = argumentList.expressions
-            if (arguments.size != 1) {
-                LOG.error("WTF? " + arguments.size)
-                return
-            }
-            val arg = arguments[0] as? PsiReferenceExpression ?: return
-            LOG.info("BINGO " + arg.text)
-            val psiElement = arg.resolve()
-            if (psiElement !is PsiField) {
-                LOG.info("not a field " + arg.text)
-                return
-            }
-            val psiField = psiElement as PsiField?
-            val psiType = psiField!!.type
-            if ("java.math.BigDecimal" != psiType.canonicalText || "ZERO" != psiField.name) {
-                LOG.info("not BG.ZERO " + arg.text)
-                return
-            }
-            problemsHolder.registerProblem(
-                call,
-                "BigDecimal.compareTo(ZERO) can be replaced with signum()",
-                BigDecimalSignumQuickFix
+        override fun visitCallExpr(node: UCallExpression): Boolean {
+            val src = node.sourcePsi?.takeIf(COMPARE_METHOD::test)
+                ?: return true
+            val arg = node.takeIf { it.valueArgumentCount == 1 }?.valueArguments?.single() as? UResolvable ?: return true
+            val field = (arg.resolve() as? PsiField)
+                ?.takeIf { it.name == "ZERO" && it.type.canonicalText.isBigNumber() } ?: return true
+            val cls = field.containingClass?.qualifiedName?.takeIf(String::isBigNumber) ?: return true
+            val unqualified = cls.substring(cls.lastIndexOf('.') + 1)
+            holder.registerProblem(
+                src,
+                "$unqualified.compareTo(ZERO) can be replaced with signum()",
+                NamedReplacementFix("signum()", name = "Replace $unqualified.compareTo(ZERO) with signum()")
             )
+            return true
         }
     }
 
     companion object {
-        private val LOG = Logger.getInstance(BigDecimalSignumInspection::class.java)
-
-        private val COMPARE_METHOD =
-            instanceCall("java.math.BigDecimal", "compareTo").parameterTypes("java.math.BigDecimal")
+        private val COMPARE_METHOD = anyOf(
+            instanceCall(TBigDecimal, "compareTo").parameterTypes(TBigDecimal),
+            instanceCall(TBigInteger, "compareTo").parameterTypes(TBigInteger),
+        )
     }
 }
-

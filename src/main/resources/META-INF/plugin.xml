@@ -67,9 +67,9 @@
             implementationClass="net.aquadc.mike.plugin.bigdecimal.BigDecimalConstantInspection"/>
 
         <localInspection
-            language="JAVA"
+            language="UAST"
             shortName="BigDecimalSignum" displayName="BigDecimal.compareTo(ZERO) can be replaced with signum()"
-            groupPath="Java" groupName="Performance"
+            groupPath="JVM languages" groupName="Performance"
             enabledByDefault="true" cleanupTool="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.bigdecimal.BigDecimalSignumInspection"/>
 
