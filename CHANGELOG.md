@@ -1,4 +1,8 @@
  
+### 0.17
+  <ul>
+  </ul>
+
 ### 0.16
   <ul>
     <li>Implemented Kotlin upcast hints. Reworked interface inlay hints so their settings reside with their colleagues</li>
