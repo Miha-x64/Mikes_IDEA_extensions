@@ -1,16 +1,23 @@
 package net.aquadc.mike.plugin.bigdecimal
 
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.*
-import com.intellij.psi.util.PsiUtil
 import com.siyeh.ig.callMatcher.CallMatcher
-import com.siyeh.ig.psiutils.ExpressionUtils
 
-import com.intellij.psi.CommonClassNames.JAVA_LANG_STRING
-import com.intellij.psi.PsiType.*
+import net.aquadc.mike.plugin.FunctionCallVisitor
+import net.aquadc.mike.plugin.NamedReplacementFix
+import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.resolvedClassFqn
+import net.aquadc.mike.plugin.test
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UastCallKind.Companion.CONSTRUCTOR_CALL
+import org.jetbrains.uast.UastCallKind.Companion.METHOD_CALL
+import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 /**
  * BigDecimal instantiation can be replaced with constant
@@ -18,130 +25,105 @@ import com.intellij.psi.PsiType.*
  * BigDecimal.valueOf(0) -> BigDecimal.ZERO
  * new BigDecimal(0) -> BigDecimal.ZERO
  * </pre>
- * @author stokito
+ * @author stokito (original BigDecimal inspection for Java)
+ * @author Mike Gorünóv (Kotlin and BigInteger support, inspection description)
  */
-class BigDecimalConstantInspection : AbstractBaseJavaLocalInspectionTool(), CleanupLocalInspectionTool {
+class BigDecimalConstantInspection : UastInspection(), CleanupLocalInspectionTool {
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return BigDecimalInspectionVisitor(holder)
-    }
+    override fun uVisitor(
+        holder: ProblemsHolder, isOnTheFly: Boolean,
+    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
 
-    private class BigDecimalInspectionVisitor(
-        private val problemsHolder: ProblemsHolder
-    ) : JavaElementVisitor() {
+        override fun visitCallExpr(node: UCallExpression): Boolean {
+            when (node.kind) {
+                METHOD_CALL -> visitMethodCall(node)
+                CONSTRUCTOR_CALL -> visitNewExpression(node)
+            }
+            return true
+        }
 
         /**
          * Use constant instead of BigDecimal.valueOf()
          */
-        override fun visitMethodCallExpression(call: PsiMethodCallExpression) {
-            if (!CONSTRUCTOR_METHOD.test(call)) return
-            val bigDecimalLiteral = getBigDecimalLiteral(call)
-            if (bigDecimalLiteral != null) {
-                val fix = BigDecimalConstantQuickFix(bigDecimalLiteral)
-                problemsHolder.registerProblem(call, "Replace with constant", fix)
+        private fun visitMethodCall(node: UCallExpression) {
+            node.sourcePsi?.let { src ->
+                if (CONSTRUCTOR_METHOD.test(src)) {
+                    node.resolve()?.containingClass?.qualifiedName?.let { className ->
+                        val constVal = node.takeIf { it.valueArgumentCount == 1 }
+                            ?.valueArguments?.single()?.let(UExpression::evaluate) as? Number
+                        constVal?.let(::constantOfNumber)?.let { replacement ->
+                            complain(src, className, replacement)
+                        }
+                    }
+                }
             }
         }
 
         /**
          * Use constant instead of new BigDecimal()
          */
-        override fun visitNewExpression(expression: PsiNewExpression) {
-            val classReference = expression.classReference ?: return
-            if ("java.math.BigDecimal" != classReference.qualifiedName) {
-                return
-            }
-            val argumentList = expression.argumentList
-            val arg = argumentList!!.expressions.singleOrNull()
-                ?: return // that's ok
+        fun visitNewExpression(expression: UCallExpression) { // TODO gets triggered several times for single expression
+            val src = expression.sourcePsi ?: return
+            val className = expression.resolvedClassFqn ?: return
+            val argVal = expression
+                .takeIf { className == TBigDecimal || className == TBigInteger }
+                ?.takeIf { it.valueArgumentCount == 1 }?.valueArguments?.single()
+                ?.evaluate() ?: return
 
-            val type = arg.type
-            if (INT != type && LONG != type && FLOAT != type && DOUBLE != type
-                && !type!!.equalsToText(JAVA_LANG_STRING)
-            ) {
-                // that's ok because we may have char[] or BigInteger
-                return
-            }
-            if (!PsiUtil.isConstantExpression(arg)) {
-                // that's ok if here is a variable
-                return
-            }
-            val constVal = ExpressionUtils.computeConstantExpression(arg)
-            val bigDecimalLiteral: String?
-            if (constVal is Number) {
-                bigDecimalLiteral = numberToBigDecimalLiteral(constVal)
-            } else if (constVal is String) {
-                bigDecimalLiteral = strToBigDecimalLiteral(constVal)
-            } else {
-                bigDecimalLiteral = null // that's ok e.g. 12.34
-            }
-
-            if (bigDecimalLiteral != null) {
-                val fix = BigDecimalConstantQuickFix(bigDecimalLiteral)
-                problemsHolder.registerProblem(expression, "Replace with constant", fix)
+            when (argVal) {
+                is Number -> constantOfNumber(argVal)
+                is String -> constantOfString(argVal)
+                else -> null // that's ok e.g. 12.34
+            }?.let { replacement ->
+                complain(src, className, replacement)
             }
         }
 
-        private fun getBigDecimalLiteral(call: PsiMethodCallExpression): String? {
-            val argumentList = call.argumentList
-            val arguments = argumentList.expressions
-            if (arguments.size != 1) {
-                LOG.error("WTF? " + arguments.size)
-                return null
-            }
-            val arg = arguments[0]
-            val type = arg.type
-            if (INT != type && LONG != type && FLOAT != type && DOUBLE != type) {
-                LOG.error("WTF? " + type!!)
-                return null
-            }
-            if (!PsiUtil.isConstantExpression(arg)) {
-                // that's ok if here is a variable
-                return null
-            }
-
-            val constVal = ExpressionUtils.computeConstantExpression(arg)
-            if (constVal !is Number) {
-                LOG.error("WTF? " + constVal!!.javaClass.simpleName)
-                return null
-            }
-
-            return numberToBigDecimalLiteral(constVal)
+        private fun complain(src: PsiElement, prefix: String, replacement: String) {
+            val call = (src as? KtElement)?.getParentOfType<KtDotQualifiedExpression>(true) ?: src
+            val unqualified = prefix.substring(prefix.lastIndexOf('.') + 1) + '.' + replacement
+            holder.registerProblem(
+                call,
+                "${call.text} should be replaced with $unqualified constant",
+                NamedReplacementFix("$prefix.$replacement", name = "Replace with $unqualified")
+            )
         }
 
-        private fun numberToBigDecimalLiteral(number: Number): String? {
-            val doubleValue = number.toDouble()
-            if (!isInt(doubleValue)) {
+        private fun constantOfNumber(number: Number): String? {
+            if (!number.toDouble().isInt) {
                 // that's ok
                 return null
             }
             return when (number.toInt()) {
-                0 -> "BigDecimal.ZERO"
-                1 -> "BigDecimal.ONE"
-                10 -> "BigDecimal.TEN"
+                0 -> "ZERO"
+                1 -> "ONE"
+                // TODO "TWO" for BigInteger and Java 9
+                10 -> "TEN"
                 else -> null // that's ok
             }
         }
 
-        fun isInt(d: Double): Boolean {
-            return d == d.toInt().toDouble()
-        }
+        val Double.isInt: Boolean
+            get() = this == toInt().toDouble()
 
-        private fun strToBigDecimalLiteral(str: String): String? {
-            return when (str) {
-                "0" -> "BigDecimal.ZERO"
-                "1" -> "BigDecimal.ONE"
-                "10" -> "BigDecimal.TEN"
-                else -> null // that's ok
-            }
+        private fun constantOfString(str: String): String? = when (str) {
+            "0" -> "ZERO"
+            "1" -> "ONE"
+            // TODO "TWO" for BigInteger and Java 9
+            "10" -> "TEN"
+            else -> null // that's ok
         }
     }
 
     companion object {
-        private val LOG = Logger.getInstance(BigDecimalConstantInspection::class.java)
-
-        private val CONSTRUCTOR_METHOD = CallMatcher.anyOf(
-            CallMatcher.staticCall("java.math.BigDecimal", "valueOf").parameterTypes("long"),
-            CallMatcher.staticCall("java.math.BigDecimal", "valueOf").parameterTypes("double")
-        )
+        private const val TBigDecimal = "java.math.BigDecimal"
+        private const val TBigInteger = "java.math.BigInteger"
+        private val CONSTRUCTOR_METHOD = CallMatcher.staticCall(TBigDecimal, "valueOf").let {
+            CallMatcher.anyOf(
+                it.parameterTypes("long"),
+                it.parameterTypes("double"),
+                CallMatcher.staticCall(TBigInteger, "valueOf").parameterTypes("long"),
+            )
+        }
     }
 }
