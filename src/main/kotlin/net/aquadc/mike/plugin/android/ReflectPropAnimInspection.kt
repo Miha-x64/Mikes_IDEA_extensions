@@ -1,6 +1,7 @@
 package net.aquadc.mike.plugin.android
 
 import com.android.tools.idea.kotlin.tryEvaluateConstant
+import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
@@ -36,7 +37,7 @@ private val dontMindArgs = object : ArgsPredicate {
 /**
  * @author Mike Gorünóv
  */
-class ReflectPropAnimInspection : UastInspection() {
+class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
 
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,

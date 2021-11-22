@@ -5,6 +5,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.codeInsight.editorActions.CopyPastePreProcessor
+import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.ASTNode
@@ -60,7 +61,7 @@ import org.jetbrains.kotlin.KtNodeTypes.INTEGER_CONSTANT as KT_INTEGER_CONSTANT
 /**
  * @author Mike Gorünóv
  */
-class ConstantParseColor : UastInspection() {
+class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {

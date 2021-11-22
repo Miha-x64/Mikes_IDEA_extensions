@@ -1,6 +1,6 @@
 package net.aquadc.mike.plugin.android
 
-import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.diagnostic.Logger
@@ -20,7 +20,7 @@ import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 /**
  * @author Mike Gorünóv
  */
-class TargetApiInspection : UastInspection() {
+class TargetApiInspection : UastInspection(), CleanupLocalInspectionTool {
 
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,
@@ -31,7 +31,7 @@ class TargetApiInspection : UastInspection() {
                 ?.let { anno ->
                     anno.sourcePsiElement?.let { psi ->
                         holder.registerProblem(
-                            psi, "@TargetApi should be replaced with @RequiresApi", *fixes
+                            psi, "@TargetApi should be replaced with @RequiresApi", ReplaceTargetWithRequires
                         )
                     }
                 }
@@ -40,15 +40,8 @@ class TargetApiInspection : UastInspection() {
         }
     }
 
-    private val fixes = arrayOf<LocalQuickFix>(
-        ReplaceTargetWithRequires("@androidx.annotation.RequiresApi"),
-        ReplaceTargetWithRequires("@android.support.annotation.RequiresApi")
-    )
-
-    private class ReplaceTargetWithRequires(
-        private val annotation: String
-    ) : NamedLocalQuickFix("Replace with $annotation") {
-
+    private object ReplaceTargetWithRequires : NamedLocalQuickFix("Replace with @RequiresApi") {
+        private const val annotation = "@androidx.annotation.RequiresApi"
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
             when (val el = descriptor.psiElement) {
                 is PsiAnnotation ->

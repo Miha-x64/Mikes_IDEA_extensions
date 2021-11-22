@@ -13,14 +13,14 @@
                 language="UAST"
                 shortName="androidTargetApiShouldBeRequires" displayName="@TargetApi should be replaced with @RequiresApi"
                 groupName="Android"
-                enabledByDefault="true" level="WARNING"
+                enabledByDefault="true" level="WARNING" cleanupTool="true"
                 implementationClass="net.aquadc.mike.plugin.android.TargetApiInspection" />
 
         <localInspection
                 language="UAST"
                 shortName="reflectPropAnimInspection" displayName="Use of reflective ObjectAnimator/PropertyValuesHolder"
                 groupName="Android"
-                enabledByDefault="true" level="WARNING"
+                enabledByDefault="true" level="WARNING" cleanupTool="true"
                 implementationClass="net.aquadc.mike.plugin.android.ReflectPropAnimInspection" />
 
         <localInspection
@@ -30,7 +30,7 @@
 
         <localInspection
                 shortName="constParseColor" groupName="Android" language="UAST" enabledByDefault="true" level="WARNING"
-                displayName="Color.parseColor(&lt;constant expression&gt;)"
+                displayName="Color.parseColor(&lt;constant expression&gt;)" cleanupTool="true"
                 implementationClass="net.aquadc.mike.plugin.android.ConstantParseColor" />
 
         <localInspection
