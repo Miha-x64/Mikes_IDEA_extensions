@@ -184,7 +184,7 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
         when (root) {
             is PsiJavaFile -> root.accept(object : JavaRecursiveElementWalkingVisitor() {
                 override fun visitLiteralExpression(expression: PsiLiteralExpression) {
-                    if (expression.type === PsiType.INT) expression.tryFoldTo(regions)
+                    if (expression.type == PsiType.INT) expression.tryFoldTo(regions)
                 }
             })
             is KtFile -> root.accept(object : KotlinRecursiveElementWalkingVisitor() {

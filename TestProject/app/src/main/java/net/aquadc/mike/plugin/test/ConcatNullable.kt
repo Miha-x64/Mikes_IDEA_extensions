@@ -1,6 +1,6 @@
 package net.aquadc.mike.plugin.test
 
-@Suppress("unused")
+@Suppress("unused", "UNUSED_VARIABLE")
 fun concatNullable() {
     val ok = "" + "" + 1 + Any()
     val left = null + ""

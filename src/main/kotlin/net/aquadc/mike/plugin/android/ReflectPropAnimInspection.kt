@@ -17,6 +17,8 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getQualifiedExpressionForReceiver
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
+import com.intellij.psi.CommonClassNames.JAVA_LANG_OBJECT as TObject
+import com.intellij.psi.CommonClassNames.JAVA_LANG_STRING as TString
 
 
 private typealias ReplacementBuilder =
@@ -158,8 +160,6 @@ class ReflectPropAnimInspection : UastInspection() {
         private const val TPropValsHolder = "$AA.PropertyValuesHolder"
         private const val TPath = "android.graphics.Path"
         private const val TView = "android.view.View"
-        private const val TObject = "java.lang.Object"
-        private const val TString = "java.lang.String"
         private val overload: ReplacementBuilder = { qual, meth, args, indices, replacements ->
             buildString {
                 appendQualifier(qual).append(meth).appendArgs(args, indices, replacements)

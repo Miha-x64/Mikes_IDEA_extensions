@@ -1,12 +1,14 @@
 @file:Suppress("unused", "ktNoinlineFunc", "NOTHING_TO_INLINE")
+package net.aquadc.mike.plugin.test
 
 import kotlin.properties.Delegates
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-val a by lazy { "whatever" }
-val b by mapOf("y" to "lulz")
-val c by Delegates.notNull<String>()
+val a by lazy { "whatever" } // ok
+val b by mapOf("y" to "lulz") // ok
+val c by 1.toByte()
+val d by Delegates.notNull<String>()
 
 operator fun Byte.provideDelegate(thisRef: Any?, prop: KProperty<*>): ReadOnlyProperty<Any?, Byte> {
     TODO()

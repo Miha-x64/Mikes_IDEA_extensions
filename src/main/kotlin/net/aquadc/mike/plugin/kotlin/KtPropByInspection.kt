@@ -20,7 +20,7 @@ class KtPropByInspection : AbstractKotlinInspection() {
     ): PsiElementVisitor = object : KtVisitorVoid() {
         override fun visitProperty(property: KtProperty) {
             property.delegate?.let { delegate ->
-                if (delegate.references.all { (it.resolve() as? KtNamedFunction)?.hasModifier(KtTokens.INLINE_KEYWORD) == false }) {
+                if (delegate.references.any { (it.resolve() as? KtNamedFunction)?.hasModifier(KtTokens.INLINE_KEYWORD) == false }) {
                     holder.registerProblem(delegate, "Heavyweight property delegation")
                 }
             }

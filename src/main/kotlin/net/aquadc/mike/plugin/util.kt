@@ -27,7 +27,7 @@ abstract class UastInspection : LocalInspectionTool() {
         UastVisitorAdapter(uVisitor(holder, isOnTheFly), true)
 
     final override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean, session: LocalInspectionToolSession): PsiElementVisitor =
-        UastVisitorAdapter(uVisitor(holder, isOnTheFly), true)
+        buildVisitor(holder, isOnTheFly)
 
     abstract fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor
 
@@ -114,10 +114,14 @@ class NamedReplacementFix(
     private val javaExpression: String = expression,
     private val kotlinExpression: String = expression,
     name: String = "Replace with $expression",
-    private val psi: PsiElement? = null,
+    psi: PsiElement? = null,
 ) : NamedLocalQuickFix(name) {
+    private val psiRef = psi?.let {
+        val file = it.containingFile
+        SmartPointerManager.getInstance(file?.project ?: it.project).createSmartPsiElementPointer<PsiElement>(psi, file)
+    }
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val psi = psi ?: descriptor.psiElement
+        val psi = psiRef?.let { it.element ?: return } ?: descriptor.psiElement
         if (FileModificationService.getInstance().preparePsiElementForWrite(psi)) {
             if (psi.language === JavaLanguage.INSTANCE)
                     (psi as? PsiExpression)?.let { PsiReplacementUtil.replaceExpression(it, javaExpression) }

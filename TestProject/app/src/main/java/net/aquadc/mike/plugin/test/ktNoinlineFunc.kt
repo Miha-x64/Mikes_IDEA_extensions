@@ -1,4 +1,4 @@
-@file:Suppress("unused", "UNUSED_VARIABLE")
+@file:Suppress("unused", "UNUSED_VARIABLE", "NOTHING_TO_INLINE")
 package net.aquadc.mike.plugin.test
 
 
