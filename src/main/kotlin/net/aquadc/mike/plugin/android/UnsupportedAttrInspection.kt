@@ -3,17 +3,17 @@ package net.aquadc.mike.plugin.android
 import com.android.resources.ResourceFolderType
 import com.android.resources.ResourceFolderType.DRAWABLE
 import com.android.resources.ResourceFolderType.LAYOUT
+import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.*
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.XmlRecursiveElementVisitor
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlFile
+import net.aquadc.mike.plugin.resTypeOf
 import java.text.MessageFormat
 import java.util.*
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModelModule
-import org.jetbrains.android.facet.AndroidFacet.getInstance as androidFacetOf
-import org.jetbrains.android.resourceManagers.ModuleResourceManagers.getInstance as moduleResManager
 import java.lang.Character.MIN_VALUE as nullChar
 
 /**
@@ -63,10 +63,9 @@ class UnsupportedAttrInspection : LocalInspectionTool() {
     ): PsiElementVisitor = object : PsiElementVisitor() {
         override fun visitFile(file: PsiFile) {
             if (file !is XmlFile) return
-            val af = androidFacetOf(file) ?: return
+            val af = file.androidFacet ?: return
             val minSdk = androidModelModule(af)?.minSdkVersion?.apiLevel ?: return
-            val resType = moduleResManager(af).localResourceManager.getFileResourceFolderType(file)
-                ?.takeIf(resTypes::contains) ?: return
+            val resType = af.resTypeOf(file)?.takeIf(resTypes::contains) ?: return
             file.accept(object : XmlRecursiveElementVisitor() {
                 override fun visitXmlAttribute(attribute: XmlAttribute) {
                     val tag = attribute.parent.name

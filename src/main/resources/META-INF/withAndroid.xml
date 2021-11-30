@@ -38,6 +38,11 @@
             level="WARNING" displayName="Layout inflation with DialogFragment container as parent"
             implementationClass="net.aquadc.mike.plugin.android.InflateWithDialogFragmentContainerAsParent" />
 
+        <localInspection
+            shortName="uselessDrawableElement" groupName="Android" language="XML" enabledByDefault="true"
+            level="WARNING" displayName="Useless Drawable element"
+            implementationClass="net.aquadc.mike.plugin.android.UselessDrawableElement" />
+
         <codeInsight.lineMarkerProvider
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
         <codeInsight.lineMarkerProvider

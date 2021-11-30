@@ -2,6 +2,7 @@
 ### 0.17
   <ul>
     <li>Marked ConstantParseColor, ReflectPropAnimInspection, TargetApiInspection as cleanup tools</li>
+    <li>Added uselessDrawableElement inspection for Android</li>
   </ul>
 
 ### 0.16
