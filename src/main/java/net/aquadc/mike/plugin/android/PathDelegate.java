@@ -15,8 +15,8 @@ public final class PathDelegate {
     private float mLastX;
     private float mLastY;
 
-    private PathDelegate(int rule) {
-        this.mPath = new Path2D.Float(rule);
+    private PathDelegate() {
+        this.mPath = new Path2D.Float();
         this.mLastX = 0.0F;
         this.mLastY = 0.0F;
     }
@@ -107,11 +107,11 @@ public final class PathDelegate {
 
     private static final Logger LOGGER = Logger.getLogger("PathParser");
 
-    public static Path2D parse(String pathData, int rule) {
+    public static Path2D parse(String pathData) {
         int start = 0;
         int end = 1;
 
-        PathDelegate path = new PathDelegate(rule);
+        PathDelegate path = new PathDelegate();
         float[] current = new float[6];
         char previousCommand = 'm';
 

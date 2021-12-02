@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlAttribute
+import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlFile
 import com.intellij.psi.xml.XmlTag
 import net.aquadc.mike.plugin.NamedLocalQuickFix
@@ -56,8 +57,8 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
                     }
                     holder.report(
                         item,
-                        if (insets == 0) "This <layer-list> with single <item> is useless"
-                        else "The whole <layer-list> with single <item> having insets should be replaced with <inset>",
+                        if (insets == 0) "The layer-list with single item is useless"
+                        else "The layer-list with single item having insets should be replaced with <inset>",
                         if (itemChild == null
                             || (itemChild is XmlAttribute && insets == 0) // oops, no easy way to inline
                             || (itemChild is XmlTag && insets != 0 &&
@@ -105,7 +106,7 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
         private fun checkInset(tag: XmlTag) {
             if (insetInsets.all { inset -> tag.getAttribute(inset, ANDROID_NS) == null })
                 holder.report(
-                    tag, "This <inset> with no insets is useless",
+                    tag, "The inset with no insets is useless",
                     tag.subTags.singleOrNull()?.takeIf { tag.getAttribute("drawable", ANDROID_NS) == null }?.let {
                         object : NamedLocalQuickFix("Inline <inset> content") {
                             override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
@@ -140,10 +141,10 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
     }
 }
 
-internal fun ProblemsHolder.report(tag: XmlTag, message: String, fix: LocalQuickFix?) {
+internal fun ProblemsHolder.report(el: XmlElement, message: String, fix: LocalQuickFix?) {
     registerProblem(manager.createProblemDescriptor(
         // < tag-name ...attribute="value" >
-        tag.firstChild, tag.subTags.firstOrNull()?.prevSibling ?: tag.lastChild,
+        el.firstChild ?: el, (el as? XmlTag)?.subTags?.firstOrNull()?.prevSibling ?: el.lastChild ?: el,
         message,
         ProblemHighlightType.LIKE_UNUSED_SYMBOL,
         isOnTheFly,
