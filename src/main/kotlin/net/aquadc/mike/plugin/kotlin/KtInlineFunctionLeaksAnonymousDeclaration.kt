@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.psiUtil.isPublic
+import net.aquadc.mike.plugin.miserlyFilter as filter
 
 /**
  * @author Mike Gorünóv

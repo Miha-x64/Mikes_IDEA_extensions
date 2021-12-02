@@ -15,8 +15,8 @@ public final class PathDelegate {
     private float mLastX;
     private float mLastY;
 
-    public PathDelegate() {
-        this.mPath = new Path2D.Float();
+    private PathDelegate(int rule) {
+        this.mPath = new Path2D.Float(rule);
         this.mLastX = 0.0F;
         this.mLastY = 0.0F;
     }
@@ -107,11 +107,11 @@ public final class PathDelegate {
 
     private static final Logger LOGGER = Logger.getLogger("PathParser");
 
-    public static Path2D parse(String pathData) {
+    public static Path2D parse(String pathData, int rule) {
         int start = 0;
         int end = 1;
 
-        PathDelegate path = new PathDelegate();
+        PathDelegate path = new PathDelegate(rule);
         float[] current = new float[6];
         char previousCommand = 'm';
 
@@ -123,7 +123,7 @@ public final class PathDelegate {
             if (s.length() > 0) {
                 float[] params =
                         getFloats(s, results.length < s.length() ? (results = new float[s.length()]) : results, result);
-                // TODO report unused or verbose comments
+                // TODO report unused or verbose commands
                 PathDataNode.addCommand(path, current, previousCommand, previousCommand = s.charAt(0), params);
             }
         }

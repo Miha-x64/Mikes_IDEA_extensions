@@ -22,6 +22,7 @@ import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UQualifiedReferenceExpression
 import org.jetbrains.uast.USimpleNameReferenceExpression
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
+import kotlin.math.min
 
 
 abstract class UastInspection : LocalInspectionTool() {
@@ -245,3 +246,52 @@ inline fun <T, R : Comparable<R>> Array<out T>.maxByIf(selector: (T) -> R, predi
 
 fun AndroidFacet.resTypeOf(file: PsiFile): ResourceFolderType? =
     ModuleResourceManagers.getInstance(this).localResourceManager.getFileResourceFolderType(file)
+
+inline fun <T> Array<out T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
+    val iof = indexOfFirst(predicate)
+    if (iof < 0) return emptyList()
+    var i = iof + 1
+    while (i < size) {
+        val el = this[i++]
+        if (predicate(el)) {
+            val out = alOf(iof, i-1)
+            while (i < size) {
+                val el = this[i++]
+                if (predicate(el)) out.add(el)
+            }
+            return out
+        }
+    }
+    return listOf(this[iof])
+}
+@PublishedApi internal fun <T> Array<out T>.alOf(first: Int, second: Int): ArrayList<T> =
+    ArrayList<T>(min(1 + size - second /* found + left */, 10)).also {
+        it.add(this[first])
+        it.add(this[second])
+    }
+inline fun <T> List<T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
+    val iof = indexOfFirst(predicate)
+    if (iof < 0) return emptyList()
+    var i = iof + 1
+    while (i < size) {
+        val el = this[i++]
+        if (predicate(el)) {
+            val out = alOf(iof, i-1)
+            while (i < size) {
+                val el = this[i++]
+                if (predicate(el)) out.add(el)
+            }
+            return out
+        }
+    }
+    return listOf(this[iof])
+}
+@PublishedApi internal fun <T> List<T>.alOf(first: Int, second: Int): ArrayList<T> =
+    ArrayList<T>(min(1 + size - second /* found + left */, 10)).also {
+        it.add(this[first])
+        it.add(this[second])
+    }
+inline fun <T, reified R> Array<out T>.miserlyMap(empty: Array<R>, transform: (T) -> R): Array<R> =
+    if (isEmpty()) empty else Array(size) { transform(this[it]) }
+inline fun <T, reified R> List<T>.miserlyMap(empty: Array<R>, transform: (T) -> R): Array<R> =
+    if (isEmpty()) empty else Array(size) { transform(this[it]) }

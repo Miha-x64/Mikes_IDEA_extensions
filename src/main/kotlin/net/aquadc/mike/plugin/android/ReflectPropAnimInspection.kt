@@ -23,15 +23,15 @@ import com.intellij.psi.CommonClassNames.JAVA_LANG_STRING as TString
 
 
 private typealias ReplacementBuilder =
-        (qualifier: String?, callee: String, args: List<PsiElement>, argIndices: IntArray, replacements: Array<out String>) -> String
+        (qualifier: String?, callee: String, args: Array<out PsiElement>, argIndices: IntArray, replacements: Array<out String>) -> String
 
 private interface ArgsPredicate {
     fun java(args: Array<PsiExpression>): Boolean
-    fun kotlin(args: List<KtExpression>): Boolean
+    fun kotlin(args: Array<KtExpression>): Boolean
 }
 private val dontMindArgs = object : ArgsPredicate {
     override fun java(args: Array<PsiExpression>): Boolean = true
-    override fun kotlin(args: List<KtExpression>): Boolean = true
+    override fun kotlin(args: Array<KtExpression>): Boolean = true
 }
 
 /**
@@ -95,7 +95,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
             return if (canReplace.java(args)) {
                 val qual = call.methodExpression.qualifierExpression
                 call.methodExpression.referenceName?.let { callee ->
-                    val repl = buildReplacement(qual?.text, callee, args.asList(), argIndices, replacements)
+                    val repl = buildReplacement(qual?.text, callee, args, argIndices, replacements)
                     object : NamedLocalQuickFix(FIX_NAME) {
                         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
                             PsiReplacementUtil.replaceExpressionAndShorten(
@@ -111,8 +111,8 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
         @Suppress("UNCHECKED_CAST")
         fun create(expr: KtExpression): LocalQuickFix? {
             val args = when (expr) {
-                is KtCallExpression -> expr.valueArguments.map(KtValueArgument::getArgumentExpression)
-                is KtBinaryExpression -> listOf(expr.right)
+                is KtCallExpression -> expr.valueArguments.miserlyMap(KtExpression.EMPTY_ARRAY, KtValueArgument::getArgumentExpression)
+                is KtBinaryExpression -> arrayOf(expr.right)
                 else -> return null
             }
             val replacements = arrayOfNulls<String>(argIndices.size)
@@ -122,7 +122,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                 } ?: return null
             }
 
-            args as List<KtExpression/*!!*/>
+            args as Array<KtExpression/*!!*/>
             replacements as Array<String/*!!*/>
 
             return if (canReplace.kotlin(args)) {
@@ -170,7 +170,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
             override fun java(args: Array<PsiExpression>): Boolean = args[0].let { arg ->
                 arg.type?.let { arg.getTypeByName(TView).isAssignableFrom(it) } == true
             }
-            override fun kotlin(args: List<KtExpression>): Boolean = true // TODO
+            override fun kotlin(args: Array<KtExpression>): Boolean = true // TODO
         }
         private val firstArgMustBeViewClass = object : ArgsPredicate {
             override fun java(args: Array<PsiExpression>): Boolean = args[0].let { arg ->
@@ -178,7 +178,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                     arg.getTypeByName(TView).isAssignableFrom(it)
                 } == true
             }
-            override fun kotlin(args: List<KtExpression>): Boolean = true // TODO
+            override fun kotlin(args: Array<KtExpression>): Boolean = true // TODO
         }
         private val MATCHERS_TO_FIXES = arrayOf(
             MatcherToFix(CallMatcher.anyOf(
@@ -246,7 +246,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
             return this
         }
         private fun StringBuilder.appendArgs(
-            args: List<PsiElement>, indices: IntArray, replacements: Array<out String>
+            args: Array<out PsiElement>, indices: IntArray, replacements: Array<out String>
         ) {
             append('(')
             if (args.isNotEmpty()) {
