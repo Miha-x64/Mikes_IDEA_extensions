@@ -1,12 +1,16 @@
 package net.aquadc.mike.plugin.android
 
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.xml.XmlAttribute
+import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
+import gnu.trove.TIntArrayList
 import gnu.trove.TIntHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import org.jetbrains.plugins.groovy.codeInspection.fixes.RemoveElementQuickFix
@@ -15,6 +19,7 @@ import java.awt.geom.AffineTransform
 import java.awt.geom.Area
 import java.awt.geom.Path2D
 import java.awt.geom.Rectangle2D
+import kotlin.math.max
 import net.aquadc.mike.plugin.miserlyFilter as filter
 import net.aquadc.mike.plugin.miserlyMap as map
 
@@ -27,20 +32,55 @@ private val removeAttrFix = RemoveElementQuickFix("Remove attribute")
 private val removeTagFix = RemoveElementQuickFix("Remove tag")
 
 internal fun ProblemsHolder.checkVector(tag: XmlTag) {
-    val width = tag.getAttributeValue("viewportWidth", ANDROID_NS)?.toFloatOrNull()
-    val height = tag.getAttributeValue("viewportHeight", ANDROID_NS)?.toFloatOrNull()
-    val viewport =
-        if (width == null || height == null) null
-        else Area(Rectangle2D.Float(0f, 0f, width.toFloat(), height.toFloat()))
-    checkVectorGroup(tag, null, viewport, SmartList(), SmartList(), TIntHashSet())
+    val maxIntrinsicWidthPx = tag.getAttributeValue("width", ANDROID_NS).toPixels()
+    val maxIntrinsicHeightPx = tag.getAttributeValue("height", ANDROID_NS).toPixels()
+    val vWidth = tag.getAttributeValue("viewportWidth", ANDROID_NS)?.toFloatOrNull() ?: Float.NaN
+    val vHeight = tag.getAttributeValue("viewportHeight", ANDROID_NS)?.toFloatOrNull() ?: Float.NaN
+
+    val xDensity = maxIntrinsicWidthPx / vWidth
+    val yDensity = maxIntrinsicHeightPx / vHeight
+    var px =
+        1 / (if (xDensity.isFinite()) (if (yDensity.isFinite()) max(xDensity, yDensity) else xDensity) else yDensity)
+    var usefulPrecision = -1
+    if (px > 0) { // and implicit NaN-check
+        usefulPrecision = 0
+        while (px < 1) {
+            usefulPrecision++
+            px *= 10
+        }
+    }
+
+
+    val viewport = if (vWidth.isNaN() || vHeight.isNaN()) null else Area(Rectangle2D.Float(0f, 0f, vWidth, vHeight))
+    checkVectorGroup(tag, null, viewport, SmartList(), SmartList(), TIntHashSet(), usefulPrecision)
 }
+
+private const val MAX_DP = 4f // xxxhdpi
+private const val MAX_DP_SCALE = 1.5f // https://android.googlesource.com/platform/frameworks/base/+/fcad09a/packages/SettingsLib/src/com/android/settingslib/display/DisplayDensityUtils.java#47
+private const val MAX_SP_SCALE = 1.35f // https://github.com/aosp-mirror/platform_packages_apps_settings/blob/c5a500bf07f33e02ff3d315d0ceddf9c2d31d000/res/values/arrays.xml#L156-L161
+private const val MAX_DPI = 640f // https://developer.android.com/training/multiscreen/screendensities
+private const val PT = 1 / 72f
+private const val MM = 1 / 25.4f
+private fun String?.toPixels() = when {
+    this == null -> Float.NaN
+    endsWith("dp") -> substring(0, length - 2).scaled(MAX_DP * MAX_DP_SCALE)
+    endsWith("dip") -> substring(0, length - 3).scaled(MAX_DP * MAX_DP_SCALE)
+    endsWith("sp") -> substring(0, length - 2).scaled(MAX_DP * MAX_DP_SCALE * MAX_SP_SCALE)
+    endsWith("pt") -> substring(0, length - 2).scaled(MAX_DPI * PT)
+    endsWith("in") -> substring(0, length - 2).scaled(MAX_DPI)
+    endsWith("mm") -> substring(0, length - 2).scaled(MAX_DPI * MM)
+    else -> Float.NaN
+}
+private fun String.scaled(factor: Float) = (toFloatOrNull() ?: Float.NaN) * factor
+
 private fun ProblemsHolder.checkVectorGroup(
     tag: XmlTag,
     parentMatrix: AffineTransform?,
     parentClip: Area?,
     clipTags: SmartList<XmlTag>,
     clips: SmartList<Area>,
-    usefulClips: TIntHashSet
+    usefulClips: TIntHashSet,
+    usefulPrecision: Int,
 ) {
     val isRoot = tag.name == "vector"
     val pathTags = tag.subTags.filter { it.name == "path" }
@@ -74,7 +114,7 @@ private fun ProblemsHolder.checkVectorGroup(
 
     val myClipsFrom = clipTags.size
     val commonClip = if (maxClipTagCount > 0 && clipTagCount != 0) {
-        gatherClips(tag, matrix, isRoot, parentClip, clipTags, clips)
+        gatherClips(tag, matrix, isRoot, parentClip, clipTags, clips, usefulPrecision)
         check(clipTags.size == clips.size)
         when (clipTags.size - myClipsFrom) {
             0 -> null
@@ -84,8 +124,8 @@ private fun ProblemsHolder.checkVectorGroup(
     } else null
 
     pathTags.forEach { pathTag ->
-        pathTag.getAttributeValue("pathData", ANDROID_NS)?.let { pathData ->
-            parse(pathData, matrix)?.let { outline ->
+        pathTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
+            parse(pathData, matrix, usefulPrecision)?.let { outline ->
                 toArea(pathTag, outline)?.let { area ->
                     checkPath(pathTag, area, parentClip, commonClip, clips, usefulClips)
                 }
@@ -95,7 +135,7 @@ private fun ProblemsHolder.checkVectorGroup(
     }
 
     groupTags.forEach {
-        checkVectorGroup(it, matrix, commonClip ?: parentClip, clipTags, clips, usefulClips)
+        checkVectorGroup(it, matrix, commonClip ?: parentClip, clipTags, clips, usefulClips, usefulPrecision)
     }
 
     if (clips.size > myClipsFrom) {
@@ -178,14 +218,14 @@ private fun List<Area>.intersect(into: Area, from: Int) {
 
 private fun ProblemsHolder.gatherClips(
     tag: XmlTag, matrix: AffineTransform?, isRoot: Boolean, viewport: Area?,
-    tagsTo: SmartList<XmlTag>, clipsTo: SmartList<Area>
+    tagsTo: SmartList<XmlTag>, clipsTo: SmartList<Area>, usefulPrecision: Int
 ) {
     val tagsFrom = tagsTo.size
     val clipTags = tag.subTags.filterTo(tagsTo) { it.name == "clip-path" }
     val clipTagsIter = clipTags.listIterator(tagsFrom)
     while (clipTagsIter.hasNext()) {
         val nextTag = clipTagsIter.next()
-        val pathData = nextTag.getAttributeValue("pathData", ANDROID_NS)
+        val pathData = nextTag.getAttribute("pathData", ANDROID_NS)?.valueElement
         if (pathData == null) {
             registerProblem(
                 nextTag,
@@ -194,7 +234,7 @@ private fun ProblemsHolder.gatherClips(
             )
             clipTagsIter.remove()
         } else {
-            val clipArea = parse(pathData, matrix)?.let(::Area)
+            val clipArea = parse(pathData, matrix, usefulPrecision)?.let(::Area)
             if (clipArea == null) {
                 clipTagsIter.remove() // bad path, ignore
             } else if (clipArea.isEmpty) {
@@ -224,13 +264,54 @@ private fun ProblemsHolder.gatherClips(
     }
 }
 
-private fun parse(pathData: String, matrix: AffineTransform?) = try {
-    val path = PathDelegate.parse(pathData)
+private fun ProblemsHolder.parse(pathData: XmlAttributeValue, matrix: AffineTransform?, usefulPrecision: Int): Path2D? {
+    val outRanges = TIntArrayList()
+    val path = PathDelegate.parse(pathData.value, outRanges, usefulPrecision)
+    val rangeNodeCount = outRanges.size()
+    val rangeCount = rangeNodeCount / 2
+    if (rangeCount > 0) {
+        var canTrimCarefully = false
+        for (i in 1 until rangeNodeCount step 2) {
+            if (outRanges[i] > 1) {
+                canTrimCarefully = true
+                break
+            }
+        }
+        registerProblem(
+            pathData,
+            "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
+            if (canTrimCarefully) ProblemHighlightType.WEAK_WARNING else ProblemHighlightType.INFORMATION,
+            TextRange.from(
+                pathData.valueTextRange.startOffset - pathData.textRange.startOffset + outRanges[0],
+                outRanges[rangeNodeCount - 2] - outRanges[0] + outRanges[rangeNodeCount - 1]
+            ),
+            if (canTrimCarefully) TrimTailsFix(outRanges, "Trim tail(s) carefully", 1) else null,
+            TrimTailsFix(outRanges, "Trim tail(s) aggressively (may decrease accuracy)", 0),
+        )
+    }
+
     if (matrix != null) path.transform(matrix)
-    path
-} catch (e: Exception) {
-    e.printStackTrace()
-    null
+    return path
+}
+
+class TrimTailsFix(
+    private val ranges: TIntArrayList,
+    name: String,
+    private val leave: Int,
+) : NamedLocalQuickFix(name) {
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val value = StringBuilder((descriptor.psiElement as XmlAttributeValue).value)
+        var trimmed = 0
+        for (i in 0 until ranges.size() step 2) {
+            val start = ranges[i] - trimmed
+            val len = ranges[i + 1]
+            if (len > leave) {
+                value.delete(start + leave, start + len)
+                trimmed += len - leave
+            }
+        }
+        (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
+    }
 }
 
 private fun ProblemsHolder.checkPath(tag: XmlTag, path: Area, viewport: Area?, clipPath: Area?, clips: List<Area>, usefulClips: TIntHashSet) {

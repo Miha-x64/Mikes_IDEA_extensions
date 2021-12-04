@@ -1,9 +1,9 @@
 package net.aquadc.mike.plugin.android;
 
+import gnu.trove.TIntArrayList;
 import libcore.util.EmptyArray;
 
 import java.awt.geom.Path2D;
-import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 // so I've borrowed these to avoid NoClassDefFoundError.
 
 public final class PathDelegate {
-    private final Path2D mPath;
+    private final Path2D.Float mPath;
     private float mLastX;
     private float mLastY;
 
@@ -25,8 +25,8 @@ public final class PathDelegate {
         return this.mPath;
     }
 
-    public boolean hasPoints() {
-        return !this.mPath.getPathIterator(null).isDone();
+    public boolean isEmpty() {
+        return this.mPath.getPathIterator(null).isDone();
     }
 
     public void moveTo(float x, float y) {
@@ -40,7 +40,7 @@ public final class PathDelegate {
     }
 
     public void lineTo(float x, float y) {
-        if (!this.hasPoints()) {
+        if (this.isEmpty()) {
             this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
@@ -48,7 +48,7 @@ public final class PathDelegate {
     }
 
     public void rLineTo(float dx, float dy) {
-        if (!this.hasPoints()) {
+        if (this.isEmpty()) {
             this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
@@ -64,7 +64,7 @@ public final class PathDelegate {
     }
 
     public void rQuadTo(float dx1, float dy1, float dx2, float dy2) {
-        if (!this.hasPoints()) {
+        if (this.isEmpty()) {
             this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
@@ -76,15 +76,15 @@ public final class PathDelegate {
     }
 
     public void cubicTo(float x1, float y1, float x2, float y2, float x3, float y3) {
-        if (!this.hasPoints()) {
-            this.mPath.moveTo(0.0D, 0.0D);
+        if (this.isEmpty()) {
+            this.mPath.moveTo(0f, 0f);
         }
 
         this.mPath.curveTo(x1, y1, x2, y2, this.mLastX = x3, this.mLastY = y3);
     }
 
     public void rCubicTo(float dx1, float dy1, float dx2, float dy2, float dx3, float dy3) {
-        if (!this.hasPoints()) {
+        if (this.isEmpty()) {
             this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
@@ -107,7 +107,7 @@ public final class PathDelegate {
 
     private static final Logger LOGGER = Logger.getLogger("PathParser");
 
-    public static Path2D parse(String pathData) {
+    public static Path2D parse(String pathData, TIntArrayList excessPrecisionRanges, int usefulPrecision) {
         int start = 0;
         int end = 1;
 
@@ -115,30 +115,32 @@ public final class PathDelegate {
         float[] current = new float[6];
         char previousCommand = 'm';
 
-        ExtractFloatResult result = new ExtractFloatResult();
-        float[] results = EmptyArray.FLOAT;
-        for(; end < pathData.length(); start = end++) {
+        int[] tmp = new int[1];
+        float[] buf = EmptyArray.FLOAT;
+        for (; end < pathData.length(); start = end++) {
             end = nextStart(pathData, end);
-            String s = pathData.substring(start, end).trim();
-            if (s.length() > 0) {
-                float[] params =
-                        getFloats(s, results.length < s.length() ? (results = new float[s.length()]) : results, result);
+            while (pathData.charAt(start) <= ' ') start++;
+            int endTrimmed = end;
+            while (pathData.charAt(endTrimmed - 1) <= ' ') endTrimmed--;
+            if (endTrimmed - start > 0) {
+                int len = endTrimmed - start;
+                float[] results = buf.length < len ? (buf = new float[len]) : buf;
+                int count = getFloats(pathData, start, endTrimmed, results, tmp, excessPrecisionRanges, usefulPrecision);
                 // TODO report unused or verbose commands
-                PathDataNode.addCommand(path, current, previousCommand, previousCommand = s.charAt(0), params);
+                PathDataNode.addCommand(path, current, previousCommand, previousCommand = pathData.charAt(start), results, count);
             }
         }
 
-        if (end - start == 1 && start < pathData.length()) {
-            PathDataNode.addCommand(path, current, previousCommand, pathData.charAt(start), EmptyArray.FLOAT);
-        }
+        if (end - start == 1 && start < pathData.length())
+            PathDataNode.addCommand(path, current, previousCommand, pathData.charAt(start), EmptyArray.FLOAT, 0);
 
         return path.getJavaShape();
     }
 
     private static int nextStart(String s, int end) {
-        while(end < s.length()) {
+        while (end < s.length()) {
             char c = s.charAt(end);
-            if (((c - 65) * (c - 90) <= 0 || (c - 97) * (c - 122) <= 0) && c != 'e' && c != 'E') {
+            if (((c - 'A') * (c - 'Z') <= 0 || (c - 'a') * (c - 'z') <= 0) && c != 'e' && c != 'E') {
                 return end;
             }
 
@@ -148,79 +150,90 @@ public final class PathDelegate {
         return end;
     }
 
-    private static void extract(String s, int start, ExtractFloatResult result) {
+    private static boolean extract(
+            String input, int start, int end, int[] outEndPosition,
+            TIntArrayList excessPrecisionRanges, int usefulPrecision
+    ) {
         int currentIndex = start;
-        boolean foundSeparator = false;
-        result.mEndWithNegOrDot = false;
-        boolean secondDot = false;
+        boolean endWithNegOrDot = false;
+        int dotAt = -1;
 
-        for(boolean isExponential = false; currentIndex < s.length(); ++currentIndex) {
+        loop:
+        for (boolean isExponential = false; currentIndex < end; ++currentIndex) {
             boolean isPrevExponential = isExponential;
             isExponential = false;
-            char currentChar = s.charAt(currentIndex);
-            switch(currentChar) {
+            switch (input.charAt(currentIndex)) {
                 case '\t':
                 case '\n':
                 case ' ':
                 case ',':
-                    foundSeparator = true;
-                    break;
+                    break loop;
                 case '-':
                     if (currentIndex != start && !isPrevExponential) {
-                        foundSeparator = true;
-                        result.mEndWithNegOrDot = true;
+                        endWithNegOrDot = true;
+                        break loop;
                     }
                     break;
                 case '.':
-                    if (!secondDot) {
-                        secondDot = true;
+                    if (dotAt < 0) {
+                        dotAt = currentIndex;
                     } else {
-                        foundSeparator = true;
-                        result.mEndWithNegOrDot = true;
+                        endWithNegOrDot = true;
+                        break loop;
                     }
                     break;
                 case 'E':
                 case 'e':
                     isExponential = true;
             }
-
-            if (foundSeparator) {
-                break;
-            }
         }
 
-        result.mEndPosition = currentIndex;
+        int excess;
+        if (usefulPrecision >= 0 && dotAt >= 0 && (excess = (currentIndex - dotAt - 1 - usefulPrecision)) > 0) {
+            excessPrecisionRanges.add(currentIndex - excess);
+            excessPrecisionRanges.add(excess);
+        }
+
+        outEndPosition[0] = currentIndex;
+        return endWithNegOrDot;
     }
 
-    private static float[] getFloats(String s, float[] results, ExtractFloatResult result) {
-        if (s.charAt(0) != 'z' && s.charAt(0) != 'Z') {
+    private static final byte POS = 0;
+    private static final byte FLAG = 1;
+    private static final byte DEG = 2;
+    private static final byte[] ARC = {
+            POS, POS, DEG, FLAG, FLAG, POS, POS
+        // (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
+    };  // https://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
+    private static int getFloats(
+            String input, int start, int end, float[] results, int[] tmp,
+            TIntArrayList excessPrecisionRanges, int usefulPrecision) {
+        char first = input.charAt(start++);
+        if (first != 'z' && first != 'Z') {
             try {
                 int count = 0;
-                int startPosition = 1;
-                int totalLength = s.length();
-
-                while(startPosition < totalLength) {
-                    extract(s, startPosition, result);
-                    int endPosition = result.mEndPosition;
-                    if (startPosition < endPosition) {
-                        results[count++] = Float.parseFloat(s.substring(startPosition, endPosition));
+                boolean arc = first == 'a' || first == 'A';
+                while (start < end) {
+                    boolean endWithNegOrDot = extract(
+                            input, start, end, tmp,
+                            excessPrecisionRanges, arc && ARC[count%ARC.length] != POS ? -1 : usefulPrecision
+                    ); // arcs contain degrees and flags, ignore them
+                    int endPosition = tmp[0];
+                    if (start < endPosition) {
+                        results[count++] = Float.parseFloat(input.substring(start, endPosition));
                     }
 
-                    if (result.mEndWithNegOrDot) {
-                        startPosition = endPosition;
-                    } else {
-                        startPosition = endPosition + 1;
-                    }
+                    start = endPosition + (endWithNegOrDot ? 0 : 1);
                 }
 
-                return Arrays.copyOf(results, count);
-            } catch (NumberFormatException var7) {
-                assert false : "error in parsing \"" + s + "\"" + var7;
+                return count;
+            } catch (NumberFormatException e) {
+                assert false : "error in parsing \"" + input.substring(start, end) + "\"" + e;
 
-                return EmptyArray.FLOAT;
+                return 0;
             }
         } else {
-            return EmptyArray.FLOAT;
+            return 0;
         }
     }
 
@@ -236,7 +249,7 @@ public final class PathDelegate {
             this.end = end;
         }
 
-        private static void addCommand(PathDelegate path, float[] current, char previousCmd, char cmd, float[] val) {
+        private static void addCommand(PathDelegate path, float[] current, char previousCmd, char cmd, float[] val, int count) {
             int incr = 2;
             float currentX = current[0];
             float currentY = current[1];
@@ -276,7 +289,7 @@ public final class PathDelegate {
                     path.moveTo(currentSegmentStartX, currentSegmentStartY);
             }
 
-            for(int k = 0; k < val.length; k += incr) {
+            for(int k = 0; k < count; k += incr) {
                 float reflectiveCtrlPointX;
                 float reflectiveCtrlPointY;
                 switch(cmd) {
@@ -441,7 +454,7 @@ public final class PathDelegate {
         private static void drawArc(PathDelegate p, float x0, float y0, float x1, float y1, float a, float b, float theta, boolean isMoreThanHalf, boolean isPositiveArc) {
             if (LOGGER.isLoggable(Level.FINE))
                 LOGGER.log(Level.FINE, "(" + x0 + "," + y0 + ")-(" + x1 + "," + y1 + ") {" + a + " " + b + "}");
-            double thetaD = (double)theta * 3.141592653589793D / 180.0D;
+            double thetaD = Math.toRadians(theta);
             double cosTheta = Math.cos(thetaD);
             double sinTheta = Math.sin(thetaD);
             double x0p = ((double)x0 * cosTheta + (double)y0 * sinTheta) / (double)a;
@@ -538,14 +551,6 @@ public final class PathDelegate {
                 ep1y = ep2y;
             }
 
-        }
-    }
-
-    private static final class ExtractFloatResult {
-        int mEndPosition;
-        boolean mEndWithNegOrDot;
-
-        ExtractFloatResult() {
         }
     }
 }
