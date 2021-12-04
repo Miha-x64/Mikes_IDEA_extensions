@@ -19,6 +19,7 @@ import java.awt.BasicStroke
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area
 import java.awt.geom.Path2D
+import java.awt.geom.PathIterator
 import java.awt.geom.Rectangle2D
 import kotlin.math.max
 import kotlin.math.pow
@@ -191,6 +192,11 @@ private fun ProblemsHolder.getFloat(tag: XmlTag, name: String, default: Float): 
 
 private fun ProblemsHolder.toFloat(attr: XmlAttribute?, default: Float): Float {
     val value = attr?.value?.toFloatOrNull()
+    if (value == default) report(attr, "Attribute has default value", removeAttrFix)
+    return value ?: default
+}
+private fun ProblemsHolder.toString(attr: XmlAttribute?, default: String): String {
+    val value = attr?.value
     if (value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
 }
@@ -382,7 +388,7 @@ private fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Area? {
     val fill =
         fill(outline, fCol ?: tag.findAaptAttrTag("fillColor"), fType, fA)
     val stroke =
-        stroke(sWidth, sCol ?: tag.findAaptAttrTag("strokeColor"), sCap, sJoin, sMiter, sA)
+        stroke(outline, sWidth, sCol ?: tag.findAaptAttrTag("strokeColor"), sCap, sJoin, sMiter, sA)
             ?.createStrokedShape(outline)?.let(::Area)
     return when {
         fill == null && stroke == null -> {
@@ -411,7 +417,7 @@ private fun ProblemsHolder.fill(outline: Path2D, col: XmlElement?, type: XmlAttr
         reportNoFill(col, type, a, "attribute has no effect with open path")
         return null
     } else if (evenOdd && Area(outline.also { it.windingRule = Path2D.WIND_NON_ZERO }).equals(area)) {
-        report(type!!, "evenOdd has no effect", removeAttrFix)
+        report(type!!, "attribute has no effect", removeAttrFix)
     }
     return area
 }
@@ -420,31 +426,34 @@ private fun ProblemsHolder.reportNoFill(col: XmlElement?, type: XmlAttribute?, a
     type?.let { report(it, complaint, removeAttrFix) }
     a?.let { report(it, complaint, removeAttrFix) }
 }
+private val dummyFloats = FloatArray(6)
 private fun ProblemsHolder.stroke(
-    width: XmlAttribute?,
-    col: XmlElement?,
-    cap: XmlAttribute?,
-    join: XmlAttribute?,
-    miter: XmlAttribute?,
+    outline: Path2D,
+    width: XmlAttribute?, col: XmlElement?, cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?,
     a: XmlAttribute?
 ): BasicStroke? {
     val strokeWidth = toFloat(width, 0f)
     val colored = col.hasColor()
     val opaque = toFloat(a, 1f) > 0f
-    return if (strokeWidth != 0f && colored && opaque) BasicStroke(
-        strokeWidth,
-        when (cap?.value) {
-            "round" -> BasicStroke.CAP_ROUND
-            "square" -> BasicStroke.CAP_SQUARE
-            else -> BasicStroke.CAP_BUTT
-        },
-        when (join?.value) {
-            "round" -> BasicStroke.JOIN_ROUND
-            "bevel" -> BasicStroke.JOIN_BEVEL
-            else -> BasicStroke.JOIN_MITER
-        },
-        toFloat(miter, 4f)
-    ) else {
+    return if (strokeWidth != 0f && colored && opaque) {
+        val capName = toString(cap, "butt")
+        val joinName = toString(join, "miter")
+        checkStroke(outline, cap?.takeIf { capName != "butt" }, join?.takeIf { joinName != "miter" })
+        BasicStroke(
+            strokeWidth,
+            when (capName) {
+                "round" -> BasicStroke.CAP_ROUND
+                "square" -> BasicStroke.CAP_SQUARE
+                else -> BasicStroke.CAP_BUTT
+            },
+            when (joinName) {
+                "round" -> BasicStroke.JOIN_ROUND
+                "bevel" -> BasicStroke.JOIN_BEVEL
+                else -> BasicStroke.JOIN_MITER
+            },
+            toFloat(miter, 4f)
+        )
+    } else {
         width?.let { report(it, "attribute has no effect", removeAttrFix) }
         col?.let { report(it, "attribute has no effect", removeAttrFix) }
         cap?.let { report(it, "attribute has no effect", removeAttrFix) }
@@ -454,6 +463,25 @@ private fun ProblemsHolder.stroke(
         null
     }
 }
+private fun ProblemsHolder.checkStroke(outline: Path2D, cap: XmlAttribute?, join: XmlAttribute?) {
+    val iter = outline.getPathIterator(null)
+    var prevState: Int
+    var state = PathIterator.SEG_CLOSE
+    var gaps = false
+    var joins = false
+    while (!iter.isDone) {
+        prevState = state
+        state = iter.currentSegment(dummyFloats)
+        gaps = gaps || (prevState != PathIterator.SEG_CLOSE && prevState != PathIterator.SEG_MOVETO && state == PathIterator.SEG_MOVETO)
+        joins = joins || (prevState != PathIterator.SEG_MOVETO && state != PathIterator.SEG_MOVETO)
+        if ((gaps || cap == null) && (joins || join == null)) break
+        iter.next()
+    }
+    gaps = gaps || (state != PathIterator.SEG_CLOSE && state != PathIterator.SEG_MOVETO)
+    if (!gaps && cap != null) report(cap, "attribute has no effect", removeAttrFix)
+    if (!joins && join != null) report(join, "attribute has no effect", removeAttrFix)
+}
+
 fun XmlElement?.hasColor() = when (this) {
     is XmlAttribute -> value?.takeIf {
         it.isNotBlank() &&
