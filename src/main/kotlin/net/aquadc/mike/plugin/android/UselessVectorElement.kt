@@ -102,7 +102,7 @@ private fun ProblemsHolder.checkVectorGroup(
 
     val transformations =
         if (isRoot) null
-        else FloatArray(vectorTransforms.size) { tag.getFloat(vectorTransforms[it], vectorTransformDefaults[it]) }
+        else FloatArray(vectorTransforms.size) { getFloat(tag, vectorTransforms[it], vectorTransformDefaults[it]) }
 
     val maxClipTagCount = tag.subTags.size - visualTagsCount
     var clipTagCount = -1
@@ -120,7 +120,7 @@ private fun ProblemsHolder.checkVectorGroup(
         // TODO also reports groups with mergeable transforms etc
     }
 
-    val matrix = localMatrix(transformations, tag.getFloat("pivotX", 0f), tag.getFloat("pivotY", 0f), parentMatrix)
+    val matrix = localMatrix(transformations, getFloat(tag, "pivotX", 0f), getFloat(tag, "pivotY", 0f), parentMatrix)
 
     val myClipsFrom = clipTags.size
     val commonClip = if (maxClipTagCount > 0 && clipTagCount != 0) {
@@ -185,8 +185,14 @@ private fun localMatrix(transforms: FloatArray?, px: Float, py: Float, outerMatr
     }
 }
 
-private fun XmlTag.getFloat(name: String, default: Float): Float =
-    getAttributeValue(name, ANDROID_NS)?.toFloatOrNull() ?: default
+private fun ProblemsHolder.getFloat(tag: XmlTag, name: String, default: Float): Float =
+    toFloat(tag.getAttribute(name, ANDROID_NS), default)
+
+private fun ProblemsHolder.toFloat(attr: XmlAttribute?, default: Float): Float {
+    val value = attr?.value?.toFloatOrNull()
+    if (value == default) report(attr, "Attribute has default value", removeAttrFix)
+    return value ?: default
+}
 
 private fun ProblemsHolder.intersectAndCheckClips(
     clips: SmartList<Area>, tag: XmlTag, isRoot: Boolean, clipTags: SmartList<XmlTag>, ourClipsFrom: Int
@@ -385,7 +391,7 @@ private fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Area? {
 
 private fun ProblemsHolder.fill(outline: Path2D, col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?): Area? {
     val uncolored = !col.hasColor()
-    val transparent = (a?.value?.toFloatOrNull() ?: 1f) == 0f
+    val transparent = toFloat(a, 1f) == 0f
     if (uncolored || transparent) {
         reportNoFill(col, type, a, "attribute has no effect with uncolored or transparent fill")
         return null
@@ -417,9 +423,9 @@ private fun ProblemsHolder.stroke(
     miter: XmlAttribute?,
     a: XmlAttribute?
 ): BasicStroke? {
-    val strokeWidth = width?.value?.toFloatOrNull() ?: 0f
+    val strokeWidth = toFloat(width, 0f)
     val colored = col.hasColor()
-    val opaque = (a?.value?.toFloatOrNull() ?: 1f) > 0f
+    val opaque = toFloat(a, 1f) > 0f
     return if (strokeWidth != 0f && colored && opaque) BasicStroke(
         strokeWidth,
         when (cap?.value) {
@@ -432,7 +438,7 @@ private fun ProblemsHolder.stroke(
             "bevel" -> BasicStroke.JOIN_BEVEL
             else -> BasicStroke.JOIN_MITER
         },
-        miter?.value?.toFloatOrNull() ?: 4f
+        toFloat(miter, 4f)
     ) else {
         width?.let { report(it, "attribute has no effect", removeAttrFix) }
         col?.let { report(it, "attribute has no effect", removeAttrFix) }
