@@ -30,6 +30,14 @@ private val removeGroupFix = RemoveElementQuickFix("Remove group")
 private val removeParentGroupFix = RemoveElementQuickFix("Remove group", PsiElement::getParent)
 private val removeAttrFix = RemoveElementQuickFix("Remove attribute")
 private val removeTagFix = RemoveElementQuickFix("Remove tag")
+private val inlineGroupFix = object : NamedLocalQuickFix("Inline contents") {
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val group = descriptor.psiElement as XmlTag
+        val children = group.subTags
+        group.parent.addRangeAfter(children.first(), children.last(), group)
+        group.delete()
+    }
+}
 
 internal fun ProblemsHolder.checkVector(tag: XmlTag) {
     val maxIntrinsicWidthPx = tag.getAttributeValue("width", ANDROID_NS).toPixels()
@@ -56,22 +64,23 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) {
 }
 
 private const val MAX_DP = 4f // xxxhdpi
-private const val MAX_DP_SCALE = 1.5f // https://android.googlesource.com/platform/frameworks/base/+/fcad09a/packages/SettingsLib/src/com/android/settingslib/display/DisplayDensityUtils.java#47
-private const val MAX_SP_SCALE = 1.35f // https://github.com/aosp-mirror/platform_packages_apps_settings/blob/c5a500bf07f33e02ff3d315d0ceddf9c2d31d000/res/values/arrays.xml#L156-L161
+private const val MAX_SCALE = 1.5f // https://android.googlesource.com/platform/frameworks/base/+/fcad09a/packages/SettingsLib/src/com/android/settingslib/display/DisplayDensityUtils.java#47
+private const val MAX_TEXT_SCALE = 1.35f // https://github.com/aosp-mirror/platform_packages_apps_settings/blob/c5a500bf07f33e02ff3d315d0ceddf9c2d31d000/res/values/arrays.xml#L156-L161
 private const val MAX_DPI = 640f // https://developer.android.com/training/multiscreen/screendensities
 private const val PT = 1 / 72f
 private const val MM = 1 / 25.4f
 private fun String?.toPixels() = when {
     this == null -> Float.NaN
-    endsWith("dp") -> substring(0, length - 2).scaled(MAX_DP * MAX_DP_SCALE)
-    endsWith("dip") -> substring(0, length - 3).scaled(MAX_DP * MAX_DP_SCALE)
-    endsWith("sp") -> substring(0, length - 2).scaled(MAX_DP * MAX_DP_SCALE * MAX_SP_SCALE)
-    endsWith("pt") -> substring(0, length - 2).scaled(MAX_DPI * PT)
-    endsWith("in") -> substring(0, length - 2).scaled(MAX_DPI)
-    endsWith("mm") -> substring(0, length - 2).scaled(MAX_DPI * MM)
+    endsWith("dp") -> scaled(2, MAX_DP * MAX_SCALE)
+    endsWith("dip") -> scaled(3, MAX_DP * MAX_SCALE)
+    endsWith("sp") -> scaled(2, MAX_DP * MAX_SCALE * MAX_TEXT_SCALE)
+    endsWith("pt") -> scaled(2, MAX_DPI * MAX_SCALE * PT)
+    endsWith("in") -> scaled(2, MAX_DPI * MAX_SCALE)
+    endsWith("mm") -> scaled(2, MAX_DPI * MAX_SCALE * MM)
+    endsWith("px") -> substring(0, 2).toFloatOrNull() ?: Float.NaN
     else -> Float.NaN
 }
-private fun String.scaled(factor: Float) = (toFloatOrNull() ?: Float.NaN) * factor
+private fun String.scaled(skip: Int, factor: Float) = (substring(0, skip).toFloatOrNull() ?: Float.NaN) * factor
 
 private fun ProblemsHolder.checkVectorGroup(
     tag: XmlTag,
@@ -97,18 +106,18 @@ private fun ProblemsHolder.checkVectorGroup(
     val maxClipTagCount = tag.subTags.size - visualTagsCount
     var clipTagCount = -1
     if (transformations?.contentEquals(vectorTransformDefaults) == true &&
-        tag.getAttributeValue("name", ANDROID_NS) == null &&
-        (maxClipTagCount == 0 || tag.subTags.count { it.name == "clip-path" }.also { clipTagCount = it } == 0)
-    ) report(
-        tag, "Useless group: no name, no transformations, no clip-paths",
-        object : NamedLocalQuickFix("Inline contents") {
-            override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                val group = descriptor.psiElement as XmlTag
-                val children = group.subTags
-                group.parent.addRangeAfter(children.first(), children.last(), group)
-                group.delete()
-            }
-        })
+        tag.getAttributeValue("name", ANDROID_NS) == null) {
+        val noClips =
+            maxClipTagCount == 0 || tag.subTags.count { it.name == "clip-path" }.also { clipTagCount = it } == 0
+        val noSiblings = tag.parentTag?.subTags?.size == 1
+        if (noClips && noSiblings)
+            report(tag, "Useless group: no name, no transformations, no clip-paths, no siblings", inlineGroupFix)
+        else if (noClips)
+            report(tag, "Useless group: no name, no transformations, no clip-paths", inlineGroupFix)
+        else if (noSiblings)
+            report(tag, "Useless group: no name, no transformations, no siblings", inlineGroupFix)
+        // TODO also reports groups with mergeable transforms etc
+    }
 
     val matrix = localMatrix(transformations, tag.getFloat("pivotX", 0f), tag.getFloat("pivotY", 0f), parentMatrix)
 
