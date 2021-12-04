@@ -29,6 +29,7 @@ Some great inspections, quickfixes, tools.
     <li>Use of reflective <code>ObjectAnimator</code>/<code>PropertyValuesHolder</code></li>
     <li>Use of attributes like <code>android.R.attr.enabled</code> in context where state attributes expected, like <code>android.R.attr.state_enabled</code></li>
     <li><code>Color.parseColor(&lt;constant expression&gt;)</code> should be replaced with an integer literal</li>
+    <li>Useless Drawable element (single-item layer-lists, insetless insets, empty shapes, and vector elements: empty paths and clip-paths, invisible paths, useless clip-paths and groups, attributes with no effect)</li>
   </ul>
 
   <h3>Editor tweaks</h3>
