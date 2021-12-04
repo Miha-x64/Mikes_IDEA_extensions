@@ -294,7 +294,7 @@ private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTran
                 break
             }
         }
-        registerProblem(
+        if (canTrimCarefully || isOnTheFly) registerProblem(
             pathAttr,
             "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
             if (canTrimCarefully) ProblemHighlightType.WEAK_WARNING else ProblemHighlightType.INFORMATION,
