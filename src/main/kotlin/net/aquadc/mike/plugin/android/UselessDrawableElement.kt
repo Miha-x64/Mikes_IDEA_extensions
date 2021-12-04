@@ -40,7 +40,8 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
                     tag.findAaptAttrTag("drawable")?.subTags?.singleOrNull()?.let(::checkTag)
                 "clip", "scale" ->
                     tag.subTags.singleOrNull()?.let(::checkTag)
-                "selector", "level-list", "transition" ->
+                "selector" -> checkSelector(tag)
+                "level-list", "transition" ->
                     tag.subTags.forEach { if (it.name == "item") it.subTags.singleOrNull()?.let(::checkTag) }
             }
         }
@@ -132,6 +133,14 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
                             "or <code>null</code> in place of <code>Drawable</code>",
                     null
                 )
+        }
+        private fun checkSelector(tag: XmlTag) {
+            tag.subTags.singleOrNull()?.let { item ->
+                if (item.attributes.isEmpty() || item.attributes.singleOrNull()
+                        ?.let { it.namespace == ANDROID_NS && it.localName == "drawable" } == true)
+                    holder.report(tag, "The selector with single stateless item is useless", null)
+            }
+            tag.subTags.forEach { if (it.name == "item") it.subTags.singleOrNull()?.let(::checkTag) }
         }
 
         private fun XmlTag.transferNamespacesTo(dest: XmlTag) {
