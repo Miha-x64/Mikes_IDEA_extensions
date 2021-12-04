@@ -111,14 +111,7 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
                 holder.report(
                     tag, "The inset with no insets is useless",
                     tag.subTags.singleOrNull()?.takeIf { tag.getAttribute("drawable", ANDROID_NS) == null }?.let {
-                        object : NamedLocalQuickFix("Inline <inset> content") {
-                            override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                                val inset = descriptor.psiElement as XmlTag
-                                val child = inset.subTags.single()
-                                inset.transferNamespacesTo(child)
-                                inset.replace(child)
-                            }
-                        }
+                        inlineContentsFix
                     }
                 )
             tag.subTags.singleOrNull()?.let(::checkTag)
@@ -136,18 +129,17 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
         }
         private fun checkSelector(tag: XmlTag) {
             tag.subTags.singleOrNull()?.let { item ->
-                if (item.attributes.isEmpty() || item.attributes.singleOrNull()
-                        ?.let { it.namespace == ANDROID_NS && it.localName == "drawable" } == true)
-                    holder.report(tag, "The selector with single stateless item is useless", null)
+                val onlyDrawableRef =
+                    item.attributes.singleOrNull()
+                        ?.let { it.namespace == ANDROID_NS && it.localName == "drawable" } == true
+                if (onlyDrawableRef || item.attributes.isEmpty())
+                    holder.report(
+                        tag,
+                        "The selector with single stateless item is useless",
+                        inlineContentsFix.takeIf { !onlyDrawableRef && item.subTags.size == 1 },
+                    )
             }
             tag.subTags.forEach { if (it.name == "item") it.subTags.singleOrNull()?.let(::checkTag) }
-        }
-
-        private fun XmlTag.transferNamespacesTo(dest: XmlTag) {
-            attributes.forEach {
-                if (it.isNamespaceDeclaration)
-                    dest.setAttribute(it.name, it.value)
-            }
         }
     }
 }
@@ -184,3 +176,19 @@ private val undocumentedLayerProps = arrayOf("start", "end", "width", "height", 
 private val layerInsets = arrayOf("left", "top", "right", "bottom")
 private val insetInsets = arrayOf("insetLeft", "insetTop", "insetRight", "insetBottom")
 private val necessaryShapeTags = arrayOf("gradient", "size", "solid", "stroke")
+
+private val inlineContentsFix = object : NamedLocalQuickFix("Inline contents") {
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val parent = descriptor.psiElement as XmlTag
+        var child = parent.subTags.single()
+        if (child.name == "item") child = child.subTags.single()
+        parent.transferNamespacesTo(child)
+        parent.replace(child)
+    }
+}
+private fun XmlTag.transferNamespacesTo(dest: XmlTag) {
+    attributes.forEach {
+        if (it.isNamespaceDeclaration)
+            dest.setAttribute(it.name, it.value)
+    }
+}
