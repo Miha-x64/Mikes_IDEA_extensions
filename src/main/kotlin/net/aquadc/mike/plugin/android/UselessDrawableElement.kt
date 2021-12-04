@@ -37,24 +37,12 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
                 "shape" -> checkShape(tag)
                 "vector" -> holder.checkVector(tag)
                 "animated-vector" -> // TODO propose inlining vector and animator if never used elsewhere
-                    tag.subTags.firstOrNull { it.isAaptInlineAttr("drawable") }?.subTags?.singleOrNull()?.let(::checkTag)
+                    tag.findAaptAttrTag("drawable")?.subTags?.singleOrNull()?.let(::checkTag)
                 "clip", "scale" ->
                     tag.subTags.singleOrNull()?.let(::checkTag)
                 "selector", "level-list", "transition" ->
                     tag.subTags.forEach { if (it.name == "item") it.subTags.singleOrNull()?.let(::checkTag) }
             }
-        }
-        private fun XmlTag.isAaptInlineAttr(name: String): Boolean {
-            if (namespace == AAPT_NS && localName == "attr") {
-                val actualName = getAttributeValue("name") ?: return false
-                val android = getPrefixByNamespace(ANDROID_NS) ?: return false
-                return if (android.isEmpty()) actualName == name else
-                    actualName.length == (android.length + 1 + name.length) &&
-                            actualName.startsWith(android) &&
-                            actualName[android.length] == ':' &&
-                            actualName.endsWith(name)
-            }
-            return false
         }
 
         private fun checkLayerList(tag: XmlTag) {
@@ -153,6 +141,21 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
             }
         }
     }
+}
+
+internal fun XmlTag.findAaptAttrTag(name: String) =
+    subTags.firstOrNull { it.isAaptInlineAttr(name) }
+internal fun XmlTag.isAaptInlineAttr(name: String): Boolean {
+    if (namespace == AAPT_NS && localName == "attr") {
+        val actualName = getAttributeValue("name") ?: return false
+        val android = getPrefixByNamespace(ANDROID_NS) ?: return false
+        return if (android.isEmpty()) actualName == name else
+            actualName.length == (android.length + 1 + name.length) &&
+                    actualName.startsWith(android) &&
+                    actualName[android.length] == ':' &&
+                    actualName.endsWith(name)
+    }
+    return false
 }
 
 internal fun ProblemsHolder.report(el: XmlElement, message: String, fix: LocalQuickFix?) {

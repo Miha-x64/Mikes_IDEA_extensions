@@ -8,6 +8,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
+import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
 import gnu.trove.TIntArrayList
@@ -367,8 +368,11 @@ private val pathAttrs = arrayOf(
 private fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Area? {
     val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) =
         pathAttrs.map<String, XmlAttribute?>(XmlAttribute.EMPTY_ARRAY) { tag.getAttribute(it, ANDROID_NS) }
-    val fill = fill(outline, fCol, fType, fA)
-    val stroke = stroke(sWidth, sCol, sCap, sJoin, sMiter, sA)?.createStrokedShape(outline)?.let(::Area)
+    val fill =
+        fill(outline, fCol ?: tag.findAaptAttrTag("fillColor"), fType, fA)
+    val stroke =
+        stroke(sWidth, sCol ?: tag.findAaptAttrTag("strokeColor"), sCap, sJoin, sMiter, sA)
+            ?.createStrokedShape(outline)?.let(::Area)
     return when {
         fill == null && stroke == null -> {
             report(tag, "Invisible path: no fill, no stroke", removeTagFix)
@@ -379,7 +383,7 @@ private fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Area? {
     }
 }
 
-private fun ProblemsHolder.fill(outline: Path2D, col: XmlAttribute?, type: XmlAttribute?, a: XmlAttribute?): Area? {
+private fun ProblemsHolder.fill(outline: Path2D, col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?): Area? {
     val uncolored = !col.hasColor()
     val transparent = (a?.value?.toFloatOrNull() ?: 1f) == 0f
     if (uncolored || transparent) {
@@ -400,14 +404,14 @@ private fun ProblemsHolder.fill(outline: Path2D, col: XmlAttribute?, type: XmlAt
     }
     return area
 }
-private fun ProblemsHolder.reportNoFill(col: XmlAttribute?, type: XmlAttribute?, a: XmlAttribute?, complaint: String) {
+private fun ProblemsHolder.reportNoFill(col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?, complaint: String) {
     col?.let { report(it, complaint, removeAttrFix) }
     type?.let { report(it, complaint, removeAttrFix) }
     a?.let { report(it, complaint, removeAttrFix) }
 }
 private fun ProblemsHolder.stroke(
     width: XmlAttribute?,
-    col: XmlAttribute?,
+    col: XmlElement?,
     cap: XmlAttribute?,
     join: XmlAttribute?,
     miter: XmlAttribute?,
@@ -430,6 +434,8 @@ private fun ProblemsHolder.stroke(
         },
         miter?.value?.toFloatOrNull() ?: 4f
     ) else {
+        width?.let { report(it, "attribute has no effect", removeAttrFix) }
+        col?.let { report(it, "attribute has no effect", removeAttrFix) }
         cap?.let { report(it, "attribute has no effect", removeAttrFix) }
         join?.let { report(it, "attribute has no effect", removeAttrFix) }
         miter?.let { report(it, "attribute has no effect", removeAttrFix) }
@@ -437,10 +443,13 @@ private fun ProblemsHolder.stroke(
         null
     }
 }
-fun XmlAttribute?.hasColor() =
-    this?.value?.takeIf {
+fun XmlElement?.hasColor() = when (this) {
+    is XmlAttribute -> value?.takeIf {
         it.isNotBlank() &&
                 !(it.length == 5 && it.startsWith("#0")) &&
                 !(it.length == 9 && it.startsWith("#00")) &&
                 it != "@android:color/transparent"
     } != null
+    is XmlTag -> true
+    else -> false
+}
