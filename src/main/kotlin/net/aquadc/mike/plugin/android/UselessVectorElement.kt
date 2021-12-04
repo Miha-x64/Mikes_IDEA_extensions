@@ -350,8 +350,14 @@ private fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Area? {
         pathAttrs.map<String, XmlAttribute?>(XmlAttribute.EMPTY_ARRAY) { tag.getAttribute(it, ANDROID_NS) }
     val fill = fill(outline, fCol, fType, fA)
     val stroke = stroke(sWidth, sCol, sCap, sJoin, sMiter, sA)?.createStrokedShape(outline)?.let(::Area)
-    if (fill != null && stroke != null) fill.add(stroke)
-    return fill ?: stroke
+    return when {
+        fill == null && stroke == null -> {
+            report(tag, "Invisible path: no fill, no stroke", removeTagFix)
+            null
+        }
+        fill != null && stroke != null -> fill.also { it.add(stroke) }
+        else -> fill ?: stroke
+    }
 }
 
 private fun ProblemsHolder.fill(outline: Path2D, col: XmlAttribute?, type: XmlAttribute?, a: XmlAttribute?): Area? {
