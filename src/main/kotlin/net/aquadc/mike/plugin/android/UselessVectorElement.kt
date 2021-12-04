@@ -21,6 +21,7 @@ import java.awt.geom.Area
 import java.awt.geom.Path2D
 import java.awt.geom.Rectangle2D
 import kotlin.math.max
+import kotlin.math.pow
 import net.aquadc.mike.plugin.miserlyFilter as filter
 import net.aquadc.mike.plugin.miserlyMap as map
 
@@ -137,7 +138,7 @@ private fun ProblemsHolder.checkVectorGroup(
         pathTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
             parse(pathData, matrix, usefulPrecision)?.let { outline ->
                 toArea(pathTag, outline)?.let { area ->
-                    checkPath(pathTag, area, parentClip, commonClip, clips, usefulClips)
+                    checkPath(pathTag, area, parentClip, commonClip, clips, usefulClips, usefulPrecision)
                 }
             } // let's conservatively think that an invalid path marks all clips as useful
                 ?: if (usefulClips.size() < clips.size) clips.indices.forEach(usefulClips::add)
@@ -340,7 +341,10 @@ class TrimTailsFix(
     }
 }
 
-private fun ProblemsHolder.checkPath(tag: XmlTag, path: Area, viewport: Area?, clipPath: Area?, clips: List<Area>, usefulClips: TIntHashSet) {
+private fun ProblemsHolder.checkPath(
+    tag: XmlTag, path: Area, viewport: Area?, clipPath: Area?, clips: List<Area>,
+    usefulClips: TIntHashSet, usefulPrecision: Int,
+) {
     if (viewport != null && path.also { it.intersect(viewport) }.isEmpty)
         return report(tag, "The path is clipped away by viewport or parent clip-path", removeTagFix)
 
@@ -351,7 +355,8 @@ private fun ProblemsHolder.checkPath(tag: XmlTag, path: Area, viewport: Area?, c
                 reduced.add(path)
                 reduced.subtract(clip)
                 // now `reduced` is a clipped-away part of path
-                if (!reduced.isEmpty) {
+                if (!reduced.isEmpty && // check deeper: it this a sub-sub-subpixel clip?
+                    usefulPrecision < 0 || reduced.bounds2D.let { it.width * it.height } > 1 / 10f.pow(usefulPrecision)) {
                     usefulClips.add(index)
                     reduced.reset()
                 }
