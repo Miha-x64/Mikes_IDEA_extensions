@@ -107,7 +107,7 @@ public final class PathDelegate {
 
     private static final Logger LOGGER = Logger.getLogger("PathParser");
 
-    public static Path2D parse(String pathData, TIntArrayList excessPrecisionRanges, int usefulPrecision) {
+    public static Path2D parse(String pathData, TIntArrayList floatRanges, int usefulPrecision) {
         int start = 0;
         int end = 1;
 
@@ -125,7 +125,7 @@ public final class PathDelegate {
             if (endTrimmed - start > 0) {
                 int len = endTrimmed - start;
                 float[] results = buf.length < len ? (buf = new float[len]) : buf;
-                int count = getFloats(pathData, start, endTrimmed, results, tmp, excessPrecisionRanges, usefulPrecision);
+                int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
                 // TODO report unused or verbose commands
                 PathDataNode.addCommand(path, current, previousCommand, previousCommand = pathData.charAt(start), results, count);
             }
@@ -152,7 +152,7 @@ public final class PathDelegate {
 
     private static boolean extract(
             String input, int start, int end, int[] outEndPosition,
-            TIntArrayList excessPrecisionRanges, int usefulPrecision
+            TIntArrayList floatRanges, int usefulPrecision
     ) {
         int currentIndex = start;
         boolean endWithNegOrDot = false;
@@ -188,10 +188,9 @@ public final class PathDelegate {
             }
         }
 
-        int excess;
-        if (usefulPrecision >= 0 && dotAt >= 0 && (excess = (currentIndex - dotAt - 1 - usefulPrecision)) > 0) {
-            excessPrecisionRanges.add(currentIndex - excess);
-            excessPrecisionRanges.add(excess);
+        if (usefulPrecision >= 0 && dotAt >= 0 && currentIndex - dotAt - 1 > usefulPrecision) {
+            floatRanges.add(start);
+            floatRanges.add(currentIndex);
         }
 
         outEndPosition[0] = currentIndex;
@@ -207,7 +206,7 @@ public final class PathDelegate {
     };  // https://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
     private static int getFloats(
             String input, int start, int end, float[] results, int[] tmp,
-            TIntArrayList excessPrecisionRanges, int usefulPrecision) {
+            TIntArrayList floatRanges, int usefulPrecision) {
         char first = input.charAt(start++);
         if (first != 'z' && first != 'Z') {
             try {
@@ -216,7 +215,7 @@ public final class PathDelegate {
                 while (start < end) {
                     boolean endWithNegOrDot = extract(
                             input, start, end, tmp,
-                            excessPrecisionRanges, arc && ARC[count%ARC.length] != POS ? -1 : usefulPrecision
+                            floatRanges, arc && ARC[count%ARC.length] != POS ? -1 : usefulPrecision
                     ); // arcs contain degrees and flags, ignore them
                     int endPosition = tmp[0];
                     if (start < endPosition) {

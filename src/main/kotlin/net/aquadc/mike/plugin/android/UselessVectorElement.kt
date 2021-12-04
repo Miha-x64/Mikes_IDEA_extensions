@@ -264,29 +264,30 @@ private fun ProblemsHolder.gatherClips(
     }
 }
 
-private fun ProblemsHolder.parse(pathData: XmlAttributeValue, matrix: AffineTransform?, usefulPrecision: Int): Path2D? {
+private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTransform?, usefulPrecision: Int): Path2D? {
     val outRanges = TIntArrayList()
-    val path = PathDelegate.parse(pathData.value, outRanges, usefulPrecision)
+    val pathData = pathAttr.value
+    val path = PathDelegate.parse(pathData, outRanges, usefulPrecision)
     val rangeNodeCount = outRanges.size()
     val rangeCount = rangeNodeCount / 2
     if (rangeCount > 0) {
         var canTrimCarefully = false
-        for (i in 1 until rangeNodeCount step 2) {
-            if (outRanges[i] > 1) {
+        for (i in 0 until rangeNodeCount step 2) {
+            if (outRanges[i + 1] - pathData.indexOf('.', outRanges[i]) > usefulPrecision + 2) { // plus dot plus extra digit
                 canTrimCarefully = true
                 break
             }
         }
         registerProblem(
-            pathData,
+            pathAttr,
             "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
             if (canTrimCarefully) ProblemHighlightType.WEAK_WARNING else ProblemHighlightType.INFORMATION,
             TextRange.from(
-                pathData.valueTextRange.startOffset - pathData.textRange.startOffset + outRanges[0],
-                outRanges[rangeNodeCount - 2] - outRanges[0] + outRanges[rangeNodeCount - 1]
+                pathAttr.valueTextRange.startOffset - pathAttr.textRange.startOffset + outRanges[0],
+                outRanges[rangeCount - 1] - outRanges[0]
             ),
-            if (canTrimCarefully) TrimTailsFix(outRanges, "Trim tail(s) carefully", 1) else null,
-            TrimTailsFix(outRanges, "Trim tail(s) aggressively (may decrease accuracy)", 0),
+            if (canTrimCarefully) TrimTailsFix(outRanges, "Trim tail(s) carefully", usefulPrecision + 1) else null,
+            TrimTailsFix(outRanges, "Trim tail(s) aggressively (may decrease accuracy)", usefulPrecision),
         )
     }
 
@@ -297,17 +298,26 @@ private fun ProblemsHolder.parse(pathData: XmlAttributeValue, matrix: AffineTran
 class TrimTailsFix(
     private val ranges: TIntArrayList,
     name: String,
-    private val leave: Int,
+    private val targetPrecision: Int,
 ) : NamedLocalQuickFix(name) {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         val value = StringBuilder((descriptor.psiElement as XmlAttributeValue).value)
-        var trimmed = 0
-        for (i in 0 until ranges.size() step 2) {
-            val start = ranges[i] - trimmed
-            val len = ranges[i + 1]
-            if (len > leave) {
-                value.delete(start + leave, start + len)
-                trimmed += len - leave
+        for (i in (ranges.size()-2) downTo 0 step 2) {
+            val start = ranges[i]
+            val end = ranges[i + 1]
+            val iod = value.indexOf('.', start)
+            val precision = end - iod - 1
+            var targetPrecision = targetPrecision
+            while (value[iod + targetPrecision] == '0') targetPrecision-- // .3210|123 → .321|0123
+            if (precision > targetPrecision) {
+                when {
+                    targetPrecision != 0 ->
+                        value.delete(end - precision + targetPrecision, end) //   .X|XX
+                    start < iod ->
+                        value.delete(end - precision - 1, end)               // 0|.XXX
+                    else ->
+                        value.replace(start, end, "0")                       //  |.XXX → 0
+                }
             }
         }
         (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
