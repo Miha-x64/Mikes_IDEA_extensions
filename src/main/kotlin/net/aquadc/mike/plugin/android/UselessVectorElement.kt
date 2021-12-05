@@ -63,7 +63,7 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) {
 
 
     val viewport = if (vWidth.isNaN() || vHeight.isNaN()) null else Area(Rectangle2D.Float(0f, 0f, vWidth, vHeight))
-    checkVectorGroup(tag, null, viewport, SmartList(), SmartList(), TIntHashSet(), usefulPrecision)
+    checkVectorGroup(tag, null, viewport, null, SmartList(), SmartList(), TIntHashSet(), usefulPrecision)
 }
 
 private const val MAX_DP = 4f // xxxhdpi
@@ -88,6 +88,7 @@ private fun String.scaled(skip: Int, factor: Float) = (substring(0, skip).toFloa
 private fun ProblemsHolder.checkVectorGroup(
     tag: XmlTag,
     parentMatrix: AffineTransform?,
+    viewport: Area?,
     parentClip: Area?,
     clipTags: SmartList<XmlTag>,
     clips: SmartList<Area>,
@@ -139,7 +140,7 @@ private fun ProblemsHolder.checkVectorGroup(
         pathTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
             parse(pathData, matrix, usefulPrecision)?.let { outline ->
                 toArea(pathTag, outline)?.let { area ->
-                    checkPath(pathTag, area, parentClip, commonClip, clips, usefulClips, usefulPrecision)
+                    checkPath(pathTag, area, viewport, commonClip, clips, usefulClips, usefulPrecision)
                 }
             } // let's conservatively think that an invalid path marks all clips as useful
                 ?: if (usefulClips.size() < clips.size) clips.indices.forEach(usefulClips::add)
@@ -147,7 +148,7 @@ private fun ProblemsHolder.checkVectorGroup(
     }
 
     groupTags.forEach {
-        checkVectorGroup(it, matrix, commonClip ?: parentClip, clipTags, clips, usefulClips, usefulPrecision)
+        checkVectorGroup(it, matrix, viewport, commonClip ?: parentClip, clipTags, clips, usefulClips, usefulPrecision)
     }
 
     if (clips.size > myClipsFrom) {
@@ -240,7 +241,7 @@ private fun List<Area>.intersect(into: Area, from: Int) {
 }
 
 private fun ProblemsHolder.gatherClips(
-    tag: XmlTag, matrix: AffineTransform?, isRoot: Boolean, viewport: Area?,
+    tag: XmlTag, matrix: AffineTransform?, isRoot: Boolean, parentClip: Area?,
     tagsTo: SmartList<XmlTag>, clipsTo: SmartList<Area>, usefulPrecision: Int
 ) {
     val tagsFrom = tagsTo.size
@@ -267,9 +268,9 @@ private fun ProblemsHolder.gatherClips(
                     if (isRoot) null else removeParentGroupFix
                 )
                 clipTagsIter.remove()
-            } else if (viewport == null) {
+            } else if (parentClip == null) {
                 clipsTo.add(clipArea) // proceed with less precision
-            } else if (clipArea.also { it.intersect(viewport) }.isEmpty) {
+            } else if (clipArea.also { it.intersect(parentClip) }.isEmpty) {
                 registerProblem(
                     nextTag,
                     "The clip-path has empty intersection with inherited clip-path or viewport. Thus it is useless, and the whole tag is invisible",
@@ -277,7 +278,7 @@ private fun ProblemsHolder.gatherClips(
                     removeTagFix
                 )
                 clipTagsIter.remove()
-            } else if (Area(viewport).also { it.subtract(clipArea) }.isEmpty) {
+            } else if (Area(parentClip).also { it.subtract(clipArea) }.isEmpty) {
                 registerProblem(nextTag, "The clip-path is superseded by inherited clip-path or viewport", removeTagFix)
                 clipTagsIter.remove()
             } else {
@@ -309,8 +310,10 @@ private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTran
                 pathAttr.valueTextRange.startOffset - pathAttr.textRange.startOffset + outRanges[0],
                 outRanges[rangeCount - 1] - outRanges[0]
             ),
+
+            // “Trim tail(s) heavily” was “aggressively” before but IDEA sorts options alphabetically.
             if (canTrimCarefully) TrimTailsFix(outRanges, "Trim tail(s) carefully", usefulPrecision + 1) else null,
-            TrimTailsFix(outRanges, "Trim tail(s) aggressively (may decrease accuracy)", usefulPrecision),
+            TrimTailsFix(outRanges, "Trim tail(s) heavily (may decrease accuracy)", usefulPrecision),
         )
     }
 
@@ -352,7 +355,7 @@ private fun ProblemsHolder.checkPath(
     usefulClips: TIntHashSet, usefulPrecision: Int,
 ) {
     if (viewport != null && path.also { it.intersect(viewport) }.isEmpty)
-        return report(tag, "The path is clipped away by viewport or parent clip-path", removeTagFix)
+        return report(tag, "The path is outside of viewport", removeTagFix)
 
     if (usefulClips.size() < clips.size) {
         val reduced = Area()
