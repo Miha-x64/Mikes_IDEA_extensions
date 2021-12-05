@@ -1,46 +1,46 @@
+@file:Suppress(
+    "ConvertSecondaryConstructorToPrimary", "JoinDeclarationAndAssignment", "RemoveRedundantQualifierName", "unused"
+)
 package net.aquadc.mike.plugin.test
 
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 
-private val VALS = EnumValuesKotlin.values() // ok
+private val VALS = UncachedKotlin.values() // ok
 private val GSON = Gson()
+private val GSON2 = GsonBuilder().create()
 
-enum class EnumValuesKotlin {
+enum class UncachedKotlin {
     A, B, C;
 
+    private val vals = values()
+    private val gson = Gson()
+    private val gson2 = GsonBuilder().create()
+    private val vals2: Array<UncachedKotlin>
+    private val gson3: Gson
+    private val gson4: Gson
     init {
-        values()
-        Gson()
-    }
-
-    internal fun zzz() {
-        EnumValuesKotlin.values()
-        Gson()
+        vals2 = values()
+        gson3 = Gson()
+        gson4 = GsonBuilder().create()
     }
 
     companion object {
-        private val VALS = values() // ok
-        private val GSON = Gson()
+        private val VALS2: Array<UncachedKotlin>
+        private val GSON3: Gson
+        private val GSON4: Gson
 
-        private val VALS2: Array<EnumValuesKotlin>
-        private val GSON2: Gson
         init {
             VALS2 = values() // ok
-            GSON2 = Gson()
+            GSON3 = Gson()
+            GSON4 = GsonBuilder().create()
+            values() // ok, don't report in static initializers
+            Gson().newBuilder().create()
         }
     }
 
-}
-
-class SomeClassKt {
-    constructor() {
-        EnumValuesKotlin.values()
-
-        Gson().fromJson("1", Int::class.java)
-    }
-
-    init {
-        EnumValuesKotlin.values()
-        Gson()
+    fun zzz() {
+        values()
+        Gson().newBuilder().create()
     }
 }

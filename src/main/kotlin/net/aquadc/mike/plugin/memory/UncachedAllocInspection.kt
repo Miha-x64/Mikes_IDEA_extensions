@@ -1,5 +1,7 @@
 package net.aquadc.mike.plugin.memory
 
+import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR_OR_WARNING
+import com.intellij.codeInspection.ProblemHighlightType.WEAK_WARNING
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.TreeElement
@@ -37,13 +39,14 @@ class UncachedAllocInspection : UastInspection() {
 
             val ref = when (expr) {
                 is PsiMethodCallExpression ->
-                    if (expr.looksLikeEnumValues) expr.methodExpression.reference else null
+                    if (expr.looksLikeEnumValues || expr.looksLikeGsonBuild) expr.methodExpression.reference else null
                 is PsiNewExpression ->
                     if (expr.looksLikeNewGson) expr.resolveConstructor() else null
                 is KtCallExpression ->
                     if (expr.typeArguments.isEmpty() && expr.valueArguments.isEmpty() && expr.lambdaArguments.isEmpty())
-                        expr.referenceExpression()
-                            ?.takeIf { it.referencedName.let { it == "values" || it == "Gson" } }?.mainReference
+                        expr.referenceExpression()?.takeIf {
+                            it.referencedName.let { it == "values" || it == "Gson" || it == "create" }
+                        }?.mainReference
                     else null
                 else ->
                     null
@@ -52,29 +55,27 @@ class UncachedAllocInspection : UastInspection() {
             // resolve
 
             // resolve (a): skip assignment to static/object/file field/property which stands apart from declaration
-            if (expr.getParentOfType<PsiAssignmentExpression>(true).let {
-                    it != null && it.lExpression.reference?.resolve().let {
-                        it == null || it.isStaticFinalField || it.isFileOrObjVal
-                    }
-                } || expr.getParentOfType<KtBinaryExpression>(true).let {
-                    it != null && it.operationToken == KtTokens.EQ && it.left.let {
-                        it is KtNameReferenceExpression && it.reference?.resolve()
-                            .let { it == null || it.isStaticFinalField || it.isFileOrObjVal }
-                    }
-                }) return
+            if (expr.getParentOfType<PsiClassInitializer>(true)?.hasModifierProperty(PsiModifier.STATIC) == true ||
+                (expr.getParentOfType<KtClassInitializer>(true)?.parent as? KtClassBody)?.parent is KtObjectDeclaration
+            ) return
 
             // resolve (b): resolve call expression reference
-            if (ref is PsiReference && ref.resolve()?.let { method -> method.isJavaEnumValuesMethod || method.isKotlinEnumValuesMethod || method.isNewGson } == true ||
-                    ref is PsiMethod && ref.isNewGson) {
+            val method = ref as? PsiMethod ?: (ref as PsiReference).resolve() ?: return
+            val isEnumVals = method.isJavaEnumValuesMethod || method.isKotlinEnumValuesMethod
+            if (isEnumVals || (method as? PsiMethod)?.let { it.isNewGson || it.isGsonBuild } == true)
                 holder.registerProblem(
-                    expr, "This allocation should be cached", IntroduceConstantFix()
+                    if (expr is PsiMethodCallExpression) expr.methodExpression.let { it.referenceNameElement ?: it }
+                    else expr,
+                    "This allocation should be cached",
+                    if (isEnumVals) WEAK_WARNING else GENERIC_ERROR_OR_WARNING,
+                    IntroduceConstantFix()
                 )
-            }
         }
 
         private val PsiMethodCallExpression.looksLikeEnumValues: Boolean
             get() = methodExpression.referenceName == "values" && typeArguments.isEmpty() && argumentList.isEmpty
-
+        private val PsiMethodCallExpression.looksLikeGsonBuild: Boolean
+            get() = methodExpression.referenceName == "create" && typeArguments.isEmpty() && argumentList.isEmpty
         private val PsiNewExpression.looksLikeNewGson: Boolean
             get() = typeArguments.isEmpty() && argumentList.let { it == null || it.isEmpty } &&
                     classReference.let { it != null && it.referenceName == "Gson" }
@@ -95,9 +96,14 @@ class UncachedAllocInspection : UastInspection() {
         private val PsiElement.isKotlinEnumValuesMethod: Boolean
             get() = /* wtf?! */ this is KtClass && isEnum()
 
-        private val PsiElement.isNewGson: Boolean
-            get() = this is PsiMethod && isConstructor &&
+        private val PsiMethod.isNewGson: Boolean
+            get() = isConstructor &&
                     containingClass?.qualifiedName == "com.google.gson.Gson" &&
+                    typeParameters.isEmpty() && parameterList.isEmpty
+        private val PsiMethod.isGsonBuild: Boolean
+            get() = !hasModifierProperty(PsiModifier.STATIC) &&
+                    containingClass?.qualifiedName == "com.google.gson.GsonBuilder" &&
+                    name == "create" &&
                     typeParameters.isEmpty() && parameterList.isEmpty
 
     }

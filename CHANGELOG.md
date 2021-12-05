@@ -3,6 +3,7 @@
   <ul>
     <li>Marked ConstantParseColor, ReflectPropAnimInspection, TargetApiInspection as cleanup tools</li>
     <li>Added uselessDrawableElement inspection for Android</li>
+    <li>More accurate and less annoying UncachedAlloc inspection</li>
   </ul>
 
 ### 0.16
