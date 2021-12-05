@@ -408,7 +408,7 @@ private fun ProblemsHolder.fill(outline: Path2D, col: XmlElement?, type: XmlAttr
         return null
     }
 
-    val evenOdd = type?.value == "evenOdd"
+    val evenOdd = toString(type, "nonZero") == "evenOdd"
     if (evenOdd)
         outline.windingRule = Path2D.WIND_EVEN_ODD
     val area = Area(outline)
