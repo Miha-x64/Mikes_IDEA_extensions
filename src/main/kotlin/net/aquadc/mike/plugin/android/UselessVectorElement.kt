@@ -302,27 +302,26 @@ private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTran
                 break
             }
         }
-        if (canTrimCarefully || isOnTheFly) registerProblem(
-            pathAttr,
-            "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
-            if (canTrimCarefully) ProblemHighlightType.WEAK_WARNING else ProblemHighlightType.INFORMATION,
-            TextRange.from(
-                pathAttr.valueTextRange.startOffset - pathAttr.textRange.startOffset + outRanges[0],
-                outRanges[rangeCount - 1] - outRanges[0]
-            ),
+        if (canTrimCarefully || isOnTheFly) {
+            val beginValueAt = pathAttr.text.indexOf(pathData)
+            registerProblem(
+                pathAttr,
+                "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
+                if (canTrimCarefully) ProblemHighlightType.WEAK_WARNING else ProblemHighlightType.INFORMATION,
+                TextRange.from(beginValueAt + outRanges[0], beginValueAt + outRanges[rangeNodeCount - 1] - outRanges[0] - 1),
 
-            // “Trim tail(s) heavily” was “aggressively” before but IDEA sorts options alphabetically.
-            if (canTrimCarefully) TrimTailsFix(outRanges, "Trim tail(s) carefully", usefulPrecision + 1) else null,
-            TrimTailsFix(outRanges, "Trim tail(s) heavily (may decrease accuracy)", usefulPrecision),
-        )
+                // “Trim heavily” was “aggressively” before but IDEA sorts options alphabetically.
+                if (canTrimCarefully) TrimFix(outRanges, "Trim carefully", usefulPrecision + 1) else null,
+                TrimFix(outRanges, "Trim heavily (may decrease accuracy)", usefulPrecision),
+            )
+        }
     }
 
     if (matrix != null) path.transform(matrix)
     return path
 }
 
-private val digits = arrayOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
-class TrimTailsFix(
+class TrimFix(
     private val ranges: TIntArrayList,
     name: String,
     private val targetPrecision: Int,
@@ -416,7 +415,7 @@ private fun ProblemsHolder.checkPath(
                 reduced.subtract(clip)
                 // now `reduced` is a clipped-away part of path
                 if (!reduced.isEmpty && // check deeper: it this a sub-sub-subpixel clip?
-                    usefulPrecision < 0 || reduced.bounds2D.let { it.width * it.height } > 1 / 10f.pow(usefulPrecision)) {
+                    (usefulPrecision < 0 || reduced.hasVisiblePixels(usefulPrecision))) {
                     usefulClips.add(index)
                     reduced.reset()
                 }
@@ -427,6 +426,9 @@ private fun ProblemsHolder.checkPath(
     if (clipPath != null && path.also { it.intersect(clipPath) }.isEmpty)
         return report(tag, "The path is clipped away", removeTagFix)
 }
+
+private fun Area.hasVisiblePixels(usefulPrecision: Int) =
+    bounds2D.let { it.width * it.height } > 1 / 10f.pow(usefulPrecision)
 
 private val pathAttrs = arrayOf(
     "fillColor", "fillType", "fillAlpha",
