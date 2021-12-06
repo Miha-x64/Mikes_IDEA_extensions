@@ -321,6 +321,7 @@ private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTran
     return path
 }
 
+private val digits = arrayOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
 class TrimTailsFix(
     private val ranges: TIntArrayList,
     name: String,
@@ -332,22 +333,43 @@ class TrimTailsFix(
             val start = ranges[i]
             val end = ranges[i + 1]
             val iod = value.indexOf('.', start)
-            val precision = end - iod - 1
-            var targetPrecision = targetPrecision
-            while (value[iod + targetPrecision] == '0') targetPrecision-- // .3210|123 → .321|0123
+            var position = end - 1
+            val precision = position - iod
+            var carry = false
             if (precision > targetPrecision) {
-                when {
-                    targetPrecision != 0 ->
-                        value.delete(end - precision + targetPrecision, end) //   .X|XX
-                    start < iod ->
-                        value.delete(end - precision - 1, end)               // 0|.XXX
-                    else ->
-                        value.replace(start, end, "0")                       //  |.XXX → 0
+                repeat(precision - targetPrecision) {
+                    carry = value[position] - '0' + carry.asInt > 4
+                    position--
                 }
+                var fractional = true
+                while (position > start) {
+                    val ch = value[position]
+                    if (ch == '.') {
+                        fractional = false
+                    } else if (carry && ch == '9') {
+                        // carry over to the previous digit
+                    } else if (fractional && !carry && ch == '0') {
+                        // skip
+                    } else break
+                    position--
+                }
+                // now 'position' is the digit we're going to save, or a leading dot
+                val ch = value[position]
+                val replacement = if (ch == '.') {
+                    check(position == start) // we'd eat it in a loop otherwise
+                    if (carry) "1" else "0"
+                } else if (ch == '9' && carry) {
+                    check(position == start && !fractional)
+                    "10"
+                } else {
+                    digits[ch - '0' + carry.asInt]
+                }
+                value.replace(position, end, replacement)
             }
         }
         (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
     }
+    private inline val Boolean.asInt get() = if (this) 1 else 0
 }
 
 private fun ProblemsHolder.checkPath(
