@@ -329,46 +329,75 @@ class TrimTailsFix(
 ) : NamedLocalQuickFix(name) {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         val value = StringBuilder((descriptor.psiElement as XmlAttributeValue).value)
+        val tmpFloat = StringBuilder(10)
         for (i in (ranges.size()-2) downTo 0 step 2) {
             val start = ranges[i]
             val end = ranges[i + 1]
-            val iod = value.indexOf('.', start)
-            var position = end - 1
-            val precision = position - iod
-            var carry = false
-            if (precision > targetPrecision) {
-                repeat(precision - targetPrecision) {
-                    carry = value[position] - '0' + carry.asInt > 4
-                    position--
-                }
-                var fractional = true
-                while (position > start) {
-                    val ch = value[position]
-                    if (ch == '.') {
-                        fractional = false
-                    } else if (carry && ch == '9') {
-                        // carry over to the previous digit
-                    } else if (fractional && !carry && ch == '0') {
-                        // skip
-                    } else break
-                    position--
-                }
-                // now 'position' is the digit we're going to save, or a leading dot
-                val ch = value[position]
-                val replacement = if (ch == '.') {
-                    check(position == start) // we'd eat it in a loop otherwise
-                    if (carry) "1" else "0"
-                } else if (ch == '9' && carry) {
-                    check(position == start && !fractional)
-                    "10"
-                } else {
-                    digits[ch - '0' + carry.asInt]
-                }
-                value.replace(position, end, replacement)
-            }
+            value.replace(start, end, tmpFloat.append(value, start, end).trimToPrecision().toString())
+            tmpFloat.clear()
         }
         (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
     }
+
+    private fun StringBuilder.trimToPrecision(): StringBuilder {
+        var carry = false
+        run { // lower precision
+            val precision = length - 1 - indexOf('.')
+            if (precision > targetPrecision) {
+                val trim = precision - targetPrecision
+                val iol = lastIndex
+                repeat(trim) { i ->
+                    carry = this[iol - i] - '0' + carry.asInt > 4
+                }
+                delete(length - trim, length)
+            }
+        }
+        run<Unit> { // clean up and carry
+            var fractional = true
+            while (isNotEmpty()) {
+                val iol = lastIndex
+                val ch = this[iol]
+                if (ch == '.') {
+                    fractional = false
+                } else if (fractional && (carry && ch == '9' || !carry && ch == '0')) {
+                    // carry over to the previous digit
+                } else if (fractional && carry && ch in '0'..'8') {
+                    this[iol]++
+                    carry = false
+                    break
+                } else break
+                deleteCharAt(iol)
+            }
+
+            var iol = lastIndex
+            if (!fractional) { // carry whole part
+                while (iol >= 0 && carry) {
+                    val ch = this[iol]
+                    if (ch == '9') {
+                        this[iol--] = '0'
+                    } else if (ch in '0'..'8') {
+                        this[iol] = ch + 1
+                        carry = false
+                    } else {
+                        check(ch == '-')
+                        break
+                    }
+                }
+            }
+
+            if (carry)
+                insert(max(iol, 0), '1')
+            else if (isEmpty() || (length == 1 && this[0] == '-')) {
+                append('0')
+            }
+        }
+
+        if (length == 2 && this[0] == '-' && this[1] == '0')
+            deleteCharAt(0)
+
+        return this
+    }
+
     private inline val Boolean.asInt get() = if (this) 1 else 0
 }
 
