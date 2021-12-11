@@ -1,6 +1,7 @@
  
 ### 0.18
   <ul>
+    <li>TargetApiInspection: shorten references for Kotlin, too</li>
   </ul>
 
 ### 0.17

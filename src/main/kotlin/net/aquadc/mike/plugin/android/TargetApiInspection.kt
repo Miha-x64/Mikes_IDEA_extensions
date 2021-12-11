@@ -11,6 +11,7 @@ import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.UastInspection
+import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.uast.UDeclaration
@@ -53,9 +54,11 @@ class TargetApiInspection : UastInspection(), CleanupLocalInspectionTool {
                         )
                     )
                 is KtAnnotationEntry ->
-                    el.replace(KtPsiFactory(el).createAnnotationEntry(
-                        "$annotation(${el.valueArguments.getOrNull(0)?.asElement()?.text ?: ""})"
-                    ))
+                    ShortenReferences.DEFAULT.process(
+                        el.replace(KtPsiFactory(el).createAnnotationEntry(
+                            "$annotation(${el.valueArguments.getOrNull(0)?.asElement()?.text ?: ""})"
+                        )) as KtAnnotationEntry
+                    )
                 else ->
                     Logger.getInstance(TargetApiInspection::class.java).error("Not an annotation: ${el.javaClass.name}; $el")
                         .let { null }
