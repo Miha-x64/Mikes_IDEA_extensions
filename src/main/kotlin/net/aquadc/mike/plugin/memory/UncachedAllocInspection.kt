@@ -3,6 +3,7 @@ package net.aquadc.mike.plugin.memory
 import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR_OR_WARNING
 import com.intellij.codeInspection.ProblemHighlightType.WEAK_WARNING
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.TreeElement
 import com.siyeh.ig.fixes.IntroduceConstantFix
@@ -68,7 +69,7 @@ class UncachedAllocInspection : UastInspection() {
                     else expr,
                     "This allocation should be cached",
                     if (isEnumVals) WEAK_WARNING else GENERIC_ERROR_OR_WARNING,
-                    IntroduceConstantFix()
+                    if (expr.language == JavaLanguage.INSTANCE) IntroduceConstantFix() else null,
                 )
         }
 
