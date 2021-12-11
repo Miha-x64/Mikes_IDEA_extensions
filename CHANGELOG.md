@@ -1,4 +1,8 @@
  
+### 0.18
+  <ul>
+  </ul>
+
 ### 0.17
   <ul>
     <li>Marked ConstantParseColor, ReflectPropAnimInspection, TargetApiInspection as cleanup tools</li>

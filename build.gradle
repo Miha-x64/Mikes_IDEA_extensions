@@ -1,12 +1,13 @@
 import java.nio.file.Files
 import java.util.stream.Collectors
+import java.util.stream.Stream
 
 plugins {
     id 'org.jetbrains.intellij' version '1.2.1'
     id 'org.jetbrains.kotlin.jvm' version "1.5.31"
 }
 
-def pluginVersion = '0.17'
+def pluginVersion = '0.18'
 
 group 'net.aquadc.mike'
 version pluginVersion
@@ -38,12 +39,10 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 }
 patchPluginXml {
     untilBuild = ''
-    pluginDescription = Files.lines(project.file('README.md').toPath())
-        .dropWhile(s -> !s.startsWith("#")).dropWhile(s -> s.startsWith("#"))
-        .collect(Collectors.joining("\n")).trim().replace(
-            '[Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)',
-            '<a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Source code on GitHub</a>'
-        )
+    pluginDescription = Stream.concat(Files.lines(project.file('README.md').toPath())
+            .dropWhile(s -> !s.startsWith("<!-- start plugin.xml -->")).skip(1).takeWhile(s -> !s.startsWith("<!-- end plugin.xml -->")),
+            Stream.of("<a href=\"https://github.com/Miha-x64/Mikes_IDEA_extensions\">Source code on GitHub</a>"))
+        .collect(Collectors.joining("\n")).trim()
     changeNotes = Files.lines(project.file('CHANGELOG.md').toPath())
             .dropWhile(s -> !s.startsWith("### $pluginVersion")).skip(1).takeWhile(s -> !s.startsWith("###"))
             .collect(Collectors.joining("\n")).trim()

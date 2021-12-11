@@ -1,6 +1,11 @@
 
 ## Mike's IDEA extensions
 
+[![IntelliJ IDEA Plugin](https://img.shields.io/jetbrains/plugin/v/12690-mike-s-idea-extensions?label=plugin&logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)
+[![IntelliJ IDEA Plugin](https://img.shields.io/jetbrains/plugin/d/12690-mike-s-idea-extensions?logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)
+
+<!-- start plugin.xml -->
+
 Some great inspections, quickfixes, tools.
 
   <h3>UAST (Java + Kotlin) inspections</h3>
@@ -38,5 +43,7 @@ Some great inspections, quickfixes, tools.
     <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code>,<br/>override <code>Runnable</code> fun run()</li>
     <li>ARGB Color swatches in gutter for Android (Java & Kotlin)</li>
   </ul>
+
+<!-- end plugin.xml -->
 
   [Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)
