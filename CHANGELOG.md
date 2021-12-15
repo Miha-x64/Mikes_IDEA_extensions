@@ -2,6 +2,7 @@
 ### 0.18
   <ul>
     <li>TargetApiInspection: shorten references for Kotlin, too</li>
+    <li>Function won't be inlined inspection made disabled by default</li>
   </ul>
 
 ### 0.17

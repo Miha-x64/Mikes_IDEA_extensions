@@ -42,7 +42,7 @@
             language="kotlin"
             shortName="ktNoinlineFunc" displayName="Function won't be inlined"
             groupPath="Kotlin" groupName="Performance"
-            enabledByDefault="true" level="WARNING"
+            enabledByDefault="false" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.kotlin.KtNoinlineFuncInspection" />
 
         <localInspection
