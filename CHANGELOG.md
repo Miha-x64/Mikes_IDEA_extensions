@@ -2,7 +2,8 @@
 ### 0.18
   <ul>
     <li>TargetApiInspection: shorten references for Kotlin, too</li>
-    <li>Function won't be inlined inspection made disabled by default</li>
+    <li>“Function won't be inlined” inspection made disabled by default</li>
+    <li>“This allocation should be cached” inspection provides “Introduce constant” quickfix for Kotlin</li>
   </ul>
 
 ### 0.17

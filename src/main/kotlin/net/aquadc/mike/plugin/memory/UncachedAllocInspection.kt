@@ -1,15 +1,23 @@
 package net.aquadc.mike.plugin.memory
 
+import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR_OR_WARNING
 import com.intellij.codeInspection.ProblemHighlightType.WEAK_WARNING
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.java.JavaLanguage
+import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.TreeElement
+import com.intellij.psi.util.PsiEditorUtil.findEditor
 import com.siyeh.ig.fixes.IntroduceConstantFix
+import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.referencedName
+import org.jetbrains.kotlin.idea.refactoring.introduce.introduceConstant.KtIntroduceConstantHandlerCompat
+import org.jetbrains.kotlin.idea.refactoring.introduce.introduceConstant.INTRODUCE_CONSTANT
+import org.jetbrains.kotlin.idea.refactoring.introduce.introduceConstant.IntroduceConstantExtractionOptions
 import org.jetbrains.kotlin.idea.references.mainReference
+import org.jetbrains.kotlin.idea.util.textRangeIn
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
@@ -63,14 +71,25 @@ class UncachedAllocInspection : UastInspection() {
             // resolve (b): resolve call expression reference
             val method = ref as? PsiMethod ?: (ref as PsiReference).resolve() ?: return
             val isEnumVals = method.isJavaEnumValuesMethod || method.isKotlinEnumValuesMethod
-            if (isEnumVals || (method as? PsiMethod)?.let { it.isNewGson || it.isGsonBuild } == true)
-                holder.registerProblem(
-                    if (expr is PsiMethodCallExpression) expr.methodExpression.let { it.referenceNameElement ?: it }
-                    else expr,
+            if (isEnumVals || (method as? PsiMethod)?.let { it.isNewGson || it.isGsonBuild } == true) {
+                holder.registerProblem(holder.manager.createProblemDescriptor(
+                    expr, // remember the whole expression (for quickfix) but highlight only the relevant part
+                    (expr as? PsiMethodCallExpression)?.methodExpression?.referenceNameElement?.textRangeIn(expr),
                     "This allocation should be cached",
                     if (isEnumVals) WEAK_WARNING else GENERIC_ERROR_OR_WARNING,
-                    if (expr.language == JavaLanguage.INSTANCE) IntroduceConstantFix() else null,
-                )
+                    isOnTheFly,
+                    if (expr.language == JavaLanguage.INSTANCE) IntroduceConstantFix()
+                    else IntroduceConstantExtractionOptions?.let {
+                        object : NamedLocalQuickFix(INTRODUCE_CONSTANT) {
+                            override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+                                val el = descriptor.psiElement
+                                KtIntroduceConstantHandlerCompat
+                                    .invoke(project, findEditor(el) ?: return, el.containingFile ?: return, null)
+                            }
+                        }
+                    }
+                ))
+            }
         }
 
         private val PsiMethodCallExpression.looksLikeEnumValues: Boolean
