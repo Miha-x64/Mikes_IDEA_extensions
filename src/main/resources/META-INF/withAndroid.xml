@@ -10,6 +10,11 @@
                 implementationClass="net.aquadc.mike.plugin.android.UnsupportedAttrInspection" />
 
         <localInspection
+            shortName="androidUnsupportedFeature" groupName="Android" language="UAST" enabledByDefault="true"
+            level="WARNING" displayName="Unsupported feature"
+            implementationClass="net.aquadc.mike.plugin.android.UnsupportedFeatureInspection" />
+
+        <localInspection
                 language="UAST"
                 shortName="androidTargetApiShouldBeRequires" displayName="@TargetApi should be replaced with @RequiresApi"
                 groupName="Android"
