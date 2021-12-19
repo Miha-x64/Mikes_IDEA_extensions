@@ -30,7 +30,7 @@
 
         <localInspection
                 shortName="wrongStateAttr" groupName="Android" language="UAST" enabledByDefault="true" level="WARNING"
-                displayName="Use of android.R.attr.enabled instead of state_enabled"
+                displayName="Invalid state attribute"
                 implementationClass="net.aquadc.mike.plugin.android.WrongStateAttr" />
 
         <localInspection

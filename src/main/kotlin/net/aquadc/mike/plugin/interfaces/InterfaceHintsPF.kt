@@ -176,7 +176,7 @@ private class InterfaceHintsCollector(
             argClass.mainInterface?.let { main ->
                 if (main == parameterType || main.isInheritor(parameterType, true)) return
             }
-            parameterType.typeName?.takeIf { !methodName.contains(it, ignoreCase = true) }.let { typeName ->
+            parameterType.typeName?.takeIf { !methodName.contains(it, ignoreCase = true) }?.let { typeName ->
                 sink.addInlineElement(offset, false, hint("as $typeName"), false)
             }
         }

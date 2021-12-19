@@ -6,7 +6,7 @@
 
 <!-- start plugin.xml -->
 
-Some great inspections, quickfixes, tools.
+Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector drawable optimizer, color previewer.
 
   <h3>UAST (Java + Kotlin) inspections</h3>
   <ul>
@@ -39,8 +39,8 @@ Some great inspections, quickfixes, tools.
 
   <h3>Editor tweaks</h3>
   <ul>
-    <li>Upcast to interface, e. g.<br/>putExtra(list<code> as Serializable</code>) (Java Only)</li>
-    <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code>,<br/>override <code>Runnable</code> fun run()</li>
+    <li>Upcast to interface, e. g.<br/>putExtra(list<code>as Serializable</code>)</li>
+    <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
     <li>ARGB Color swatches in gutter for Android (Java & Kotlin)</li>
   </ul>
 

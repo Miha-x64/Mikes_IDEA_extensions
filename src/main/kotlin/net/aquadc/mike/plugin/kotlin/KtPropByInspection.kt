@@ -1,6 +1,7 @@
 package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElementVisitor
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.idea.quickfix.AddModifierFix
@@ -21,7 +22,7 @@ class KtPropByInspection : AbstractKotlinInspection() {
         override fun visitProperty(property: KtProperty) {
             property.delegate?.let { delegate ->
                 if (delegate.references.any { (it.resolve() as? KtNamedFunction)?.hasModifier(KtTokens.INLINE_KEYWORD) == false }) {
-                    holder.registerProblem(delegate, "Heavyweight property delegation")
+                    holder.registerProblem(delegate, TextRange.from(0, 2), "Heavyweight property delegation")
                 }
             }
         }

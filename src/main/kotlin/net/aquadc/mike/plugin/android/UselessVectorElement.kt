@@ -22,6 +22,7 @@ import java.awt.geom.Path2D
 import java.awt.geom.PathIterator
 import java.awt.geom.Rectangle2D
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import net.aquadc.mike.plugin.miserlyFilter as filter
 import net.aquadc.mike.plugin.miserlyMap as map
@@ -210,7 +211,7 @@ private fun ProblemsHolder.intersectAndCheckClips(
     return if (intersection.isEmpty) {
         registerProblem(
             tag,
-            "intersection of clip-paths is empty, thus the whole tag is invisible",
+            "Intersection of clip-paths is empty, thus the whole tag is invisible",
             if (isRoot) null else removeGroupFix
         )
         null // ignore all clips, we've already reported on them
@@ -332,7 +333,7 @@ class TrimFix(
         for (i in (ranges.size()-2) downTo 0 step 2) {
             val start = ranges[i]
             val end = ranges[i + 1]
-            value.replace(start, end, tmpFloat.append(value, start, end).trimToPrecision().toString())
+            value.replace(start, end, tmpFloat.append(value, start, end).trimToPrecision())
             tmpFloat.clear()
         }
         (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
@@ -395,6 +396,14 @@ class TrimFix(
             deleteCharAt(0)
 
         return this
+    }
+
+    private fun StringBuilder.replace(from: Int, to: Int, with: CharSequence) {
+        val victimLen = to - from
+        val replLen = with.length
+        repeat(min(victimLen, replLen)) { this[from + it] = with[it] }
+        if (replLen > victimLen) insert(from + victimLen, with, victimLen, replLen)
+        else delete(from + replLen, from + victimLen)
     }
 
     private inline val Boolean.asInt get() = if (this) 1 else 0
