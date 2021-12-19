@@ -1,21 +1,13 @@
 package net.aquadc.mike.plugin.android
 
 import com.intellij.codeInspection.CleanupLocalInspectionTool
-import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.Project
-import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.codeStyle.CodeStyleManager
-import com.intellij.psi.codeStyle.JavaCodeStyleManager
-import net.aquadc.mike.plugin.NamedLocalQuickFix
+import com.intellij.psi.PsiElement
+import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
-import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
-import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.uast.UDeclaration
-import org.jetbrains.uast.sourcePsiElement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 /**
@@ -27,46 +19,30 @@ class TargetApiInspection : UastInspection(), CleanupLocalInspectionTool {
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): AbstractUastNonRecursiveVisitor = object : AbstractUastNonRecursiveVisitor() {
         override fun visitDeclaration(node: UDeclaration): Boolean {
-            node.uAnnotations
-                .firstOrNull { it.qualifiedName == "android.annotation.TargetApi" }
-                ?.let { anno ->
-                    anno.sourcePsiElement?.let { psi ->
-                        holder.registerProblem(
-                            psi, "@TargetApi should be replaced with @RequiresApi", ReplaceTargetWithRequires
-                        )
-                    }
-                }
-
+            check(node)
             return true
         }
-    }
-
-    private object ReplaceTargetWithRequires : NamedLocalQuickFix("Replace with @RequiresApi") {
-        private const val annotation = "@androidx.annotation.RequiresApi"
-        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-            when (val el = descriptor.psiElement) {
-                is PsiAnnotation ->
-                    JavaCodeStyleManager.getInstance(project).shortenClassReferences(
-                        el.replace(
-                            JavaPsiFacade.getElementFactory(el.project).createAnnotationFromText(
-                                "$annotation(${el.findAttributeValue("value")?.text ?: ""})", null
-                            )
-                        )
-                    )
-                is KtAnnotationEntry ->
-                    ShortenReferences.DEFAULT.process(
-                        el.replace(KtPsiFactory(el).createAnnotationEntry(
-                            "$annotation(${el.valueArguments.getOrNull(0)?.asElement()?.text ?: ""})"
-                        )) as KtAnnotationEntry
-                    )
-                else ->
-                    Logger.getInstance(TargetApiInspection::class.java).error("Not an annotation: ${el.javaClass.name}; $el")
-                        .let { null }
-            }?.let { replacement ->
-                CodeStyleManager.getInstance(project).reformat(replacement)
-            }
+        private fun check(node: UDeclaration) {
+            val psi = node.uAnnotations
+                .firstOrNull { it.qualifiedName == "android.annotation.TargetApi" }
+                ?.sourcePsi
+                ?: return
+            holder.registerProblem(
+                psi,
+                "@TargetApi should be replaced with @RequiresApi",
+                psi.annotationText()?.let {
+                    NamedReplacementFix("Replace with @RequiresApi", "@androidx.annotation.RequiresApi($it)")
+                }
+            )
         }
 
+        private fun PsiElement.annotationText() = when (this) {
+            is PsiAnnotation ->
+                findAttributeValue("value")?.text ?: ""
+            is KtAnnotationEntry ->
+                valueArguments.singleOrNull()?.asElement()?.text ?: ""
+            else ->
+                null
+        }
     }
-
 }

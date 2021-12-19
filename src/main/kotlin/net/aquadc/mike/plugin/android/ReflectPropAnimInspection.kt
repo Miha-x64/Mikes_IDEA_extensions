@@ -3,14 +3,11 @@ package net.aquadc.mike.plugin.android
 import com.android.tools.idea.kotlin.tryEvaluateConstant
 import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.LocalQuickFix
-import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiUtil
 import com.intellij.psi.util.PsiUtilCore
-import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import com.siyeh.ig.psiutils.ExpressionUtils
 import net.aquadc.mike.plugin.*
@@ -95,15 +92,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
             return if (canReplace.java(args)) {
                 val qual = call.methodExpression.qualifierExpression
                 call.methodExpression.referenceName?.let { callee ->
-                    val repl = buildReplacement(qual?.text, callee, args, argIndices, replacements)
-                    object : NamedLocalQuickFix(FIX_NAME) {
-                        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                            PsiReplacementUtil.replaceExpressionAndShorten(
-                                descriptor.psiElement as PsiExpression,
-                                repl
-                            )
-                        }
-                    }
+                    NamedReplacementFix(FIX_NAME, buildReplacement(qual?.text, callee, args, argIndices, replacements))
                 }
             } else null
         }
@@ -140,14 +129,8 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                     else -> error("unreachable")
                 }
                 callee?.referencedName?.let { callee ->
-                    val repl = buildReplacement(qual, callee, args, argIndices, replacements) // todo: replacement could be binary expressions, too
-                    object : NamedLocalQuickFix(FIX_NAME) {
-                        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                            descriptor.psiElement.let {
-                                it.replace(KtPsiFactory(it).createExpression(repl))
-                            }
-                        }
-                    }
+                    // todo: replacement could be binary expression, too
+                    NamedReplacementFix(FIX_NAME, buildReplacement(qual, callee, args, argIndices, replacements))
                 }
             } else null
         }

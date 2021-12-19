@@ -7,12 +7,14 @@ import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.uast.UastVisitorAdapter
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
@@ -114,11 +116,11 @@ fun ProblemsHolder.register(srcPsi: PsiElement, text: String, fix: LocalQuickFix
     if (fix == null) registerProblem(srcPsi, text) else registerProblem(srcPsi, text, fix)
 
 class NamedReplacementFix(
-    expression: String,
-    private val javaExpression: String = expression,
+    name: String,
+    private val expression: String,
     private val kotlinExpression: String = expression,
-    name: String = "Replace with $expression",
     psi: PsiElement? = null,
+    private val shorten: Boolean = true,
 ) : NamedLocalQuickFix(name) {
     private val psiRef = psi?.let {
         val file = it.containingFile
@@ -127,12 +129,39 @@ class NamedReplacementFix(
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         val psi = psiRef?.let { it.element ?: return } ?: descriptor.psiElement
         if (FileModificationService.getInstance().preparePsiElementForWrite(psi)) {
-            if (psi.language === JavaLanguage.INSTANCE)
-                    (psi as? PsiExpression)?.let { PsiReplacementUtil.replaceExpression(it, javaExpression) }
-            else if (psi.language === KotlinLanguage.INSTANCE) CodeStyleManager.getInstance(psi.project)
-                .reformat(psi.replace(KtPsiFactory(psi).createExpression(kotlinExpression)))
+            if (shorten) replaceAndShorten(project, psi) else replace(project, psi)
         }
     }
+
+    private fun replaceAndShorten(project: Project, psi: PsiElement) {
+        if (psi.language === JavaLanguage.INSTANCE) when (psi) {
+            is PsiExpression -> PsiReplacementUtil.replaceExpressionAndShorten(psi, expression)
+            is PsiStatement -> PsiReplacementUtil.replaceStatementAndShortenClassNames(psi, expression)
+            is PsiAnnotation -> CodeStyleManager.getInstance(project).reformat(
+                JavaCodeStyleManager.getInstance(project).shortenClassReferences(
+                    replaceJAnnotation(project, psi)
+                )
+            )
+        } else if (psi.language === KotlinLanguage.INSTANCE)
+            CodeStyleManager.getInstance(psi.project).reformat(ShortenReferences.DEFAULT.process(replaceKt(psi)))
+    }
+
+    private fun replace(project: Project, psi: PsiElement) {
+        if (psi.language === JavaLanguage.INSTANCE) when (psi) {
+            is PsiExpression -> PsiReplacementUtil.replaceExpression(psi, expression)
+            is PsiStatement -> PsiReplacementUtil.replaceStatement(psi, expression)
+            is PsiAnnotation -> CodeStyleManager.getInstance(project).reformat(replaceJAnnotation(project, psi))
+        } else if (psi.language === KotlinLanguage.INSTANCE)
+            CodeStyleManager.getInstance(psi.project).reformat(replaceKt(psi))
+    }
+
+    private fun replaceJAnnotation(project: Project, psi: PsiAnnotation) =
+        psi.replace(JavaPsiFacade.getElementFactory(project).createAnnotationFromText(expression, psi.parent))
+
+    private fun replaceKt(psi: PsiElement) = psi.replace(
+        if (psi is KtAnnotationEntry) KtPsiFactory(psi).createAnnotationEntry(kotlinExpression)
+        else KtPsiFactory(psi).createExpression(kotlinExpression)
+    ) as KtElement
 }
 
 abstract class KtFunctionObjectVisitor : KtVisitorVoid() {

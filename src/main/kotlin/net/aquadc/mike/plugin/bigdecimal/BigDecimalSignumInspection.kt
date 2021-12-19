@@ -45,7 +45,11 @@ class BigDecimalSignumInspection : UastInspection(), CleanupLocalInspectionTool 
             holder.registerProblem(
                 src,
                 "$unqualified.compareTo(ZERO) can be replaced with signum()",
-                NamedReplacementFix("signum()", name = "Replace $unqualified.compareTo(ZERO) with signum()")
+                NamedReplacementFix(
+                    "Replace .compareTo(ZERO) with .signum()",
+                    (node.receiver?.sourcePsi?.text?.plus('.') ?: "") + "signum()",
+                    "signum()",
+                )
             )
             return true
         }

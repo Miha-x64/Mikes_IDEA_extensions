@@ -1,7 +1,7 @@
  
 ### 0.18
   <ul>
-    <li>TargetApiInspection: shorten references for Kotlin, too</li>
+    <li>Numerous quickfix quality fixes: shorten references, reformat etc</li>
     <li>“Function won't be inlined” inspection made disabled by default</li>
     <li>“This allocation should be cached” inspection provides “Introduce constant” quickfix for Kotlin</li>
     <li>Reporting `VideoView.setOnClickListener` which has no sense before Android API 26</li>

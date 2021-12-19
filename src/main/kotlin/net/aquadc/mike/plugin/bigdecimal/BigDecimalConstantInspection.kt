@@ -82,7 +82,7 @@ class BigDecimalConstantInspection : UastInspection(), CleanupLocalInspectionToo
             holder.registerProblem(
                 call,
                 "${call.text} should be replaced with $unqualified constant",
-                NamedReplacementFix("$prefix.$replacement", name = "Replace with $unqualified")
+                NamedReplacementFix("Replace instantiation with constant", "$prefix.$replacement")
             )
         }
 

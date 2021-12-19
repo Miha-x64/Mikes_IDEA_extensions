@@ -1,5 +1,6 @@
 @file:Suppress(
-    "unused", "NOTHING_TO_INLINE", "ktNoinlineFunc", "UNUSED_VARIABLE", "UNUSED_PARAMETER", "UNUSED_ANONYMOUS_PARAMETER"
+    "unused", "NOTHING_TO_INLINE", "ktNoinlineFunc", "UNUSED_VARIABLE", "UNUSED_PARAMETER", "UNUSED_ANONYMOUS_PARAMETER",
+    "ClassName", "MayBeConstant", "FunctionName", "PackageDirectoryMismatch"
 )
 package com.native.goto.const.float
 

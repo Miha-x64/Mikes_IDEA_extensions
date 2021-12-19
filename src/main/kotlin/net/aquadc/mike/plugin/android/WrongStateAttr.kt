@@ -52,11 +52,13 @@ class WrongStateAttr : UastInspection() {
                         if (absVal !in STATES) {
                             val name = NAMES.getOrNull(COLLISIONS.indexOf(absVal))
                             val subj = name?.let { "android.R.attr.$name" } ?: "0x${absVal.toString(16)}"
-                            val sign = if (value < 0) "-" else ""
-                            holder.register(
-                                src, "$subj is not a state",
-                                name?.let { NamedReplacementFix("${sign}android.R.attr.state_$name") },
-                            )
+                            holder.register(src, "$subj is not a state", name?.let {
+                                NamedReplacementFix(
+                                    "Replace with a state attribute",
+                                    "${if (value < 0) "-" else ""}android.R.attr.state_$name",
+                                    shorten = false,
+                                )
+                            })
                         }
                     }
                 }

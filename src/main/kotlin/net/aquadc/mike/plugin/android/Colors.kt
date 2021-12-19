@@ -86,10 +86,10 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
                 holder.registerProblem(
                     argSrc,
                     "parseColor($literal) should be replaced with $replacement",
-                    const?.let { NamedReplacementFix(
-                        "android.graphics.Color.$it", name = "Replace with Color.$it constant", psi = call
-                    ) },
-                    NamedReplacementFix(hex, kotlinExpression = "$hex.toInt()", psi = call),
+                    const?.let {
+                        NamedReplacementFix("Replace with Color constant", "android.graphics.Color.$it", psi = call)
+                    },
+                    NamedReplacementFix("Replace with int literal", hex, "$hex.toInt()", call),
                 )
             }
         }

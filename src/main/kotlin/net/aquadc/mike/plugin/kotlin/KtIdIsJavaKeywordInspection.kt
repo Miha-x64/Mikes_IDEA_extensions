@@ -4,9 +4,9 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiNameIdentifierOwner
+import com.siyeh.ig.fixes.RenameFix
 import net.aquadc.mike.plugin.SortedArray
 import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
-import org.jetbrains.kotlin.idea.quickfix.RenameIdentifierFix
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.isPublic
@@ -80,11 +80,8 @@ class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
         }
 
         private fun check(name: String, highlight: PsiElement) {
-            val identifier = KtPsiUtil.unquoteIdentifier(name)
-            if (identifier in javaKeywords) {
-                holder.registerProblem(
-                    highlight, "Identifier \"$identifier\" is a Java keyword", RenameIdentifierFix()
-                )
+            KtPsiUtil.unquoteIdentifier(name).takeIf { it in javaKeywords }?.let { id ->
+                holder.registerProblem(highlight, "Identifier \"$id\" is a Java keyword", RenameFix())
             }
         }
     }

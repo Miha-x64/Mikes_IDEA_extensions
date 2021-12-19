@@ -8,7 +8,7 @@ public enum UncachedJava {
     A, B, C;
 
     private static final UncachedJava[] VALS = values(); // ok
-     private static final Gson GSON = new Gson();
+    private static final Gson GSON = new Gson();
     private static final Gson GSON2 = new GsonBuilder().create();
 
     private final UncachedJava[] vals = values();

@@ -11,6 +11,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
+import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlFile
@@ -59,7 +60,7 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
                         if (ref != null) ref.takeIf { item.subTags.isEmpty() } else item.subTags.singleOrNull()
                     }
                     holder.report(
-                        item,
+                        tag,
                         if (insets == 0) "The layer-list with single item is useless"
                         else "The layer-list with single item having insets should be replaced with <inset>",
                         if (itemChild == null
@@ -77,7 +78,8 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
                                 if (insets == 0) {
                                     itemChild as XmlTag
                                     layerList.transferNamespacesTo(itemChild)
-                                    layerList.replace(itemChild)
+                                    val repl = layerList.replace(itemChild)
+                                    CodeStyleManager.getInstance(project).reformat(repl)
                                 } else {
                                     layerList.name = "inset"
                                     item.attributes.forEach {
@@ -96,6 +98,8 @@ class UselessDrawableElement : LocalInspectionTool(), CleanupLocalInspectionTool
 
                                     if (itemChild is XmlAttribute)
                                         layerList.collapseIfEmpty()
+
+                                    CodeStyleManager.getInstance(project).reformat(layerList)
                                 }
                             }
                         }
@@ -183,7 +187,8 @@ private val inlineContentsFix = object : NamedLocalQuickFix("Inline contents") {
         var child = parent.subTags.single()
         if (child.name == "item") child = child.subTags.single()
         parent.transferNamespacesTo(child)
-        parent.replace(child)
+        val repl = parent.replace(child)
+         CodeStyleManager.getInstance(project).reformat(repl)
     }
 }
 private fun XmlTag.transferNamespacesTo(dest: XmlTag) {

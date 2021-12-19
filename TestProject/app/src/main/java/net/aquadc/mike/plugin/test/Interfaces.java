@@ -9,7 +9,7 @@ import kotlin.jvm.functions.Function1;
 import java.io.Serializable;
 import java.util.*;
 
-@SuppressWarnings({"WeakerAccess", "SameParameterValue", "unused"})
+@SuppressWarnings({"WeakerAccess", "SameParameterValue", "unused", "rawtypes"})
 public class Interfaces implements Cloneable {
 
     private void a() {
