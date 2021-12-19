@@ -6,7 +6,26 @@
 </p>
 <!-- tooltip end -->
 <ul>
-    <li><code>VideoView.setOnClickListener</code> is useless before Android API 26: the listener won't actually be invoked</li>
+    <li><code>VideoView.setOnClickListener</code> is useless before Android API 26: the listener won't actually be invoked.
+        As a workaround, you can extend VideoView and fix it yourself:
+        <pre><code>public final class ClickableVideoView extends VideoView {
+    private final GestureDetector gd;
+
+    public ClickableVideoView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        gd = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
+            @Override public boolean onSingleTapUp(MotionEvent e) {
+                return performClick();
+            }
+        });
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    @Override public boolean onTouchEvent(MotionEvent ev) {
+        //noinspection ConstantConditions,PointlessBooleanExpression
+        return gd.onTouchEvent(ev) || super.onTouchEvent(ev) || true;
+    }
+}</code></pre></li>
 </ul>
 
 </body>

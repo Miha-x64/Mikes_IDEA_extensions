@@ -35,7 +35,11 @@ class UnsupportedFeatureInspection : UastInspection() {
 
     private companion object {
         private val VideoView_setOnClickListener =
-            CallMatcher.instanceCall("android.view.View", "setOnClickListener")
-                .parameterTypes("android.view.View.OnClickListener")
+            CallMatcher.anyOf(
+                CallMatcher.instanceCall("android.view.View", "setOnClickListener")
+                    .parameterTypes("android.view.View.OnClickListener"),
+                CallMatcher.instanceCall("android.view.View", "setOnTouchListener")
+                    .parameterTypes("android.view.View.OnTouchListener"),
+            )
     }
 }
