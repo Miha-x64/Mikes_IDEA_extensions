@@ -45,8 +45,8 @@
 
         <localInspection
             shortName="uselessDrawableElement" groupName="Android" language="XML" enabledByDefault="true"
-            level="WARNING" displayName="Useless Drawable element"
-            implementationClass="net.aquadc.mike.plugin.android.UselessDrawableElement" />
+            level="WARNING" displayName="Useless resource element"
+            implementationClass="net.aquadc.mike.plugin.android.UselessResElement" />
 
         <codeInsight.lineMarkerProvider
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>

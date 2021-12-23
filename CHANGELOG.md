@@ -1,4 +1,9 @@
- 
+### 0.19
+  <ul>
+    <li>Detecting empty and single-item animation sets</li>
+  </ul>
+
+
 ### 0.18
   <ul>
     <li>Numerous quickfix quality fixes: shorten references, reformat etc</li>

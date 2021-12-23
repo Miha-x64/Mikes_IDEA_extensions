@@ -34,7 +34,13 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Use of reflective <code>ObjectAnimator</code>/<code>PropertyValuesHolder</code></li>
     <li>Use of attributes like <code>android.R.attr.enabled</code> in context where state attributes expected, like <code>android.R.attr.state_enabled</code></li>
     <li><code>Color.parseColor(&lt;constant expression&gt;)</code> should be replaced with an integer literal</li>
-    <li>Useless Drawable element (single-item layer-lists, insetless insets, empty shapes, and vector elements: empty paths and clip-paths, invisible paths, useless clip-paths and groups, attributes with no effect)</li>
+    <li>Useless resource element
+      <ul>
+        <li>Drawables: single-item layer-lists, single stateless item selectors, insetless insets, empty shapes</li>
+        <li>Vector drawables: empty paths and clip-paths, invisible paths, useless clip-paths and groups, attributes with no effect</li>
+        <li>Animations and animators: empty and single-element sets</li>
+      </ul>
+    </li>
   </ul>
 
   <h3>Editor tweaks</h3>
