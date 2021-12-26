@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UParameter
 import org.jetbrains.uast.toUElementOfType
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty0
@@ -108,7 +109,8 @@ private class InterfaceHintsCollector(
             element.valueArguments.takeIf(List<*>::isNotEmpty)?.let { args ->
                 element.calleeExpression?.mainReference?.resolve()?.functionParams?.let { params ->
                     args.forEachIndexed { idx, arg: KtValueArgument ->
-                        (if (arg.name != null) params.firstOrNull { it.first == arg.name } else params.getOrNull(idx))
+                        val name = arg.getArgumentName()?.asName?.asString()
+                        (if (name != null) params.firstOrNull { it.first == name } else params.getOrNull(idx))
                             ?.second?.let { pType ->
                                 arg.getArgumentExpression()?.toUElementOfType<UExpression>()
                                     ?.getExpressionType()?.let { aType ->
@@ -156,11 +158,11 @@ private class InterfaceHintsCollector(
 
     private val PsiElement.functionParams
         get() =
-            ((this as? PsiMethod) ?: toUElementOfType<UMethod>()?.javaPsi)?.let {
-                it.parameters.map {
-                    null to (it.type as? JvmReferenceType)?.resolve() as? PsiClass
+            (this as? PsiMethod)?.parameters?.map { null to (it.type as? JvmReferenceType)?.resolve() as? PsiClass }
+                ?: (this as? KtCallableDeclaration)?.valueParameters?.map { param ->
+                    param.name to
+                        (param.toUElementOfType<UParameter>()?.type as? JvmReferenceType)?.resolve() as? PsiClass
                 }
-            }
 
     private fun visitParameter(
         methodName: String, parameterType: PsiElement, argumentType: PsiType, offset: Int, sink: InlayHintsSink
