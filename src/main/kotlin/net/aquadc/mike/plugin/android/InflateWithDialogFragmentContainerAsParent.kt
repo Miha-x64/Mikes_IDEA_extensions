@@ -11,6 +11,9 @@ import org.jetbrains.uast.USimpleNameReferenceExpression
 import org.jetbrains.uast.resolveToUElement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
+/**
+ * @author Mike Gorünóv
+ */
 class InflateWithDialogFragmentContainerAsParent : UastInspection() {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean
@@ -50,7 +53,7 @@ class InflateWithDialogFragmentContainerAsParent : UastInspection() {
 
         override fun visitSimpleNameReferenceExpression(node: USimpleNameReferenceExpression): Boolean {
             if (containerParam?.let { it == node.resolveToUElement() } == true) {
-                node.sourcePsi?.let {
+                node.sourcePsi?.let { // TODO also check the layout file for layout_ params!
                     holder.registerProblem(it, "Container of DialogFragment is always null")
                 }
 

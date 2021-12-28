@@ -51,12 +51,12 @@ class ConcatNullable : AbstractKotlinInspection() {
                         checkNullability(holder, arg, "Nullable argument to String concatenation")
                     } // TODO else if fn == "format"
                 }
-                "java.lang.StringBuilder" -> {
+                "java.lang.StringBuilder" /* || TextView TODO */ -> {
                     if (fn == "append") {
                         checkNullability(holder, arg, "Appending nullable value to StringBuilder")
                     }
                 }
-            }
+            } // TODO use com.intellij.codeInsight.NullableNotNullManager for Java
         }
 
         // += will not return value, but could resolve to .plus which returns

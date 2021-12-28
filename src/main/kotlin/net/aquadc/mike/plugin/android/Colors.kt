@@ -133,7 +133,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
     private val sharedClip = RoundRectangle2D.Float()
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
-        var colorInt = element.toColorInt()
+        var colorInt = element.toColorInt() // TODO preview Color.(a)rgb()
         if (colorInt == 2) colorInt = element.asReferenceToColorInt()
         if (colorInt == 1 || colorInt == 2 || !colorInt.worthPreviewing) return null // skip almost invisible colors
         val icon = synchronized(iconCache) {
@@ -216,6 +216,9 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
 }
 
+/**
+ * @author Mike Gorünóv
+ */
 class CopyPasteColor : CopyPastePreProcessor {
 
     override fun preprocessOnCopy(
