@@ -8,6 +8,7 @@ import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.test
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UImportStatement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModelModule
 
@@ -18,6 +19,13 @@ class UnsupportedFeatureInspection : UastInspection() {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
+
+        override fun visitImportStatement(node: UImportStatement): Boolean {
+            // TODO report kotlinx.android.synthetic.
+            // holder.registerProblem(node, "Kotlin Android Extensions are deprecated", ProblemHighlightType.LIKE_DEPRECATED)
+            return super.visitImportStatement(node)
+        }
+
         override fun visitCallExpr(node: UCallExpression): Boolean {
             check(node)
             return true

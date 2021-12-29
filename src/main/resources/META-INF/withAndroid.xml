@@ -58,6 +58,8 @@
                 language="kotlin" implementationClass="net.aquadc.mike.plugin.android.ColorIntLiteralFolding" />
         <copyPastePreProcessor implementation="net.aquadc.mike.plugin.android.CopyPasteColor" />
 
+        <!-- TODO lang.inferredAnnotationProvider implementation="@since" /-->
+
     </extensions>
 
 </idea-plugin>
