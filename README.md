@@ -41,6 +41,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
         <li>Animations and animators: empty and single-element sets</li>
       </ul>
     </li>
+    <li>Android utility methods should be replaced with Kotlin extension</li>
   </ul>
 
   <h3>Editor tweaks</h3>

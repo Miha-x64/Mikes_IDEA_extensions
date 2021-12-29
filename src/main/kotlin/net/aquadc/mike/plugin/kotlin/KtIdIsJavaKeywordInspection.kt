@@ -1,12 +1,12 @@
 package net.aquadc.mike.plugin.kotlin
 
+import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.siyeh.ig.fixes.RenameFix
 import net.aquadc.mike.plugin.SortedArray
-import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.isPublic
@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.psi.psiUtil.isPublic
 /**
  * @author Mike Gorünóv
  */
-class KtIdIsJavaKeywordInspection : AbstractKotlinInspection() {
+class KtIdIsJavaKeywordInspection : LocalInspectionTool() {
 
     private val javaKeywords = SortedArray.from((
             "abstract continue for new switch default package synchronized boolean do if private this break double " +

@@ -1,12 +1,12 @@
 package net.aquadc.mike.plugin.kotlin
 
+import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import net.aquadc.mike.plugin.KtFunctionObjectVisitor
 import net.aquadc.mike.plugin.containingFunction
 import net.aquadc.mike.plugin.isInline
 import net.aquadc.mike.plugin.noinlineMessage
-import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
@@ -16,7 +16,7 @@ import net.aquadc.mike.plugin.miserlyFilter as filter
 /**
  * @author Mike Gorünóv
  */
-class KtInlineFunctionLeaksAnonymousDeclaration : AbstractKotlinInspection() {
+class KtInlineFunctionLeaksAnonymousDeclaration : LocalInspectionTool() {
 
     override fun buildVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,

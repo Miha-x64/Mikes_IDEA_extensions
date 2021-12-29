@@ -48,6 +48,12 @@
             level="WARNING" displayName="Useless resource element"
             implementationClass="net.aquadc.mike.plugin.android.UselessResElement" />
 
+        <localInspection
+            shortName="ReplaceAndroidMethodWithKotlinAnalog"
+            displayName="Android utility methods should be replaced with Kotlin extension"
+            groupPath="Kotlin" groupName="Style issues" level="WEAK WARNING" language="kotlin" enabledByDefault="true"
+            implementationClass="net.aquadc.mike.plugin.android.ReplaceAndroidMethodWithKotlinAnalog" />
+
         <codeInsight.lineMarkerProvider
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
         <codeInsight.lineMarkerProvider

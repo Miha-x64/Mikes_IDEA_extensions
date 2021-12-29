@@ -3,6 +3,7 @@
     <li>Detecting empty and single-item animation sets</li>
     <li>Fixed Kotlin upcast hints for extension functions and named arguments</li>
     <li>Added backing property folding for Kotlin</li>
+    <li>Added “Android utility methods should be replaced with Kotlin extension” inspection</li>
   </ul>
 
 

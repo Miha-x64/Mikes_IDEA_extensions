@@ -1,11 +1,11 @@
 package net.aquadc.mike.plugin.kotlin
 
+import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
-import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.js.descriptorUtils.getJetTypeFqName
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.types.isNullable
 /**
  * @author Mike Gorünóv
  */
-class ConcatNullable : AbstractKotlinInspection() {
+class ConcatNullable : LocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor = object : KtVisitorVoid() {
         override fun visitBinaryExpression(expression: KtBinaryExpression) {

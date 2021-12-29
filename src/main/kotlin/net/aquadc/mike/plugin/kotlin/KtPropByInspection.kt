@@ -1,9 +1,9 @@
 package net.aquadc.mike.plugin.kotlin
 
+import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElementVisitor
-import org.jetbrains.kotlin.idea.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.idea.quickfix.AddModifierFix
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
 /**
  * @author Mike Gorünóv
  */
-class KtPropByInspection : AbstractKotlinInspection() {
+class KtPropByInspection : LocalInspectionTool() {
 
     override fun buildVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,
