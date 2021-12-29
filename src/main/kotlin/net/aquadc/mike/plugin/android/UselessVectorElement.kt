@@ -8,32 +8,31 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
-import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
+import de.javagl.geom.Shapes.computeSignedArea
+import de.javagl.geom.Shapes.computeSubShapes
 import gnu.trove.TIntArrayList
 import gnu.trove.TIntHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import org.jetbrains.plugins.groovy.codeInspection.fixes.RemoveElementQuickFix
-import java.awt.BasicStroke
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area
 import java.awt.geom.Path2D
-import java.awt.geom.PathIterator
 import java.awt.geom.Rectangle2D
+import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import net.aquadc.mike.plugin.miserlyFilter as filter
-import net.aquadc.mike.plugin.miserlyMap as map
 
 private val vectorTransforms = arrayOf("scaleX", "scaleY", "rotation", "translateX", "translateY")
 private val vectorTransformDefaults = floatArrayOf(1f, 1f, 0f, 0f, 0f)
 
 private val removeGroupFix = RemoveElementQuickFix("Remove group")
 private val removeParentGroupFix = RemoveElementQuickFix("Remove group", PsiElement::getParent)
-private val removeAttrFix = RemoveElementQuickFix("Remove attribute")
-private val removeTagFix = RemoveElementQuickFix("Remove tag")
+internal val removeAttrFix = RemoveElementQuickFix("Remove attribute")
+internal val removeTagFix = RemoveElementQuickFix("Remove tag")
 private val inlineGroupFix = object : NamedLocalQuickFix("Inline contents") {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         val group = descriptor.psiElement as XmlTag
@@ -64,7 +63,21 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) {
 
 
     val viewport = if (vWidth.isNaN() || vHeight.isNaN()) null else Area(Rectangle2D.Float(0f, 0f, vWidth, vHeight))
-    checkVectorGroup(tag, null, viewport, null, SmartList(), SmartList(), TIntHashSet(), usefulPrecision)
+    val pathTags = SmartList<XmlTag>()
+    val paths = SmartList<Area>()
+    checkVectorGroup(
+        tag, null, viewport, null, usefulPrecision,
+        pathTags, paths, SmartList(), SmartList(), TIntHashSet(),
+    )
+
+    // TODO also check the opposite: when the path adds nothing to the image
+    check(pathTags.size == paths.size) { pathTags + " | " + paths }
+    paths.forEachIndexed { i, path ->
+        if (path?.hasVisiblePixels(usefulPrecision) == false) {
+            report(pathTags[i], "The path is fully overdrawn", removeTagFix)
+        }
+    }
+    paths.clear()
 }
 
 private const val MAX_DP = 4f // xxxhdpi
@@ -91,15 +104,18 @@ private fun ProblemsHolder.checkVectorGroup(
     parentMatrix: AffineTransform?,
     viewport: Area?,
     parentClip: Area?,
+    usefulPrecision: Int,
+    pathTags: SmartList<XmlTag>,
+    paths: SmartList<Area>,
     clipTags: SmartList<XmlTag>,
     clips: SmartList<Area>,
     usefulClips: TIntHashSet,
-    usefulPrecision: Int,
 ) {
     val isRoot = tag.name == "vector"
-    val pathTags = tag.subTags.filter { it.name == "path" }
+    val myPathsFrom = pathTags.size
+    tag.subTags.filterTo(pathTags) { it.name == "path" }
     val groupTags = tag.subTags.filter { it.name == "group" }
-    val visualTagsCount = pathTags.size + groupTags.size
+    val visualTagsCount = (pathTags.size - myPathsFrom) + groupTags.size
     if (visualTagsCount == 0) return report(
         tag, if (isRoot) "Empty vector" else "Empty group", if (isRoot) null else removeGroupFix
     )
@@ -137,19 +153,34 @@ private fun ProblemsHolder.checkVectorGroup(
         }
     } else null
 
-    pathTags.forEach { pathTag ->
+    val pathTagsIter = pathTags.listIterator(myPathsFrom)
+    while (pathTagsIter.hasNext()) { // TODO propose merging pathDatas of sibling paths with same attrs
+        val pathTag = pathTagsIter.next()
+
         pathTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
             parse(pathData, matrix, usefulPrecision)?.let { outline ->
-                toArea(pathTag, outline)?.let { area ->
+                toArea(pathTag, outline)?.let { (area, opaqueArea) ->
                     checkPath(pathTag, area, viewport, commonClip, clips, usefulClips, usefulPrecision)
+                    if (opaqueArea != null && paths.isNotEmpty()) {
+                        paths.forEach { it?.subtract(opaqueArea) }
+                    }
+                    paths.add(area)
                 }
-            } // let's conservatively think that an invalid path marks all clips as useful
-                ?: if (usefulClips.size() < clips.size) clips.indices.forEach(usefulClips::add)
+            }
+        } ?: run {
+            // let's conservatively think that an invalid path marks all clips as useful
+            if (usefulClips.size() < clips.size)
+                clips.indices.forEach(usefulClips::add)
+            pathTagsIter.remove()
         }
     }
 
     groupTags.forEach {
-        checkVectorGroup(it, matrix, viewport, commonClip ?: parentClip, clipTags, clips, usefulClips, usefulPrecision)
+        checkVectorGroup(
+            it, matrix, viewport, commonClip ?: parentClip, usefulPrecision,
+            pathTags, paths,
+            clipTags, clips, usefulClips,
+        )
     }
 
     if (clips.size > myClipsFrom) {
@@ -192,12 +223,12 @@ private fun localMatrix(transforms: FloatArray?, px: Float, py: Float, outerMatr
 private fun ProblemsHolder.getFloat(tag: XmlTag, name: String, default: Float): Float =
     toFloat(tag.getAttribute(name, ANDROID_NS), default)
 
-private fun ProblemsHolder.toFloat(attr: XmlAttribute?, default: Float): Float {
+internal fun ProblemsHolder.toFloat(attr: XmlAttribute?, default: Float): Float {
     val value = attr?.value?.toFloatOrNull()
     if (value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
 }
-private fun ProblemsHolder.toString(attr: XmlAttribute?, default: String): String {
+internal fun ProblemsHolder.toString(attr: XmlAttribute?, default: String): String {
     val value = attr?.value
     if (value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
@@ -316,13 +347,13 @@ private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTran
                 TrimFix(outRanges, "Trim heavily (may decrease accuracy)", usefulPrecision),
             )
         }
-    }
+    } // TODO check for useless operations
 
     if (matrix != null) path.transform(matrix)
     return path
 }
 
-class TrimFix(
+private class TrimFix(
     private val ranges: TIntArrayList,
     name: String,
     private val targetPrecision: Int,
@@ -423,8 +454,7 @@ private fun ProblemsHolder.checkPath(
                 reduced.add(path)
                 reduced.subtract(clip)
                 // now `reduced` is a clipped-away part of path
-                if (!reduced.isEmpty && // check deeper: it this a sub-sub-subpixel clip?
-                    (usefulPrecision < 0 || reduced.hasVisiblePixels(usefulPrecision))) {
+                if (reduced.hasVisiblePixels(usefulPrecision)) {
                     usefulClips.add(index)
                     reduced.reset()
                 }
@@ -437,123 +467,8 @@ private fun ProblemsHolder.checkPath(
 }
 
 private fun Area.hasVisiblePixels(usefulPrecision: Int) =
-    bounds2D.let { it.width * it.height } > 1 / 10f.pow(usefulPrecision)
-
-private val pathAttrs = arrayOf(
-    "fillColor", "fillType", "fillAlpha",
-    "strokeColor", "strokeWidth", "strokeLineCap", "strokeLineJoin", "strokeMiterLimit", "strokeAlpha",
-)
-@Suppress("NOTHING_TO_INLINE") private inline operator fun <T> Array<out T>.component6(): T = this[5]
-@Suppress("NOTHING_TO_INLINE") private inline operator fun <T> Array<out T>.component7(): T = this[6]
-@Suppress("NOTHING_TO_INLINE") private inline operator fun <T> Array<out T>.component8(): T = this[7]
-@Suppress("NOTHING_TO_INLINE") private inline operator fun <T> Array<out T>.component9(): T = this[8]
-private fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Area? {
-    val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) =
-        pathAttrs.map<String, XmlAttribute?>(XmlAttribute.EMPTY_ARRAY) { tag.getAttribute(it, ANDROID_NS) }
-    val fill =
-        fill(outline, fCol ?: tag.findAaptAttrTag("fillColor"), fType, fA)
-    val stroke =
-        stroke(outline, sWidth, sCol ?: tag.findAaptAttrTag("strokeColor"), sCap, sJoin, sMiter, sA)
-            ?.createStrokedShape(outline)?.let(::Area)
-    return when {
-        fill == null && stroke == null -> {
-            report(tag, "Invisible path: no fill, no stroke", removeTagFix)
-            null
-        }
-        fill != null && stroke != null -> fill.also { it.add(stroke) }
-        else -> fill ?: stroke
-    }
-}
-
-private fun ProblemsHolder.fill(outline: Path2D, col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?): Area? {
-    val uncolored = !col.hasColor()
-    val transparent = toFloat(a, 1f) == 0f
-    if (uncolored || transparent) {
-        reportNoFill(col, type, a, "attribute has no effect with uncolored or transparent fill")
-        return null
-    }
-
-    val evenOdd = toString(type, "nonZero") == "evenOdd"
-    if (evenOdd)
-        outline.windingRule = Path2D.WIND_EVEN_ODD
-    val area = Area(outline)
-
-    if (area.isEmpty) {
-        reportNoFill(col, type, a, "attribute has no effect with open path")
-        return null
-    } else if (evenOdd && Area(outline.also { it.windingRule = Path2D.WIND_NON_ZERO }).equals(area)) {
-        report(type!!, "attribute has no effect", removeAttrFix)
-    }
-    return area
-}
-private fun ProblemsHolder.reportNoFill(col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?, complaint: String) {
-    col?.let { report(it, complaint, removeAttrFix) }
-    type?.let { report(it, complaint, removeAttrFix) }
-    a?.let { report(it, complaint, removeAttrFix) }
-}
-private val dummyFloats = FloatArray(6)
-private fun ProblemsHolder.stroke(
-    outline: Path2D,
-    width: XmlAttribute?, col: XmlElement?, cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?,
-    a: XmlAttribute?
-): BasicStroke? {
-    val strokeWidth = toFloat(width, 0f)
-    val colored = col.hasColor()
-    val opaque = toFloat(a, 1f) > 0f
-    return if (strokeWidth != 0f && colored && opaque) {
-        val capName = toString(cap, "butt")
-        val joinName = toString(join, "miter")
-        checkStroke(outline, cap?.takeIf { capName != "butt" }, join?.takeIf { joinName != "miter" })
-        BasicStroke(
-            strokeWidth,
-            when (capName) {
-                "round" -> BasicStroke.CAP_ROUND
-                "square" -> BasicStroke.CAP_SQUARE
-                else -> BasicStroke.CAP_BUTT
-            },
-            when (joinName) {
-                "round" -> BasicStroke.JOIN_ROUND
-                "bevel" -> BasicStroke.JOIN_BEVEL
-                else -> BasicStroke.JOIN_MITER
-            },
-            toFloat(miter, 4f)
-        )
-    } else {
-        width?.let { report(it, "attribute has no effect", removeAttrFix) }
-        col?.let { report(it, "attribute has no effect", removeAttrFix) }
-        cap?.let { report(it, "attribute has no effect", removeAttrFix) }
-        join?.let { report(it, "attribute has no effect", removeAttrFix) }
-        miter?.let { report(it, "attribute has no effect", removeAttrFix) }
-        a?.let { report(it, "attribute has no effect", removeAttrFix) }
-        null
-    }
-}
-private fun ProblemsHolder.checkStroke(outline: Path2D, cap: XmlAttribute?, join: XmlAttribute?) {
-    val iter = outline.getPathIterator(null)
-    var prevState: Int
-    var state = PathIterator.SEG_CLOSE
-    var gaps = false
-    var joins = false
-    while (!iter.isDone) {
-        prevState = state
-        state = iter.currentSegment(dummyFloats)
-        gaps = gaps || (prevState != PathIterator.SEG_CLOSE && prevState != PathIterator.SEG_MOVETO && state == PathIterator.SEG_MOVETO)
-        joins = joins || (prevState != PathIterator.SEG_MOVETO && state != PathIterator.SEG_MOVETO)
-        if ((gaps || cap == null) && (joins || join == null)) break
-        iter.next()
-    }
-    gaps = gaps || (state != PathIterator.SEG_CLOSE && state != PathIterator.SEG_MOVETO)
-    if (!gaps && cap != null) report(cap, "attribute has no effect", removeAttrFix)
-    if (!joins && join != null) report(join, "attribute has no effect", removeAttrFix)
-}
-
-fun XmlElement?.hasColor() = when (this) {
-    is XmlAttribute -> value?.takeIf {
-        it.isNotBlank() &&
-                !(it.length == 5 && it.startsWith("#0")) &&
-                !(it.length == 9 && it.startsWith("#00")) &&
-                it != "@android:color/transparent"
-    } != null
-    is XmlTag -> true
-    else -> false
-}
+    !isEmpty && (
+            usefulPrecision < 0 || // <-- unknown, fallback conservatively
+                    bounds2D.let { it.width * it.height } > 1 / 10f.pow(usefulPrecision) ||
+                    computeSubShapes(this).sumOf { computeSignedArea(it, 0.0).absoluteValue } > 1 / 10f.pow(usefulPrecision)
+            )

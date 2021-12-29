@@ -4,6 +4,7 @@
     <li>Fixed Kotlin upcast hints for extension functions and named arguments</li>
     <li>Added backing property folding for Kotlin</li>
     <li>Added “Android utility methods should be replaced with Kotlin extension” inspection</li>
+    <li>Improved vector drawable inspection: reporting paths fully overdrawn by other paths</li>
   </ul>
 
 
