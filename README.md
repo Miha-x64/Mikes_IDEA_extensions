@@ -45,9 +45,10 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
 
   <h3>Editor tweaks</h3>
   <ul>
-    <li>Upcast to interface, e. g.<br/>putExtra(list<code>as Serializable</code>)</li>
-    <li>Method override from superclass, e. g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
-    <li>ARGB Color swatches in gutter for Android (Java & Kotlin)</li>
+    <li>Inlay hints when upcasting to interface, e. g.<br/>putExtra(list<code>as Serializable</code>)</li>
+    <li>Inlay hints when overriding an interface method, e. g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
+    <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code> for Android</li>
+    <li>Backing property folding for Kotlin</li>
   </ul>
 
 <!-- end plugin.xml -->

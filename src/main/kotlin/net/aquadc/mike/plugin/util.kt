@@ -324,3 +324,5 @@ inline fun <T, reified R> Array<out T>.miserlyMap(empty: Array<R>, transform: (T
     if (isEmpty()) empty else Array(size) { transform(this[it]) }
 inline fun <T, reified R> List<T>.miserlyMap(empty: Array<R>, transform: (T) -> R): Array<R> =
     if (isEmpty()) empty else Array(size) { transform(this[it]) }
+
+operator fun <T> ((T) -> Boolean).not(): (T) -> Boolean = { !this(it) }

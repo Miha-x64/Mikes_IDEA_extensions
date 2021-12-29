@@ -81,6 +81,9 @@
             implementationClass="net.aquadc.mike.plugin.regexp.BadCyrillicRegexp" />
 
         <codeInsight.inlayProviderFactory implementation="net.aquadc.mike.plugin.interfaces.InterfaceHintsPF" />
+
+        <lang.foldingBuilder
+                language="kotlin" implementationClass="net.aquadc.mike.plugin.kotlin.BackingPropertyFolding" />
     </extensions>
 
     <depends>com.intellij.modules.lang</depends>
