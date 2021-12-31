@@ -1,3 +1,9 @@
+### 0.20
+  <ul>
+    <li>More accuracy when detecting empty areas in vectors</li>
+  </ul>
+
+
 ### 0.19
   <ul>
     <li>Detecting empty and single-item animation sets</li>

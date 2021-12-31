@@ -1,5 +1,6 @@
 package net.aquadc.mike.plugin.android
 
+import android.graphics.PathDelegate
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
@@ -73,7 +74,7 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) {
     // TODO also check the opposite: when the path adds nothing to the image
     check(pathTags.size == paths.size) { pathTags + " | " + paths }
     paths.forEachIndexed { i, path ->
-        if (path?.hasVisiblePixels(usefulPrecision) == false) {
+        if (path?.effectivelyEmpty(usefulPrecision) == true) {
             report(pathTags[i], "The path is fully overdrawn", removeTagFix)
         }
     }
@@ -149,7 +150,7 @@ private fun ProblemsHolder.checkVectorGroup(
         when (clipTags.size - myClipsFrom) {
             0 -> null
             1 -> clips[myClipsFrom]
-            else -> intersectAndCheckClips(clips, tag, isRoot, clipTags, myClipsFrom)
+            else -> intersectAndCheckClips(clips, tag, isRoot, clipTags, myClipsFrom, usefulPrecision)
         }
     } else null
 
@@ -235,11 +236,14 @@ internal fun ProblemsHolder.toString(attr: XmlAttribute?, default: String): Stri
 }
 
 private fun ProblemsHolder.intersectAndCheckClips(
-    clips: SmartList<Area>, tag: XmlTag, isRoot: Boolean, clipTags: SmartList<XmlTag>, ourClipsFrom: Int
+    clips: SmartList<Area>,
+    tag: XmlTag, isRoot: Boolean,
+    clipTags: SmartList<XmlTag>, ourClipsFrom: Int,
+    usefulPrecision: Int,
 ): Area? {
     val intersection = Area()
     clips.intersect(intersection, ourClipsFrom)
-    return if (intersection.isEmpty) {
+    return if (intersection.effectivelyEmpty(usefulPrecision)) {
         registerProblem(
             tag,
             "Intersection of clip-paths is empty, thus the whole tag is invisible",
@@ -253,7 +257,7 @@ private fun ProblemsHolder.intersectAndCheckClips(
         while (i < clips.size) {
             victim.add(intersection)
             victim.subtract(clips[i])
-            if (victim.isEmpty) {
+            if (victim.effectivelyEmpty(usefulPrecision)) {
                 report(clipTags[i], "The clip-path is superseded by its siblings", removeTagFix)
                 clipTags.removeAt(i)
                 clips.removeAt(i) // never analyze this path further
@@ -293,7 +297,7 @@ private fun ProblemsHolder.gatherClips(
             val clipArea = parse(pathData, matrix, usefulPrecision)?.let(::Area)
             if (clipArea == null) {
                 clipTagsIter.remove() // bad path, ignore
-            } else if (clipArea.isEmpty) {
+            } else if (clipArea.effectivelyEmpty(usefulPrecision)) {
                 registerProblem(
                     nextTag,
                     "The clip-path is empty, thus the whole tag is invisible",
@@ -302,7 +306,7 @@ private fun ProblemsHolder.gatherClips(
                 clipTagsIter.remove()
             } else if (parentClip == null) {
                 clipsTo.add(clipArea) // proceed with less precision
-            } else if (clipArea.also { it.intersect(parentClip) }.isEmpty) {
+            } else if (clipArea.also { it.intersect(parentClip) }.effectivelyEmpty(usefulPrecision)) {
                 registerProblem(
                     nextTag,
                     "The clip-path has empty intersection with inherited clip-path or viewport. Thus it is useless, and the whole tag is invisible",
@@ -310,7 +314,7 @@ private fun ProblemsHolder.gatherClips(
                     removeTagFix
                 )
                 clipTagsIter.remove()
-            } else if (Area(parentClip).also { it.subtract(clipArea) }.isEmpty) {
+            } else if (Area(parentClip).also { it.subtract(clipArea) }.effectivelyEmpty(usefulPrecision)) {
                 registerProblem(nextTag, "The clip-path is superseded by inherited clip-path or viewport", removeTagFix)
                 clipTagsIter.remove()
             } else {
@@ -444,7 +448,7 @@ private fun ProblemsHolder.checkPath(
     tag: XmlTag, path: Area, viewport: Area?, clipPath: Area?, clips: List<Area>,
     usefulClips: TIntHashSet, usefulPrecision: Int,
 ) {
-    if (viewport != null && path.also { it.intersect(viewport) }.isEmpty)
+    if (viewport != null && path.also { it.intersect(viewport) }.effectivelyEmpty(usefulPrecision))
         return report(tag, "The path is outside of viewport", removeTagFix)
 
     if (usefulClips.size() < clips.size) {
@@ -454,21 +458,23 @@ private fun ProblemsHolder.checkPath(
                 reduced.add(path)
                 reduced.subtract(clip)
                 // now `reduced` is a clipped-away part of path
-                if (reduced.hasVisiblePixels(usefulPrecision)) {
+                if (!reduced.effectivelyEmpty(usefulPrecision))
                     usefulClips.add(index)
-                    reduced.reset()
-                }
+                reduced.reset()
             }
         }
     }
 
-    if (clipPath != null && path.also { it.intersect(clipPath) }.isEmpty)
+    if (clipPath != null && path.also { it.intersect(clipPath) }.effectivelyEmpty(usefulPrecision))
         return report(tag, "The path is clipped away", removeTagFix)
 }
 
-private fun Area.hasVisiblePixels(usefulPrecision: Int) =
-    !isEmpty && (
-            usefulPrecision < 0 || // <-- unknown, fallback conservatively
-                    bounds2D.let { it.width * it.height } > 1 / 10f.pow(usefulPrecision) ||
-                    computeSubShapes(this).sumOf { computeSignedArea(it, 0.0).absoluteValue } > 1 / 10f.pow(usefulPrecision)
-            )
+private fun Area.effectivelyEmpty(usefulPrecision: Int): Boolean =
+    isEmpty || (usefulPrecision >= 0 && effectiveAreaEmpty(usefulPrecision))
+
+private fun Area.effectiveAreaEmpty(usefulPrecision: Int): Boolean {
+    var sqPx = 1 / 10f.pow(usefulPrecision)
+    sqPx *= sqPx
+    return bounds2D.let { it.width * it.height } < sqPx ||
+            computeSubShapes(this).all { computeSignedArea(it, 0.0).absoluteValue < sqPx }
+}

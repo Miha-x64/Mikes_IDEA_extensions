@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin.android;
+package android.graphics;
 
 import gnu.trove.TIntArrayList;
 import libcore.util.EmptyArray;
@@ -34,9 +34,7 @@ public final class PathDelegate {
     }
 
     public void rMoveTo(float dx, float dy) {
-        dx += this.mLastX;
-        dy += this.mLastY;
-        this.mPath.moveTo(this.mLastX = dx, this.mLastY = dy);
+        this.mPath.moveTo(this.mLastX += dx, this.mLastY += dy);
     }
 
     public void lineTo(float x, float y) {
