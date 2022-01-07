@@ -16,8 +16,9 @@ fun anims() {
     }
     ObjectAnimator().setProperty(View.ALPHA)
     ObjectAnimator().propertyName
-    ObjectAnimator.ofInt(null, "translationX")
-    ObjectAnimator.ofInt(null, "translationX", "translationY", null)
+    ObjectAnimator.ofFloat(View(null), "translationW")
+    ObjectAnimator.ofFloat(View(null), "translationX")
+    ObjectAnimator.ofFloat(View(null), "translationX", "translationY", null)
     ObjectAnimator.ofInt(null, null as Property<Nothing?, Int>?)
     ObjectAnimator.ofInt(null, null, null as Property<Nothing?, Int>?, null)
 
@@ -25,4 +26,6 @@ fun anims() {
 
     ObjectAnimator
         .ofFloat(view, "alpha", 0f, 1f)
+
+    Property.of(View::class.java, Float::class.java, "translationX")
 }

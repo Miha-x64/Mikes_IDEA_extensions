@@ -1,6 +1,7 @@
 ### 0.20
   <ul>
     <li>More accuracy when detecting empty areas in vectors</li>
+    <li>Reworked Reflective Property Animation inspection with various fixes</li>
   </ul>
 
 

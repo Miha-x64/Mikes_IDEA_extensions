@@ -322,6 +322,8 @@ inline fun <T> List<T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     }
 inline fun <T, reified R> Array<out T>.miserlyMap(empty: Array<R>, transform: (T) -> R): Array<R> =
     if (isEmpty()) empty else Array(size) { transform(this[it]) }
+inline fun <reified R : Any> IntArray.miserlyMapNullize(transform: (Int) -> R?): Array<R>? =
+    if (isEmpty()) null else Array(size) { transform(this[it]) ?: return null }
 inline fun <T, reified R> List<T>.miserlyMap(empty: Array<R>, transform: (T) -> R): Array<R> =
     if (isEmpty()) empty else Array(size) { transform(this[it]) }
 
