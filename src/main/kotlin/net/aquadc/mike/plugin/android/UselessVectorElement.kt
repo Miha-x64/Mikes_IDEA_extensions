@@ -353,7 +353,7 @@ private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTran
         }
     } // TODO check for useless operations
 
-    if (matrix != null) path.transform(matrix)
+    if (matrix != null) path?.transform(matrix)
     return path
 }
 

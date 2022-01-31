@@ -2,6 +2,7 @@ package android.graphics;
 
 import gnu.trove.TIntArrayList;
 import libcore.util.EmptyArray;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.geom.Path2D;
 import java.util.logging.Level;
@@ -105,7 +106,7 @@ public final class PathDelegate {
 
     private static final Logger LOGGER = Logger.getLogger("PathParser");
 
-    public static Path2D parse(String pathData, TIntArrayList floatRanges, int usefulPrecision) {
+    @Nullable public static Path2D parse(String pathData, TIntArrayList floatRanges, int usefulPrecision) {
         int start = 0;
         int end = 1;
 
@@ -124,6 +125,7 @@ public final class PathDelegate {
                 int len = endTrimmed - start;
                 float[] results = buf.length < len ? (buf = new float[len]) : buf;
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
+                if (count < 0) return null;
                 // TODO report unused or verbose commands
                 PathDataNode.addCommand(path, current, previousCommand, previousCommand = pathData.charAt(start), results, count);
             }
@@ -225,13 +227,10 @@ public final class PathDelegate {
 
                 return count;
             } catch (NumberFormatException e) {
-                assert false : "error in parsing \"" + input.substring(start, end) + "\"" + e;
-
-                return 0;
+                return -1;
             }
-        } else {
-            return 0;
         }
+        return 0;
     }
 
     static final class PathDataNode {
