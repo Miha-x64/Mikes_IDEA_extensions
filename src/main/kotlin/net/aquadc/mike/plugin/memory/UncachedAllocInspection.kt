@@ -53,8 +53,8 @@ class UncachedAllocInspection : UastInspection() {
                     if (expr.looksLikeNewGson) expr.resolveConstructor() else null
                 is KtCallExpression ->
                     if (expr.typeArguments.isEmpty() && expr.valueArguments.isEmpty() && expr.lambdaArguments.isEmpty())
-                        expr.referenceExpression()?.takeIf {
-                            it.referencedName.let { it == "values" || it == "Gson" || it == "create" }
+                        expr.referenceExpression()?.takeIf { rex ->
+                            rex.referencedName.let { it == "values" || it == "Gson" || it == "create" }
                         }?.mainReference
                     else null
                 else ->

@@ -55,7 +55,9 @@ object KtIntroduceConstantHandlerCompat : RefactoringActionHandler { // Mike-REM
         }
     }
 
-    fun doInvoke(project: Project, editor: Editor, file: KtFile, elements: List<PsiElement>, target: PsiElement) {
+    private fun doInvoke(
+        project: Project, editor: Editor, file: KtFile, elements: List<PsiElement>, target: PsiElement,
+    ) {
         val adjustedElements = (elements.singleOrNull() as? KtBlockExpression)?.statements ?: elements
         when {
             adjustedElements.isEmpty() -> {
@@ -110,26 +112,21 @@ object KtIntroduceConstantHandlerCompat : RefactoringActionHandler { // Mike-REM
         selectElements(editor, file) { elements, targets -> doInvoke(project, editor, file, elements, targets) }
     }
 
-    fun selectElements(
-        editor: Editor,
-        file: KtFile,
-        continuation: (elements: List<PsiElement>, targets: PsiElement) -> Unit
-    ) {
-
-        selectElementsWithTargetSibling(
-            INTRODUCE_CONSTANT,
-            editor,
-            file,
-            KotlinBundle.message("title.select.target.code.block"),
-            listOf(CodeInsightUtils.ElementKind.EXPRESSION),
-            ::validateExpressionElements,
-            { _, sibling ->
-                sibling.getExtractionContainers(strict = true, includeAll = true)
-                    .filter { (it is KtFile && !it.isScript()) }
-            },
-            continuation
-        )
-    }
+    private fun selectElements(
+        editor: Editor, file: KtFile,
+        continuation: (elements: List<PsiElement>, targets: PsiElement) -> Unit,
+    ): Unit = selectElementsWithTargetSibling(
+        INTRODUCE_CONSTANT,
+        editor, file,
+        KotlinBundle.message("title.select.target.code.block"),
+        listOf(CodeInsightUtils.ElementKind.EXPRESSION),
+        ::validateExpressionElements,
+        { _, sibling ->
+            sibling.getExtractionContainers(strict = true, includeAll = true)
+                .filter { (it is KtFile && !it.isScript()) }
+        },
+        continuation
+    )
 
     // Mike-REMOVED private fun validateElements(elements: List<PsiElement>): String?
     // Mike-REMOVED private fun KtExpression.isNotConst(): Boolean

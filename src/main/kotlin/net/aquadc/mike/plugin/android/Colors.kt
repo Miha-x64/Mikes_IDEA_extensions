@@ -28,7 +28,6 @@ import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.PsiType
 import com.intellij.psi.impl.source.tree.java.PsiLiteralExpressionImpl.parseStringCharacters
 import com.intellij.psi.util.PsiLiteralUtil.*
-import com.intellij.psi.util.elementType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.SmartList
 import libcore.util.EmptyArray

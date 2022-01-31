@@ -9,7 +9,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 // I can see Path_Delegate and PathParser_Delegate, but they are not stable,
-// so I've borrowed these to avoid NoClassDefFoundError.
+// so I've borrowed these to avoid NoClassDefFoundError,
+// and seriously reworked it to satisfy my needs.
 
 public final class PathDelegate {
     private final Path2D.Float mPath;
@@ -127,12 +128,12 @@ public final class PathDelegate {
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
                 if (count < 0) return null;
                 // TODO report unused or verbose commands
-                PathDataNode.addCommand(path, current, previousCommand, previousCommand = pathData.charAt(start), results, count);
+                addCommand(path, current, previousCommand, previousCommand = pathData.charAt(start), results, count);
             }
         }
 
         if (end - start == 1 && start < pathData.length())
-            PathDataNode.addCommand(path, current, previousCommand, pathData.charAt(start), EmptyArray.FLOAT, 0);
+            addCommand(path, current, previousCommand, pathData.charAt(start), EmptyArray.FLOAT, 0);
 
         return path.getJavaShape();
     }
@@ -233,320 +234,307 @@ public final class PathDelegate {
         return 0;
     }
 
-    static final class PathDataNode {
-        final char mType;
-        final float[] mParams;
-        final int start, end;
-
-        PathDataNode(char type, float[] params, int start, int end) {
-            this.mType = type;
-            this.mParams = params;
-            this.start = start;
-            this.end = end;
+    private static void addCommand(PathDelegate path, float[] current, char previousCmd, char cmd, float[] val, int count) {
+        int incr = 2;
+        float currentX = current[0];
+        float currentY = current[1];
+        float ctrlPointX = current[2];
+        float ctrlPointY = current[3];
+        float currentSegmentStartX = current[4];
+        float currentSegmentStartY = current[5];
+        switch(cmd) {
+            case 'A':
+            case 'a':
+                incr = 7;
+                break;
+            case 'C':
+            case 'c':
+                incr = 6;
+                break;
+            case 'H':
+            case 'V':
+            case 'h':
+            case 'v':
+                incr = 1;
+                break;
+         // case 'L', 'M', 'T', 'l', 'm', 't': incr = 2; break;
+            case 'Q':
+            case 'S':
+            case 'q':
+            case 's':
+                incr = 4;
+                break;
+            case 'Z':
+            case 'z':
+                path.close();
+                currentX = currentSegmentStartX;
+                currentY = currentSegmentStartY;
+                ctrlPointX = currentSegmentStartX;
+                ctrlPointY = currentSegmentStartY;
+                path.moveTo(currentSegmentStartX, currentSegmentStartY);
         }
 
-        private static void addCommand(PathDelegate path, float[] current, char previousCmd, char cmd, float[] val, int count) {
-            int incr = 2;
-            float currentX = current[0];
-            float currentY = current[1];
-            float ctrlPointX = current[2];
-            float ctrlPointY = current[3];
-            float currentSegmentStartX = current[4];
-            float currentSegmentStartY = current[5];
+        for(int k = 0; k < count; k += incr) {
+            float reflectiveCtrlPointX;
+            float reflectiveCtrlPointY;
             switch(cmd) {
                 case 'A':
-                case 'a':
-                    incr = 7;
+                    drawArc(path, currentX, currentY, val[k + 5], val[k + 6], val[k], val[k + 1], val[k + 2], val[k + 3] != 0.0F, val[k + 4] != 0.0F);
+                    currentX = val[k + 5];
+                    currentY = val[k + 6];
+                    ctrlPointX = currentX;
+                    ctrlPointY = currentY;
                     break;
                 case 'C':
-                case 'c':
-                    incr = 6;
+                    path.cubicTo(val[k], val[k + 1], val[k + 2], val[k + 3], val[k + 4], val[k + 5]);
+                    currentX = val[k + 4];
+                    currentY = val[k + 5];
+                    ctrlPointX = val[k + 2];
+                    ctrlPointY = val[k + 3];
                     break;
                 case 'H':
-                case 'V':
-                case 'h':
-                case 'v':
-                    incr = 1;
+                    path.lineTo(val[k], currentY);
+                    currentX = val[k];
                     break;
-             // case 'L', 'M', 'T', 'l', 'm', 't': incr = 2; break;
-                case 'Q':
-                case 'S':
-                case 'q':
-                case 's':
-                    incr = 4;
+                case 'L':
+                    path.lineTo(val[k], val[k + 1]);
+                    currentX = val[k];
+                    currentY = val[k + 1];
                     break;
-                case 'Z':
-                case 'z':
-                    path.close();
-                    currentX = currentSegmentStartX;
-                    currentY = currentSegmentStartY;
-                    ctrlPointX = currentSegmentStartX;
-                    ctrlPointY = currentSegmentStartY;
-                    path.moveTo(currentSegmentStartX, currentSegmentStartY);
-            }
-
-            for(int k = 0; k < count; k += incr) {
-                float reflectiveCtrlPointX;
-                float reflectiveCtrlPointY;
-                switch(cmd) {
-                    case 'A':
-                        drawArc(path, currentX, currentY, val[k + 5], val[k + 6], val[k], val[k + 1], val[k + 2], val[k + 3] != 0.0F, val[k + 4] != 0.0F);
-                        currentX = val[k + 5];
-                        currentY = val[k + 6];
-                        ctrlPointX = currentX;
-                        ctrlPointY = currentY;
-                        break;
-                    case 'C':
-                        path.cubicTo(val[k], val[k + 1], val[k + 2], val[k + 3], val[k + 4], val[k + 5]);
-                        currentX = val[k + 4];
-                        currentY = val[k + 5];
-                        ctrlPointX = val[k + 2];
-                        ctrlPointY = val[k + 3];
-                        break;
-                    case 'H':
-                        path.lineTo(val[k], currentY);
-                        currentX = val[k];
-                        break;
-                    case 'L':
+                case 'M':
+                    currentX = val[k];
+                    currentY = val[k + 1];
+                    if (k > 0) {
                         path.lineTo(val[k], val[k + 1]);
-                        currentX = val[k];
-                        currentY = val[k + 1];
-                        break;
-                    case 'M':
-                        currentX = val[k];
-                        currentY = val[k + 1];
-                        if (k > 0) {
-                            path.lineTo(val[k], val[k + 1]);
-                        } else {
-                            path.moveTo(val[k], val[k + 1]);
-                            currentSegmentStartX = currentX;
-                            currentSegmentStartY = currentY;
-                        }
-                        break;
-                    case 'Q':
-                        path.quadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
-                        ctrlPointX = val[k];
-                        ctrlPointY = val[k + 1];
-                        currentX = val[k + 2];
-                        currentY = val[k + 3];
-                        break;
-                    case 'S':
-                        reflectiveCtrlPointX = currentX;
-                        reflectiveCtrlPointY = currentY;
-                        if (previousCmd == 'c' || previousCmd == 's' || previousCmd == 'C' || previousCmd == 'S') {
-                            reflectiveCtrlPointX = 2.0F * currentX - ctrlPointX;
-                            reflectiveCtrlPointY = 2.0F * currentY - ctrlPointY;
-                        }
-
-                        path.cubicTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1], val[k + 2], val[k + 3]);
-                        ctrlPointX = val[k];
-                        ctrlPointY = val[k + 1];
-                        currentX = val[k + 2];
-                        currentY = val[k + 3];
-                        break;
-                    case 'T':
-                        reflectiveCtrlPointX = currentX;
-                        reflectiveCtrlPointY = currentY;
-                        if (previousCmd == 'q' || previousCmd == 't' || previousCmd == 'Q' || previousCmd == 'T') {
-                            reflectiveCtrlPointX = 2.0F * currentX - ctrlPointX;
-                            reflectiveCtrlPointY = 2.0F * currentY - ctrlPointY;
-                        }
-
-                        path.quadTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1]);
-                        ctrlPointX = reflectiveCtrlPointX;
-                        ctrlPointY = reflectiveCtrlPointY;
-                        currentX = val[k];
-                        currentY = val[k + 1];
-                        break;
-                    case 'V':
-                        path.lineTo(currentX, val[k]);
-                        currentY = val[k];
-                        break;
-                    case 'a':
-                        drawArc(path, currentX, currentY, val[k + 5] + currentX, val[k + 6] + currentY, val[k], val[k + 1], val[k + 2], val[k + 3] != 0.0F, val[k + 4] != 0.0F);
-                        currentX += val[k + 5];
-                        currentY += val[k + 6];
-                        ctrlPointX = currentX;
-                        ctrlPointY = currentY;
-                        break;
-                    case 'c':
-                        path.rCubicTo(val[k], val[k + 1], val[k + 2], val[k + 3], val[k + 4], val[k + 5]);
-                        ctrlPointX = currentX + val[k + 2];
-                        ctrlPointY = currentY + val[k + 3];
-                        currentX += val[k + 4];
-                        currentY += val[k + 5];
-                        break;
-                    case 'h':
-                        path.rLineTo(val[k], 0.0F);
-                        currentX += val[k];
-                        break;
-                    case 'l':
-                        path.rLineTo(val[k], val[k + 1]);
-                        currentX += val[k];
-                        currentY += val[k + 1];
-                        break;
-                    case 'm':
-                        currentX += val[k];
-                        currentY += val[k + 1];
-                        if (k > 0) {
-                            path.rLineTo(val[k], val[k + 1]);
-                        } else {
-                            path.rMoveTo(val[k], val[k + 1]);
-                            currentSegmentStartX = currentX;
-                            currentSegmentStartY = currentY;
-                        }
-                        break;
-                    case 'q':
-                        path.rQuadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
-                        ctrlPointX = currentX + val[k];
-                        ctrlPointY = currentY + val[k + 1];
-                        currentX += val[k + 2];
-                        currentY += val[k + 3];
-                        break;
-                    case 's':
-                        reflectiveCtrlPointX = 0.0F;
-                        reflectiveCtrlPointY = 0.0F;
-                        if (previousCmd == 'c' || previousCmd == 's' || previousCmd == 'C' || previousCmd == 'S') {
-                            reflectiveCtrlPointX = currentX - ctrlPointX;
-                            reflectiveCtrlPointY = currentY - ctrlPointY;
-                        }
-
-                        path.rCubicTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1], val[k + 2], val[k + 3]);
-                        ctrlPointX = currentX + val[k];
-                        ctrlPointY = currentY + val[k + 1];
-                        currentX += val[k + 2];
-                        currentY += val[k + 3];
-                        break;
-                    case 't':
-                        reflectiveCtrlPointX = 0.0F;
-                        reflectiveCtrlPointY = 0.0F;
-                        if (previousCmd == 'q' || previousCmd == 't' || previousCmd == 'Q' || previousCmd == 'T') {
-                            reflectiveCtrlPointX = currentX - ctrlPointX;
-                            reflectiveCtrlPointY = currentY - ctrlPointY;
-                        }
-
-                        path.rQuadTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1]);
-                        ctrlPointX = currentX + reflectiveCtrlPointX;
-                        ctrlPointY = currentY + reflectiveCtrlPointY;
-                        currentX += val[k];
-                        currentY += val[k + 1];
-                        break;
-                    case 'v':
-                        path.rLineTo(0.0F, val[k]);
-                        currentY += val[k];
-                }
-
-                previousCmd = cmd;
-            }
-
-            current[0] = currentX;
-            current[1] = currentY;
-            current[2] = ctrlPointX;
-            current[3] = ctrlPointY;
-            current[4] = currentSegmentStartX;
-            current[5] = currentSegmentStartY;
-        }
-
-        private static void drawArc(PathDelegate p, float x0, float y0, float x1, float y1, float a, float b, float theta, boolean isMoreThanHalf, boolean isPositiveArc) {
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "(" + x0 + "," + y0 + ")-(" + x1 + "," + y1 + ") {" + a + " " + b + "}");
-            double thetaD = Math.toRadians(theta);
-            double cosTheta = Math.cos(thetaD);
-            double sinTheta = Math.sin(thetaD);
-            double x0p = ((double)x0 * cosTheta + (double)y0 * sinTheta) / (double)a;
-            double y0p = ((double)(-x0) * sinTheta + (double)y0 * cosTheta) / (double)b;
-            double x1p = ((double)x1 * cosTheta + (double)y1 * sinTheta) / (double)a;
-            double y1p = ((double)(-x1) * sinTheta + (double)y1 * cosTheta) / (double)b;
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "unit space (" + x0p + "," + y0p + ")-(" + x1p + "," + y1p + ")");
-            double dx = x0p - x1p;
-            double dy = y0p - y1p;
-            double xm = (x0p + x1p) / 2.0D;
-            double ym = (y0p + y1p) / 2.0D;
-            double dsq = dx * dx + dy * dy;
-            if (dsq == 0.0D) {
-                LOGGER.log(Level.FINE, " Points are coincident");
-            } else {
-                double disc = 1.0D / dsq - 0.25D;
-                if (disc < 0.0D) {
-                    if (LOGGER.isLoggable(Level.FINE))
-                        LOGGER.log(Level.FINE, "Points are too far apart " + dsq);
-                    float adjust = (float)(Math.sqrt(dsq) / 1.99999D);
-                    drawArc(p, x0, y0, x1, y1, a * adjust, b * adjust, theta, isMoreThanHalf, isPositiveArc);
-                } else {
-                    double s = Math.sqrt(disc);
-                    double sdx = s * dx;
-                    double sdy = s * dy;
-                    double cx;
-                    double cy;
-                    if (isMoreThanHalf == isPositiveArc) {
-                        cx = xm - sdy;
-                        cy = ym + sdx;
                     } else {
-                        cx = xm + sdy;
-                        cy = ym - sdx;
+                        path.moveTo(val[k], val[k + 1]);
+                        currentSegmentStartX = currentX;
+                        currentSegmentStartY = currentY;
+                    }
+                    break;
+                case 'Q':
+                    path.quadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
+                    ctrlPointX = val[k];
+                    ctrlPointY = val[k + 1];
+                    currentX = val[k + 2];
+                    currentY = val[k + 3];
+                    break;
+                case 'S':
+                    reflectiveCtrlPointX = currentX;
+                    reflectiveCtrlPointY = currentY;
+                    if (previousCmd == 'c' || previousCmd == 's' || previousCmd == 'C' || previousCmd == 'S') {
+                        reflectiveCtrlPointX = 2.0F * currentX - ctrlPointX;
+                        reflectiveCtrlPointY = 2.0F * currentY - ctrlPointY;
                     }
 
-                    double eta0 = Math.atan2(y0p - cy, x0p - cx);
-                    if (LOGGER.isLoggable(Level.FINE))
-                        LOGGER.log(Level.FINE, "eta0 = Math.atan2( " + (y0p - cy) + " , " + (x0p - cx) + ") = " + Math.toDegrees(eta0));
-                    double eta1 = Math.atan2(y1p - cy, x1p - cx);
-                    if (LOGGER.isLoggable(Level.FINE))
-                        LOGGER.log(Level.FINE, "eta1 = Math.atan2( " + (y1p - cy) + " , " + (x1p - cx) + ") = " + Math.toDegrees(eta1));
-                    double sweep = eta1 - eta0;
-                    if (isPositiveArc != sweep >= 0.0D) {
-                        if (sweep > 0.0D) {
-                            sweep -= 6.283185307179586D;
-                        } else {
-                            sweep += 6.283185307179586D;
-                        }
+                    path.cubicTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1], val[k + 2], val[k + 3]);
+                    ctrlPointX = val[k];
+                    ctrlPointY = val[k + 1];
+                    currentX = val[k + 2];
+                    currentY = val[k + 3];
+                    break;
+                case 'T':
+                    reflectiveCtrlPointX = currentX;
+                    reflectiveCtrlPointY = currentY;
+                    if (previousCmd == 'q' || previousCmd == 't' || previousCmd == 'Q' || previousCmd == 'T') {
+                        reflectiveCtrlPointX = 2.0F * currentX - ctrlPointX;
+                        reflectiveCtrlPointY = 2.0F * currentY - ctrlPointY;
                     }
 
-                    cx *= a;
-                    cy *= b;
-                    double tcx = cx;
-                    cx = cx * cosTheta - cy * sinTheta;
-                    cy = tcx * sinTheta + cy * cosTheta;
-                    if (LOGGER.isLoggable(Level.FINE))
-                        LOGGER.log(Level.FINE, "cx, cy, a, b, x0, y0, thetaD, eta0, sweep = " + cx + " , " + cy + " , " + a + " , " + b + " , " + x0 + " , " + y0 + " , " + Math.toDegrees(thetaD) + " , " + Math.toDegrees(eta0) + " , " + Math.toDegrees(sweep));
-                    arcToBezier(p, cx, cy, a, b, x0, y0, thetaD, eta0, sweep);
+                    path.quadTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1]);
+                    ctrlPointX = reflectiveCtrlPointX;
+                    ctrlPointY = reflectiveCtrlPointY;
+                    currentX = val[k];
+                    currentY = val[k + 1];
+                    break;
+                case 'V':
+                    path.lineTo(currentX, val[k]);
+                    currentY = val[k];
+                    break;
+                case 'a':
+                    drawArc(path, currentX, currentY, val[k + 5] + currentX, val[k + 6] + currentY, val[k], val[k + 1], val[k + 2], val[k + 3] != 0.0F, val[k + 4] != 0.0F);
+                    currentX += val[k + 5];
+                    currentY += val[k + 6];
+                    ctrlPointX = currentX;
+                    ctrlPointY = currentY;
+                    break;
+                case 'c':
+                    path.rCubicTo(val[k], val[k + 1], val[k + 2], val[k + 3], val[k + 4], val[k + 5]);
+                    ctrlPointX = currentX + val[k + 2];
+                    ctrlPointY = currentY + val[k + 3];
+                    currentX += val[k + 4];
+                    currentY += val[k + 5];
+                    break;
+                case 'h':
+                    path.rLineTo(val[k], 0.0F);
+                    currentX += val[k];
+                    break;
+                case 'l':
+                    path.rLineTo(val[k], val[k + 1]);
+                    currentX += val[k];
+                    currentY += val[k + 1];
+                    break;
+                case 'm':
+                    currentX += val[k];
+                    currentY += val[k + 1];
+                    if (k > 0) {
+                        path.rLineTo(val[k], val[k + 1]);
+                    } else {
+                        path.rMoveTo(val[k], val[k + 1]);
+                        currentSegmentStartX = currentX;
+                        currentSegmentStartY = currentY;
+                    }
+                    break;
+                case 'q':
+                    path.rQuadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
+                    ctrlPointX = currentX + val[k];
+                    ctrlPointY = currentY + val[k + 1];
+                    currentX += val[k + 2];
+                    currentY += val[k + 3];
+                    break;
+                case 's':
+                    reflectiveCtrlPointX = 0.0F;
+                    reflectiveCtrlPointY = 0.0F;
+                    if (previousCmd == 'c' || previousCmd == 's' || previousCmd == 'C' || previousCmd == 'S') {
+                        reflectiveCtrlPointX = currentX - ctrlPointX;
+                        reflectiveCtrlPointY = currentY - ctrlPointY;
+                    }
+
+                    path.rCubicTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1], val[k + 2], val[k + 3]);
+                    ctrlPointX = currentX + val[k];
+                    ctrlPointY = currentY + val[k + 1];
+                    currentX += val[k + 2];
+                    currentY += val[k + 3];
+                    break;
+                case 't':
+                    reflectiveCtrlPointX = 0.0F;
+                    reflectiveCtrlPointY = 0.0F;
+                    if (previousCmd == 'q' || previousCmd == 't' || previousCmd == 'Q' || previousCmd == 'T') {
+                        reflectiveCtrlPointX = currentX - ctrlPointX;
+                        reflectiveCtrlPointY = currentY - ctrlPointY;
+                    }
+
+                    path.rQuadTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1]);
+                    ctrlPointX = currentX + reflectiveCtrlPointX;
+                    ctrlPointY = currentY + reflectiveCtrlPointY;
+                    currentX += val[k];
+                    currentY += val[k + 1];
+                    break;
+                case 'v':
+                    path.rLineTo(0.0F, val[k]);
+                    currentY += val[k];
+            }
+
+            previousCmd = cmd;
+        }
+
+        current[0] = currentX;
+        current[1] = currentY;
+        current[2] = ctrlPointX;
+        current[3] = ctrlPointY;
+        current[4] = currentSegmentStartX;
+        current[5] = currentSegmentStartY;
+    }
+
+    private static void drawArc(PathDelegate p, float x0, float y0, float x1, float y1, float a, float b, float theta, boolean isMoreThanHalf, boolean isPositiveArc) {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.log(Level.FINE, "(" + x0 + "," + y0 + ")-(" + x1 + "," + y1 + ") {" + a + " " + b + "}");
+        double thetaD = Math.toRadians(theta);
+        double cosTheta = Math.cos(thetaD);
+        double sinTheta = Math.sin(thetaD);
+        double x0p = ((double)x0 * cosTheta + (double)y0 * sinTheta) / (double)a;
+        double y0p = ((double)(-x0) * sinTheta + (double)y0 * cosTheta) / (double)b;
+        double x1p = ((double)x1 * cosTheta + (double)y1 * sinTheta) / (double)a;
+        double y1p = ((double)(-x1) * sinTheta + (double)y1 * cosTheta) / (double)b;
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.log(Level.FINE, "unit space (" + x0p + "," + y0p + ")-(" + x1p + "," + y1p + ")");
+        double dx = x0p - x1p;
+        double dy = y0p - y1p;
+        double xm = (x0p + x1p) / 2.0D;
+        double ym = (y0p + y1p) / 2.0D;
+        double dsq = dx * dx + dy * dy;
+        if (dsq == 0.0D) {
+            LOGGER.log(Level.FINE, " Points are coincident");
+        } else {
+            double disc = 1.0D / dsq - 0.25D;
+            if (disc < 0.0D) {
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "Points are too far apart " + dsq);
+                float adjust = (float)(Math.sqrt(dsq) / 1.99999D);
+                drawArc(p, x0, y0, x1, y1, a * adjust, b * adjust, theta, isMoreThanHalf, isPositiveArc);
+            } else {
+                double s = Math.sqrt(disc);
+                double sdx = s * dx;
+                double sdy = s * dy;
+                double cx;
+                double cy;
+                if (isMoreThanHalf == isPositiveArc) {
+                    cx = xm - sdy;
+                    cy = ym + sdx;
+                } else {
+                    cx = xm + sdy;
+                    cy = ym - sdx;
                 }
+
+                double eta0 = Math.atan2(y0p - cy, x0p - cx);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "eta0 = Math.atan2( " + (y0p - cy) + " , " + (x0p - cx) + ") = " + Math.toDegrees(eta0));
+                double eta1 = Math.atan2(y1p - cy, x1p - cx);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "eta1 = Math.atan2( " + (y1p - cy) + " , " + (x1p - cx) + ") = " + Math.toDegrees(eta1));
+                double sweep = eta1 - eta0;
+                if (isPositiveArc != sweep >= 0.0D) {
+                    if (sweep > 0.0D) {
+                        sweep -= 6.283185307179586D;
+                    } else {
+                        sweep += 6.283185307179586D;
+                    }
+                }
+
+                cx *= a;
+                cy *= b;
+                double tcx = cx;
+                cx = cx * cosTheta - cy * sinTheta;
+                cy = tcx * sinTheta + cy * cosTheta;
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "cx, cy, a, b, x0, y0, thetaD, eta0, sweep = " + cx + " , " + cy + " , " + a + " , " + b + " , " + x0 + " , " + y0 + " , " + Math.toDegrees(thetaD) + " , " + Math.toDegrees(eta0) + " , " + Math.toDegrees(sweep));
+                arcToBezier(p, cx, cy, a, b, x0, y0, thetaD, eta0, sweep);
             }
         }
+    }
 
-        private static void arcToBezier(PathDelegate p, double cx, double cy, double a, double b, double e1x, double e1y, double theta, double start, double sweep) {
-            int numSegments = (int)Math.ceil(Math.abs(sweep * 4.0D / 3.141592653589793D));
-            double eta1 = start;
-            double cosTheta = Math.cos(theta);
-            double sinTheta = Math.sin(theta);
-            double cosEta1 = Math.cos(start);
-            double sinEta1 = Math.sin(start);
-            double ep1x = -a * cosTheta * sinEta1 - b * sinTheta * cosEta1;
-            double ep1y = -a * sinTheta * sinEta1 + b * cosTheta * cosEta1;
-            double anglePerSegment = sweep / (double)numSegments;
+    private static void arcToBezier(PathDelegate p, double cx, double cy, double a, double b, double e1x, double e1y, double theta, double start, double sweep) {
+        int numSegments = (int)Math.ceil(Math.abs(sweep * 4.0D / 3.141592653589793D));
+        double eta1 = start;
+        double cosTheta = Math.cos(theta);
+        double sinTheta = Math.sin(theta);
+        double cosEta1 = Math.cos(start);
+        double sinEta1 = Math.sin(start);
+        double ep1x = -a * cosTheta * sinEta1 - b * sinTheta * cosEta1;
+        double ep1y = -a * sinTheta * sinEta1 + b * cosTheta * cosEta1;
+        double anglePerSegment = sweep / (double)numSegments;
 
-            for(int i = 0; i < numSegments; ++i) {
-                double eta2 = eta1 + anglePerSegment;
-                double sinEta2 = Math.sin(eta2);
-                double cosEta2 = Math.cos(eta2);
-                double e2x = cx + a * cosTheta * cosEta2 - b * sinTheta * sinEta2;
-                double e2y = cy + a * sinTheta * cosEta2 + b * cosTheta * sinEta2;
-                double ep2x = -a * cosTheta * sinEta2 - b * sinTheta * cosEta2;
-                double ep2y = -a * sinTheta * sinEta2 + b * cosTheta * cosEta2;
-                double tanDiff2 = Math.tan((eta2 - eta1) / 2.0D);
-                double alpha = Math.sin(eta2 - eta1) * (Math.sqrt(4.0D + 3.0D * tanDiff2 * tanDiff2) - 1.0D) / 3.0D;
-                double q1x = e1x + alpha * ep1x;
-                double q1y = e1y + alpha * ep1y;
-                double q2x = e2x - alpha * ep2x;
-                double q2y = e2y - alpha * ep2y;
-                p.cubicTo((float)q1x, (float)q1y, (float)q2x, (float)q2y, (float)e2x, (float)e2y);
-                eta1 = eta2;
-                e1x = e2x;
-                e1y = e2y;
-                ep1x = ep2x;
-                ep1y = ep2y;
-            }
-
+        for(int i = 0; i < numSegments; ++i) {
+            double eta2 = eta1 + anglePerSegment;
+            double sinEta2 = Math.sin(eta2);
+            double cosEta2 = Math.cos(eta2);
+            double e2x = cx + a * cosTheta * cosEta2 - b * sinTheta * sinEta2;
+            double e2y = cy + a * sinTheta * cosEta2 + b * cosTheta * sinEta2;
+            double ep2x = -a * cosTheta * sinEta2 - b * sinTheta * cosEta2;
+            double ep2y = -a * sinTheta * sinEta2 + b * cosTheta * cosEta2;
+            double tanDiff2 = Math.tan((eta2 - eta1) / 2.0D);
+            double alpha = Math.sin(eta2 - eta1) * (Math.sqrt(4.0D + 3.0D * tanDiff2 * tanDiff2) - 1.0D) / 3.0D;
+            double q1x = e1x + alpha * ep1x;
+            double q1y = e1y + alpha * ep1y;
+            double q2x = e2x - alpha * ep2x;
+            double q2y = e2y - alpha * ep2y;
+            p.cubicTo((float)q1x, (float)q1y, (float)q2x, (float)q2y, (float)e2x, (float)e2y);
+            eta1 = eta2;
+            e1x = e2x;
+            e1y = e2y;
+            ep1x = ep2x;
+            ep1y = ep2y;
         }
+
     }
 }

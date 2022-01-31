@@ -83,7 +83,7 @@
         <codeInsight.inlayProviderFactory implementation="net.aquadc.mike.plugin.interfaces.InterfaceHintsPF" />
 
         <lang.foldingBuilder
-                language="kotlin" implementationClass="net.aquadc.mike.plugin.kotlin.BackingPropertyFolding" />
+            language="kotlin" implementationClass="net.aquadc.mike.plugin.kotlin.BackingPropertyFolding" />
 
         <!--TODO globalInspection
             shortName="UnusedImpl" displayName="Unused implementation"

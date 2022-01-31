@@ -63,7 +63,7 @@ fun CallMatcher.test(expr: KtExpression): Boolean {
     val (refExpr, args) = if (expr is KtCallExpression) {
         val refExpr = expr.referenceExpression() ?: return false
 
-        val name = refExpr?.referencedName ?: return false
+        val name = refExpr.referencedName ?: return false
         if (names().noneMatch { it == name }) return false
 
         refExpr to expr.valueArguments.size
