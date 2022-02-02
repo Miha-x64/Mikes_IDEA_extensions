@@ -30,7 +30,7 @@ import com.intellij.psi.impl.source.tree.java.PsiLiteralExpressionImpl.parseStri
 import com.intellij.psi.util.PsiLiteralUtil.*
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.SmartList
-import libcore.util.EmptyArray
+import it.unimi.dsi.fastutil.bytes.ByteArrays
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
@@ -79,7 +79,7 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
             if (colorInt == 1) {
                 holder.registerProblem(argSrc, "$literal is not a valid color", ProblemHighlightType.GENERIC_ERROR)
             } else if (colorInt != 2) { // 2 == non-constant expression, give up
-                val hex = colorInt.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, EmptyArray.BYTE)
+                val hex = colorInt.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, ByteArrays.EMPTY_ARRAY)
                 val const = colorConstantValues.indexOf(colorInt).let { if (it < 0) null else colorConstantNames[it] }
                 val replacement = if (const == null) "$hex literal" else "Color.$const constant"
                 holder.registerProblem(
@@ -204,7 +204,7 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
             regions.add(
                 FoldingDescriptor(
                     node, node.textRange, null,
-                    colorInt.toPaddedUpperHex(colorInt.opaque6translucent8, COLOR_PREFIX_HASH, EmptyArray.BYTE)
+                    colorInt.toPaddedUpperHex(colorInt.opaque6translucent8, COLOR_PREFIX_HASH, ByteArrays.EMPTY_ARRAY)
                 )
             )
         }
@@ -268,7 +268,7 @@ class CopyPasteColor : CopyPastePreProcessor {
             else -> 1
         }
         return if (color == 1) text else {
-            val hex = color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, EmptyArray.BYTE)
+            val hex = color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, ByteArrays.EMPTY_ARRAY)
             val kotlin = file.language == KotlinLanguage.INSTANCE
             identifier?.insert(0, if (kotlin) "private const val " else "private static final int ")
                 ?.append(" = ")?.append(hex)?.append(if (kotlin) ".toInt()" else ";")?.toString()

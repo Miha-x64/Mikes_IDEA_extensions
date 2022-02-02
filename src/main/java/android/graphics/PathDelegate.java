@@ -1,7 +1,7 @@
 package android.graphics;
 
 import gnu.trove.TIntArrayList;
-import libcore.util.EmptyArray;
+import it.unimi.dsi.fastutil.floats.FloatArrays;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.geom.Path2D;
@@ -116,7 +116,7 @@ public final class PathDelegate {
         char previousCommand = 'm';
 
         int[] tmp = new int[1];
-        float[] buf = EmptyArray.FLOAT;
+        float[] buf = FloatArrays.EMPTY_ARRAY;
         for (; end < pathData.length(); start = end++) {
             end = nextStart(pathData, end);
             while (pathData.charAt(start) <= ' ') start++;
@@ -133,7 +133,7 @@ public final class PathDelegate {
         }
 
         if (end - start == 1 && start < pathData.length())
-            addCommand(path, current, previousCommand, pathData.charAt(start), EmptyArray.FLOAT, 0);
+            addCommand(path, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0);
 
         return path.getJavaShape();
     }

@@ -3,6 +3,7 @@
     <li>More accuracy when detecting empty areas in vectors</li>
     <li>Reworked Reflective Property Animation inspection with various fixes</li>
     <li>Vector drawable analysis: fix crash on bad paths</li>
+    <li>Fix crash due to absent libcore</li>
   </ul>
 
 
