@@ -106,18 +106,22 @@ private class InterfaceHintsCollector(
             }
         }
         settings.upcast && element is KtCallExpression -> {
-            element.valueArguments.takeIf(List<*>::isNotEmpty)?.let { args ->
-                element.calleeExpression?.mainReference?.resolve()?.functionParams?.let { params ->
-                    args.forEachIndexed { idx, arg: KtValueArgument ->
-                        val name = arg.getArgumentName()?.asName?.asString()
-                        (if (name != null) params.firstOrNull { it.first == name } else params.getOrNull(idx))
-                            ?.second?.let { pType ->
-                                arg.getArgumentExpression()?.toUElementOfType<UExpression>()
-                                    ?.getExpressionType()?.let { aType ->
-                                        element.referenceExpression()?.referencedName?.let { methodName ->
-                                            visitParameter(methodName, pType, aType, arg.textRange.endOffset, sink)
-                                        }
-                                    }
+            element.calleeExpression?.mainReference?.resolve()?.functionParams?.let { params ->
+                val args = element.valueArgumentList?.arguments
+                val lambdaArg = element.lambdaArguments.singleOrNull()
+                params.forEachIndexed { idx, (pName, pType) ->
+                    if (pType != null) {
+                        val arg =
+                            lambdaArg.takeIf { idx == params.lastIndex } ?:
+                                args?.let {
+                                    args.firstOrNull { it.getArgumentName()?.asName?.asString() == pName }
+                                        ?: args.getOrNull(idx)
+                                }
+                        arg?.getArgumentExpression()?.toUElementOfType<UExpression>()
+                            ?.getExpressionType()?.let { aType ->
+                                element.referenceExpression()?.referencedName?.let { methodName ->
+                                    visitParameter(methodName, pType, aType, arg.textRange.endOffset, sink)
+                                }
                             }
                     }
                 }

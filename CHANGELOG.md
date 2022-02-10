@@ -3,6 +3,7 @@
     <li>Reworked Reflective Property Animation inspection with various fixes</li>
     <li>Vector drawable analysis: better accuracy when detecting emptiness, fix crash on bad paths, add resource resolution, fix trimming accuracy</li>
     <li>Fix crash due to absent libcore</li>
+    <li>Fix interface upcast inlay hints for lambda argument outside of parentheses</li>
   </ul>
 
 
