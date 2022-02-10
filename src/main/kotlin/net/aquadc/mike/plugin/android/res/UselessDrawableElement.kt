@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin.android
+package net.aquadc.mike.plugin.android.res
 
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder

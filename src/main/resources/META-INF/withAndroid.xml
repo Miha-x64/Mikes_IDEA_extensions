@@ -3,11 +3,9 @@
     <extensions defaultExtensionNs="com.intellij">
 
         <localInspection
-                language="XML"
-                shortName="androidUnsupportedXmlAttr" displayName="Unsupported attribute"
-                groupName="Android"
-                enabledByDefault="true" level="ERROR"
-                implementationClass="net.aquadc.mike.plugin.android.UnsupportedAttrInspection" />
+            language="XML" groupName="Android" enabledByDefault="true" level="ERROR"
+            shortName="androidUnsupportedXmlAttr" displayName="Unsupported attribute"
+            implementationClass="net.aquadc.mike.plugin.android.res.UnsupportedAttrInspection" />
 
         <localInspection
             shortName="androidUnsupportedFeature" groupName="Android" language="UAST" enabledByDefault="true"
@@ -46,7 +44,7 @@
         <localInspection
             shortName="uselessDrawableElement" groupName="Android" language="XML" enabledByDefault="true"
             level="WARNING" displayName="Useless resource element"
-            implementationClass="net.aquadc.mike.plugin.android.UselessResElement" />
+            implementationClass="net.aquadc.mike.plugin.android.res.UselessResElement" />
 
         <localInspection
             shortName="ReplaceAndroidMethodWithKotlinAnalog"

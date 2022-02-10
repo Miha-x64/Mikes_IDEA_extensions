@@ -1,4 +1,4 @@
-package net.aquadc.mike.plugin.android
+package net.aquadc.mike.plugin.android.res
 
 import com.android.resources.ResourceFolderType.*
 import com.android.tools.idea.util.androidFacet

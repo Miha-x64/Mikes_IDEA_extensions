@@ -1,7 +1,9 @@
-package net.aquadc.mike.plugin.android
+package net.aquadc.mike.plugin.android.res
 
 import android.graphics.PixelFormat
+import com.android.ide.common.resources.ResourceResolver
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
@@ -24,13 +26,13 @@ private val nullToZero = null to 0
 /**
  * @return merged area, opaque merged area
  */
-internal fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Pair<Area, Area?>? {
+internal fun ProblemsHolder.toArea(rr: ResourceResolver?, tag: XmlTag, outline: Path2D): Pair<Area, Area?>? {
     val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) =
         pathAttrs.map<String, XmlAttribute?>(XmlAttribute.EMPTY_ARRAY) { tag.getAttribute(it, ANDROID_NS) }
     val fillColor = fCol ?: tag.findAaptAttrTag("fillColor")
-    val (fillArea, fillOpacity) = fill(outline, fillColor, fType, fA) ?: nullToZero
+    val (fillArea, fillOpacity) = fill(rr, outline, fillColor, fType, fA) ?: nullToZero
     val strokeColor = sCol ?: tag.findAaptAttrTag("strokeColor")
-    val (stroke, strokeOpacity) = stroke(outline, sWidth, strokeColor, sCap, sJoin, sMiter, sA) ?: nullToZero
+    val (stroke, strokeOpacity) = stroke(rr, outline, sWidth, strokeColor, sCap, sJoin, sMiter, sA) ?: nullToZero
     val strokeArea = stroke?.createStrokedShape(outline)?.let(::Area)
 
     if (fillArea == null && strokeArea == null) {
@@ -40,6 +42,8 @@ internal fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Pair<Area, Are
 
     val opaqueFill = fillArea?.takeIf { fillOpacity == PixelFormat.OPAQUE }
     val opaqueStroke = strokeArea?.takeIf { strokeOpacity == PixelFormat.OPAQUE }
+
+    // TODO detect when stroke overdraws fill
 
     // Dear reader, I'm very sorry for the crap following:
     return if (fillArea != null && strokeArea != null) {
@@ -52,14 +56,14 @@ internal fun ProblemsHolder.toArea(tag: XmlTag, outline: Path2D): Pair<Area, Are
 /**
  * @return filled area and its opacity
  */
-private fun ProblemsHolder.fill(outline: Path2D, col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?): Pair<Area, Int>? {
-    val opacity = col.opacity(toFloat(a, 1f))
+private fun ProblemsHolder.fill(rr: ResourceResolver?, outline: Path2D, col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?): Pair<Area, Int>? {
+    val opacity = col.opacity(rr, toFloat(rr, a, 1f))
     if (opacity == PixelFormat.TRANSPARENT) {
         reportNoFill(col, type, a, "attribute has no effect with uncolored or transparent fill")
         return null
     }
 
-    val evenOdd = toString(type, "nonZero") == "evenOdd"
+    val evenOdd = toString(rr, type, "nonZero") == "evenOdd"
     if (evenOdd)
         outline.windingRule = Path2D.WIND_EVEN_ODD
     val area = Area(outline)
@@ -84,16 +88,17 @@ private val dummyFloats = FloatArray(6)
  * @return stroke and opacity
  */
 private fun ProblemsHolder.stroke(
+    rr: ResourceResolver?,
     outline: Path2D,
     width: XmlAttribute?, col: XmlElement?, cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?,
     a: XmlAttribute?
 ): Pair<BasicStroke, Int>? {
-    val strokeWidth = toFloat(width, 0f)
-    val opacity = col.opacity(toFloat(a, 1f))
+    val strokeWidth = toFloat(rr, width, 0f)
+    val opacity = col.opacity(rr, toFloat(rr, a, 1f))
     return if (strokeWidth != 0f && opacity != PixelFormat.TRANSPARENT) {
-        val capName = toString(cap, "butt")
-        val joinName = toString(join, "miter")
-        checkStroke(outline, cap?.takeIf { capName != "butt" }, join?.takeIf { joinName != "miter" })
+        val capName = toString(rr, cap, "butt")
+        val joinName = toString(rr, join, "miter")
+        checkStroke(outline, cap, join)
         BasicStroke(
             strokeWidth,
             when (capName) {
@@ -106,7 +111,7 @@ private fun ProblemsHolder.stroke(
                 "bevel" -> BasicStroke.JOIN_BEVEL
                 else -> BasicStroke.JOIN_MITER
             },
-            toFloat(miter, 4f)
+            toFloat(rr, miter, 4f)
         ) to opacity
     } else {
         width?.let { report(it, "attribute has no effect", removeAttrFix) }
@@ -137,11 +142,10 @@ private fun ProblemsHolder.checkStroke(outline: Path2D, cap: XmlAttribute?, join
     if (!joins && join != null) report(join, "attribute has no effect", removeAttrFix)
 }
 
-private fun XmlElement?.opacity(alpha: Float) =
-    if (alpha == 0f) PixelFormat.TRANSPARENT else when (this) {
-        null -> PixelFormat.TRANSPARENT
-        is XmlAttribute -> value?.takeIf(String::isNotBlank)?.let {
-            when (it.length.takeIf { _ -> it.startsWith('#') }) {
+private fun XmlElement?.opacity(rr: ResourceResolver?, alpha: Float) =
+    if (alpha == 0f || this == null) PixelFormat.TRANSPARENT else when (this) {
+        is XmlAttribute -> rr.resolve(this)?.takeIf { it.isNotBlank() && !it.endsWith(".xml") }?.let {
+            when (it.length.takeIf { _ -> it.startsWith('#') }) { //              TODO ^^^^ resolve color state lists
                 4, 7 ->
                     if (alpha == 1f) PixelFormat.OPAQUE
                     else PixelFormat.TRANSLUCENT
@@ -154,14 +158,8 @@ private fun XmlElement?.opacity(alpha: Float) =
                     else if (it[1].equals('f', true) && it[2].equals('f', true) && alpha == 1f) PixelFormat.OPAQUE
                     else PixelFormat.TRANSLUCENT
                 else ->
-                    null
-            } ?: when (it) {
-                "@android:color/transparent" ->
-                    PixelFormat.TRANSPARENT
-                "@android:color/black", "@android:color/white" ->
-                    if (alpha == 1f) PixelFormat.OPAQUE else PixelFormat.TRANSLUCENT
-                else -> // TODO AndroidAnnotatorUtil.pickConfiguration(file, androidFacet).resourceResolver.…
-                    PixelFormat.UNKNOWN
+                    Logger.getInstance("Mike's IDEA Extensions: VectorPaths").error("Unexpected color format: $it")
+                        .let { null }
             }
         } ?: PixelFormat.UNKNOWN
         is XmlTag -> PixelFormat.UNKNOWN

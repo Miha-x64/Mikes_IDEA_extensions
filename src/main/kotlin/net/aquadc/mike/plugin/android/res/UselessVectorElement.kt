@@ -1,6 +1,9 @@
-package net.aquadc.mike.plugin.android
+package net.aquadc.mike.plugin.android.res
 
 import android.graphics.PathDelegate
+import com.android.ide.common.resources.ResourceResolver
+import com.android.tools.idea.configurations.ConfigurationManager
+import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
@@ -44,10 +47,13 @@ private val inlineGroupFix = object : NamedLocalQuickFix("Inline contents") {
 }
 
 internal fun ProblemsHolder.checkVector(tag: XmlTag) {
-    val maxIntrinsicWidthPx = tag.getAttributeValue("width", ANDROID_NS).toPixels()
-    val maxIntrinsicHeightPx = tag.getAttributeValue("height", ANDROID_NS).toPixels()
-    val vWidth = tag.getAttributeValue("viewportWidth", ANDROID_NS)?.toFloatOrNull() ?: Float.NaN
-    val vHeight = tag.getAttributeValue("viewportHeight", ANDROID_NS)?.toFloatOrNull() ?: Float.NaN
+    val rr =
+        tag.androidFacet?.let { ConfigurationManager.getOrCreateInstance(it).getConfiguration(file.virtualFile).resourceResolver }
+
+    val maxIntrinsicWidthPx = rr.resolve(tag, "width", ANDROID_NS).toPixels()
+    val maxIntrinsicHeightPx = rr.resolve(tag, "height", ANDROID_NS).toPixels()
+    val vWidth = rr.resolve(tag, "viewportWidth", ANDROID_NS)?.toFloatOrNull() ?: Float.NaN
+    val vHeight = rr.resolve(tag, "viewportHeight", ANDROID_NS)?.toFloatOrNull() ?: Float.NaN
 
     val xDensity = maxIntrinsicWidthPx / vWidth
     val yDensity = maxIntrinsicHeightPx / vHeight
@@ -67,7 +73,7 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) {
     val pathTags = SmartList<XmlTag>()
     val paths = SmartList<Area>()
     checkVectorGroup(
-        tag, null, viewport, null, usefulPrecision,
+        rr, tag, null, viewport, null, usefulPrecision,
         pathTags, paths, SmartList(), SmartList(), TIntHashSet(),
     )
 
@@ -98,9 +104,11 @@ private fun String?.toPixels() = when {
     endsWith("px") -> substring(0, 2).toFloatOrNull() ?: Float.NaN
     else -> Float.NaN
 }
-private fun String.scaled(skip: Int, factor: Float) = (substring(0, skip).toFloatOrNull() ?: Float.NaN) * factor
+private fun String.scaled(skip: Int, factor: Float) =
+    (substring(0, length - skip).toFloatOrNull() ?: Float.NaN) * factor
 
 private fun ProblemsHolder.checkVectorGroup(
+    rr: ResourceResolver?,
     tag: XmlTag,
     parentMatrix: AffineTransform?,
     viewport: Area?,
@@ -123,7 +131,7 @@ private fun ProblemsHolder.checkVectorGroup(
 
     val transformations =
         if (isRoot) null
-        else FloatArray(vectorTransforms.size) { getFloat(tag, vectorTransforms[it], vectorTransformDefaults[it]) }
+        else FloatArray(vectorTransforms.size) { getFloat(rr, tag, vectorTransforms[it], vectorTransformDefaults[it]) }
 
     val maxClipTagCount = tag.subTags.size - visualTagsCount
     var clipTagCount = -1
@@ -138,14 +146,19 @@ private fun ProblemsHolder.checkVectorGroup(
             report(tag, "Useless group: no name, no transformations, no clip-paths", inlineGroupFix)
         else if (noSiblings)
             report(tag, "Useless group: no name, no transformations, no siblings", inlineGroupFix)
-        // TODO also reports groups with mergeable transforms etc
+        // TODO also report single-path and single-group groups
     }
 
-    val matrix = localMatrix(transformations, getFloat(tag, "pivotX", 0f), getFloat(tag, "pivotY", 0f), parentMatrix)
+    val matrix = localMatrix(
+        transformations,
+        getFloat(rr, tag, "pivotX", 0f),
+        getFloat(rr, tag, "pivotY", 0f),
+        parentMatrix
+    )
 
     val myClipsFrom = clipTags.size
     val commonClip = if (maxClipTagCount > 0 && clipTagCount != 0) {
-        gatherClips(tag, matrix, isRoot, parentClip, clipTags, clips, usefulPrecision)
+        gatherClips(rr, tag, matrix, isRoot, parentClip, clipTags, clips, usefulPrecision)
         check(clipTags.size == clips.size)
         when (clipTags.size - myClipsFrom) {
             0 -> null
@@ -159,8 +172,8 @@ private fun ProblemsHolder.checkVectorGroup(
         val pathTag = pathTagsIter.next()
 
         pathTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
-            parse(pathData, matrix, usefulPrecision)?.let { outline ->
-                toArea(pathTag, outline)?.let { (area, opaqueArea) ->
+            parse(rr, pathData, matrix, usefulPrecision)?.let { outline ->
+                toArea(rr, pathTag, outline)?.let { (area, opaqueArea) ->
                     checkPath(pathTag, area, viewport, commonClip, clips, usefulClips, usefulPrecision)
                     if (opaqueArea != null && paths.isNotEmpty()) {
                         paths.forEach { it?.subtract(opaqueArea) }
@@ -178,7 +191,7 @@ private fun ProblemsHolder.checkVectorGroup(
 
     groupTags.forEach {
         checkVectorGroup(
-            it, matrix, viewport, commonClip ?: parentClip, usefulPrecision,
+            rr, it, matrix, viewport, commonClip ?: parentClip, usefulPrecision,
             pathTags, paths,
             clipTags, clips, usefulClips,
         )
@@ -221,16 +234,16 @@ private fun localMatrix(transforms: FloatArray?, px: Float, py: Float, outerMatr
     }
 }
 
-private fun ProblemsHolder.getFloat(tag: XmlTag, name: String, default: Float): Float =
-    toFloat(tag.getAttribute(name, ANDROID_NS), default)
+private fun ProblemsHolder.getFloat(rr: ResourceResolver?, tag: XmlTag, name: String, default: Float): Float =
+    toFloat(rr, tag.getAttribute(name, ANDROID_NS), default)
 
-internal fun ProblemsHolder.toFloat(attr: XmlAttribute?, default: Float): Float {
-    val value = attr?.value?.toFloatOrNull()
+internal fun ProblemsHolder.toFloat(rr: ResourceResolver?, attr: XmlAttribute?, default: Float): Float {
+    val value = attr?.let(rr::resolve)?.toFloatOrNull()
     if (value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
 }
-internal fun ProblemsHolder.toString(attr: XmlAttribute?, default: String): String {
-    val value = attr?.value
+internal fun ProblemsHolder.toString(rr: ResourceResolver?, attr: XmlAttribute?, default: String): String {
+    val value = attr?.let(rr::resolve)
     if (value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
 }
@@ -241,8 +254,7 @@ private fun ProblemsHolder.intersectAndCheckClips(
     clipTags: SmartList<XmlTag>, ourClipsFrom: Int,
     usefulPrecision: Int,
 ): Area? {
-    val intersection = Area()
-    clips.intersect(intersection, ourClipsFrom)
+    val intersection = clips.subIntersection(ourClipsFrom)
     return if (intersection.effectivelyEmpty(usefulPrecision)) {
         registerProblem(
             tag,
@@ -253,7 +265,6 @@ private fun ProblemsHolder.intersectAndCheckClips(
     } else {
         val victim = Area()
         var i = ourClipsFrom
-        var met = false
         while (i < clips.size) {
             victim.add(intersection)
             victim.subtract(clips[i])
@@ -261,23 +272,21 @@ private fun ProblemsHolder.intersectAndCheckClips(
                 report(clipTags[i], "The clip-path is superseded by its siblings", removeTagFix)
                 clipTags.removeAt(i)
                 clips.removeAt(i) // never analyze this path further
-                met = true
             } else i++
         }
-        if (met) check(Area().also { clips.intersect(it, ourClipsFrom) }.equals(intersection))
         intersection
     }
 }
 
-private fun List<Area>.intersect(into: Area, from: Int) {
-    var first = true
-    for (i in from until size)
-        if (first) into.add(this[i]).also { first = false }
-        else into.intersect(this[i])
+private fun List<Area>.subIntersection(from: Int): Area {
+    var i = from
+    val area = Area(this[i++])
+    while (i < size) area.intersect(this[i++])
+    return area
 }
 
 private fun ProblemsHolder.gatherClips(
-    tag: XmlTag, matrix: AffineTransform?, isRoot: Boolean, parentClip: Area?,
+    rr: ResourceResolver?, tag: XmlTag, matrix: AffineTransform?, isRoot: Boolean, parentClip: Area?,
     tagsTo: SmartList<XmlTag>, clipsTo: SmartList<Area>, usefulPrecision: Int
 ) {
     val tagsFrom = tagsTo.size
@@ -294,7 +303,7 @@ private fun ProblemsHolder.gatherClips(
             )
             clipTagsIter.remove()
         } else {
-            val clipArea = parse(pathData, matrix, usefulPrecision)?.let(::Area)
+            val clipArea = parse(rr, pathData, matrix, usefulPrecision)?.let(::Area)
             if (clipArea == null) {
                 clipTagsIter.remove() // bad path, ignore
             } else if (clipArea.effectivelyEmpty(usefulPrecision)) {
@@ -324,9 +333,10 @@ private fun ProblemsHolder.gatherClips(
     }
 }
 
-private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTransform?, usefulPrecision: Int): Path2D? {
+private fun ProblemsHolder.parse(rr: ResourceResolver?, pathAttr: XmlAttributeValue, matrix: AffineTransform?, usefulPrecision: Int): Path2D? {
     val outRanges = TIntArrayList()
-    val pathData = pathAttr.value
+    val rawPathData = pathAttr.value
+    val pathData = rr.resolve(rawPathData) ?: return null
     val path = PathDelegate.parse(pathData, outRanges, usefulPrecision)
     val rangeNodeCount = outRanges.size()
     val rangeCount = rangeNodeCount / 2
@@ -338,17 +348,19 @@ private fun ProblemsHolder.parse(pathAttr: XmlAttributeValue, matrix: AffineTran
                 break
             }
         }
+
         if (canTrimCarefully || isOnTheFly) {
-            val beginValueAt = pathAttr.text.indexOf(pathData)
+            val beginValueAt = pathAttr.text.indexOf(rawPathData)
             registerProblem(
                 pathAttr,
                 "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
-                if (canTrimCarefully) ProblemHighlightType.WEAK_WARNING else ProblemHighlightType.INFORMATION,
-                TextRange.from(beginValueAt + outRanges[0], beginValueAt + outRanges[rangeNodeCount - 1] - outRanges[0] - 1),
+                ProblemHighlightType.WEAK_WARNING,
+                if (pathData === rawPathData)
+                    TextRange(beginValueAt + outRanges[0], beginValueAt + outRanges[rangeNodeCount - 1])
+                else TextRange.from(beginValueAt, rawPathData.length),
 
-                // “Trim heavily” was “aggressively” before but IDEA sorts options alphabetically.
-                if (canTrimCarefully) TrimFix(outRanges, "Trim carefully", usefulPrecision + 1) else null,
-                TrimFix(outRanges, "Trim heavily (may decrease accuracy)", usefulPrecision),
+                if (isOnTheFly) TrimFix(outRanges, "Trim aggressively", usefulPrecision, pathData) else null,
+                if (canTrimCarefully) TrimFix(outRanges, "Trim carefully", usefulPrecision + 1, pathData) else null,
             )
         }
     } // TODO check for useless operations
@@ -361,9 +373,10 @@ private class TrimFix(
     private val ranges: TIntArrayList,
     name: String,
     private val targetPrecision: Int,
+    private val pathData: String,
 ) : NamedLocalQuickFix(name) {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val value = StringBuilder((descriptor.psiElement as XmlAttributeValue).value)
+        val value = StringBuilder(pathData)
         val tmpFloat = StringBuilder(10)
         for (i in (ranges.size()-2) downTo 0 step 2) {
             val start = ranges[i]
@@ -473,8 +486,8 @@ private fun Area.effectivelyEmpty(usefulPrecision: Int): Boolean =
     isEmpty || (usefulPrecision >= 0 && effectiveAreaEmpty(usefulPrecision))
 
 private fun Area.effectiveAreaEmpty(usefulPrecision: Int): Boolean {
-    var sqPx = 1 / 10f.pow(usefulPrecision)
-    sqPx *= sqPx
-    return bounds2D.let { it.width * it.height } < sqPx ||
-            computeSubShapes(this).all { computeSignedArea(it, 0.0).absoluteValue < sqPx }
+    val px = 1 / 10f.pow(usefulPrecision)
+    val minArea = 3 * px * px // at least 3 square pixels on xxxxxxxhhhhdpi, maybe?
+    return bounds2D.let { it.width < px || it.height < px ||  it.width * it.height < minArea } ||
+            computeSubShapes(this).all { computeSignedArea(it, 0.0).absoluteValue < minArea }
 }
