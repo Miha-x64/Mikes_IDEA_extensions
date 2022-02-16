@@ -114,7 +114,8 @@ private class InterfaceHintsCollector(
                         val arg =
                             lambdaArg.takeIf { idx == params.lastIndex } ?:
                                 args?.let {
-                                    args.firstOrNull { it.getArgumentName()?.asName?.asString() == pName }
+                                    args.takeIf { pName != null }
+                                        ?.firstOrNull { it.getArgumentName()?.asName?.asString() == pName }
                                         ?: args.getOrNull(idx)
                                 }
                         arg?.getArgumentExpression()?.toUElementOfType<UExpression>()

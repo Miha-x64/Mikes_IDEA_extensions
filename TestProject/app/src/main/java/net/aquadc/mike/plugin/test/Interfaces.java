@@ -3,6 +3,7 @@ package net.aquadc.mike.plugin.test;
 import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
 import kotlin.Function;
 import kotlin.jvm.functions.Function1;
 
@@ -26,6 +27,7 @@ public class Interfaces implements Cloneable {
         );
         str("", "", "", "");
         consumeSerializable(new ArrayList<Void>()); // don't show, it's obvious from method name
+        Toast.makeText(null, null, Toast.LENGTH_LONG).show();
     }
 
     static void collections(ArrayList al, Iterable it, Collection co, List l, RandomAccess a, Cloneable c, Serializable s) {

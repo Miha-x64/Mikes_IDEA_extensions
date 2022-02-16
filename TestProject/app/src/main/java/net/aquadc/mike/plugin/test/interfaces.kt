@@ -1,4 +1,5 @@
 @file:Suppress("ktNoinlineFunc", "UNUSED_PARAMETER")
+import android.widget.Toast
 import java.io.Serializable
 
 
@@ -9,6 +10,7 @@ class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
         1.topExt(1, emptyList(), this, this, this)
         member(1, 1, emptyList(), this, this, this)
         1.memberExt(1, emptyList(), this, r = this, cl = this)
+        Toast.makeText(null, null, Toast.LENGTH_LONG).show()
     }
 
     override val size: Int

@@ -1,3 +1,8 @@
+### 0.21
+  <ul>
+    <li>Fix interface upcast hints after last fix</li>
+  </ul>
+
 ### 0.20
   <ul>
     <li>Reworked Reflective Property Animation inspection with various fixes</li>
