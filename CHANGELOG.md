@@ -1,6 +1,7 @@
 ### 0.21
   <ul>
     <li>Fix interface upcast hints after last fix</li>
+    <li>Fix vector path optimizations: don't let numbers stick together when optimizing -0.01 to 0</li>
   </ul>
 
 ### 0.20

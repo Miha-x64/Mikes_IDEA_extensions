@@ -381,8 +381,10 @@ private class TrimFix(
         for (i in (ranges.size()-2) downTo 0 step 2) {
             val start = ranges[i]
             val end = ranges[i + 1]
-            value.replace(start, end, tmpFloat.append(value, start, end).trimToPrecision())
-            tmpFloat.clear()
+            val minus = tmpFloat.replace(0, tmpFloat.length, value, start, end)[0] == '-'
+            if (tmpFloat.trimToPrecision()[0] != '-' && minus && value[start - 1].isDigit())
+                tmpFloat.insert(0, ' ')
+            value.replace(start, end, tmpFloat)
         }
         (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
     }
@@ -446,12 +448,17 @@ private class TrimFix(
         return this
     }
 
-    private fun StringBuilder.replace(from: Int, to: Int, with: CharSequence) {
-        val victimLen = to - from
-        val replLen = with.length
-        repeat(min(victimLen, replLen)) { this[from + it] = with[it] }
-        if (replLen > victimLen) insert(from + victimLen, with, victimLen, replLen)
-        else delete(from + replLen, from + victimLen)
+    private fun StringBuilder.replace(
+        at: Int, till: Int,
+        with: CharSequence, from: Int = 0, to: Int = with.length,
+    ): StringBuilder {
+        val victimLen = till - at
+        val replLen = to - from
+        repeat(min(victimLen, replLen)) { this[at + it] = with[from + it] }
+        return if (replLen > victimLen)
+            insert(at + victimLen, with, from + victimLen, from + replLen)
+        else
+            delete(at + replLen, at + victimLen)
     }
 
     private inline val Boolean.asInt get() = if (this) 1 else 0
