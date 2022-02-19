@@ -1,12 +1,14 @@
 package net.aquadc.mike.plugin.android
 
 import com.android.tools.idea.util.androidFacet
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiClassType
 import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.test
+import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UImportStatement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -21,9 +23,15 @@ class UnsupportedFeatureInspection : UastInspection() {
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
 
         override fun visitImportStatement(node: UImportStatement): Boolean {
-            // TODO report kotlinx.android.synthetic.
-            // holder.registerProblem(node, "Kotlin Android Extensions are deprecated", ProblemHighlightType.LIKE_DEPRECATED)
-            return super.visitImportStatement(node)
+            val psi = (node.sourcePsi as? KtImportDirective)
+            if (psi != null && psi.importPath?.pathStr?.startsWith("kotlinx.android.synthetic") == true) {
+                holder.registerProblem(
+                    psi.importedReference ?: psi,
+                    "Kotlin Android Extensions are deprecated",
+                    ProblemHighlightType.LIKE_DEPRECATED,
+                )
+            }
+            return true
         }
 
         override fun visitCallExpr(node: UCallExpression): Boolean {

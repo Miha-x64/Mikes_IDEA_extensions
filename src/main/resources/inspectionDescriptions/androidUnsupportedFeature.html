@@ -2,10 +2,11 @@
 <body>
 
 <p>
-    Reports use of features which have no effect.
+    Reports use of features which have questionable effect, or no effect at all.
 </p>
 <!-- tooltip end -->
 <ul>
+    <li><code>kotlinx.android.synthetic</code> imports are shown as deprecated</li>
     <li><code>VideoView.setOnClickListener</code> is useless before Android API 26: the listener won't actually be invoked.
         As a workaround, you can extend VideoView and fix it yourself:
         <pre><code>public final class ClickableVideoView extends VideoView {

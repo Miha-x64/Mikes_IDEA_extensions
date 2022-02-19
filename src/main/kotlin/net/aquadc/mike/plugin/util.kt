@@ -32,9 +32,6 @@ abstract class UastInspection : LocalInspectionTool() {
     final override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
         UastVisitorAdapter(uVisitor(holder, isOnTheFly), true)
 
-    final override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean, session: LocalInspectionToolSession): PsiElementVisitor =
-        buildVisitor(holder, isOnTheFly)
-
     abstract fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor
 
 }

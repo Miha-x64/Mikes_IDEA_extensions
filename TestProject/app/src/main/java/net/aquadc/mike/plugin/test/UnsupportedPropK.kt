@@ -1,8 +1,10 @@
+@file:Suppress("UnusedImport")
 package net.aquadc.mike.plugin.test
 
 import android.content.Context
 import android.view.View
 import android.widget.VideoView
+import kotlinx.android.synthetic.*
 
 fun test(context: Context?) {
     View(context).setOnClickListener(null)

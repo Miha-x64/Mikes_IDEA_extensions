@@ -42,6 +42,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
       </ul>
     </li>
     <li>Android utility methods should be replaced with Kotlin extension</li>
+    <li><code>VideoView.setOnClickListener</code> won't work until SDK26; Kotlin Android Extensions are deprecated</li>
   </ul>
 
   <h3>Editor tweaks</h3>
