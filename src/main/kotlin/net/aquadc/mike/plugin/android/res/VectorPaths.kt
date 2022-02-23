@@ -3,6 +3,7 @@ package net.aquadc.mike.plugin.android.res
 import android.graphics.PixelFormat
 import com.android.ide.common.resources.ResourceResolver
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
@@ -157,7 +158,8 @@ private fun XmlElement?.opacity(rr: ResourceResolver?, alpha: Float) =
                     else if (it[1].equals('f', true) && it[2].equals('f', true) && alpha == 1f) PixelFormat.OPAQUE
                     else PixelFormat.TRANSLUCENT
                 else ->
-                    null // TODO <selector>s
+                    Logger.getInstance("Mike's IDEA Extensions: VectorPaths").error("Unexpected color format: $it")
+                        .let { null }
             }
         } ?: PixelFormat.UNKNOWN
         is XmlTag -> PixelFormat.UNKNOWN
