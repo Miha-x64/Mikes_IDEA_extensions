@@ -24,6 +24,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Anonymous function won't be inlined;
       function cannot be inlined if it is a receiver of an extension function</li>
     <li>Nullable argument to string concatenation</li>
+    <li>Boxed primitive array allocation</li>
   </ul>
 
   <h3>Android inspections</h3>

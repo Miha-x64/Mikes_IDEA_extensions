@@ -5,6 +5,7 @@
     <li>Reporting Kotlin Android Extensions imports as deprecated</li>
     <li>Reporting overridden attributes in (layout_margin|padding)(|Left|Top|Right|Bottom|Start|End|Horizontal|Vertical)</li>
     <li>stop logging error on color state lists when analyzing drawables</li>
+    <li>Added “Boxed primitive array allocation” inspection</li>
   </ul>
 
 ### 0.20

@@ -85,6 +85,11 @@
         <lang.foldingBuilder
             language="kotlin" implementationClass="net.aquadc.mike.plugin.kotlin.BackingPropertyFolding" />
 
+        <localInspection
+            language="kotlin" shortName="BoxArray" displayName="Array of boxed primitives"
+            groupPath="Kotlin" groupName="Performance" enabledByDefault="true" level="WARNING"
+            implementationClass="net.aquadc.mike.plugin.memory.BoxArray" />
+
         <!--TODO globalInspection
             shortName="UnusedImpl" displayName="Unused implementation"
             groupName="JVM languages" enabledByDefault="true" level="WARNING"
