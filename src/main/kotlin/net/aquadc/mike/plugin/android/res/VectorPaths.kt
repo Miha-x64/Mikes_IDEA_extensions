@@ -27,8 +27,7 @@ private val nullToZero = null to 0
  * @return merged area, opaque merged area
  */
 internal fun ProblemsHolder.toArea(rr: ResourceResolver?, tag: XmlTag, outline: Path2D): Pair<Area, Area?>? {
-    val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) =
-        pathAttrs.map<String, XmlAttribute?> { tag.getAttribute(it, ANDROID_NS) }
+    val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) = pathAttrs.map { tag.getAttribute(it, ANDROID_NS) }
     val fillColor = fCol ?: tag.findAaptAttrTag("fillColor")
     val (fillArea, fillOpacity) = fill(rr, outline, fillColor, fType, fA) ?: nullToZero
     val strokeColor = sCol ?: tag.findAaptAttrTag("strokeColor")
@@ -40,10 +39,10 @@ internal fun ProblemsHolder.toArea(rr: ResourceResolver?, tag: XmlTag, outline: 
         return null
     }
 
+    val opaqueStroke = strokeArea?.takeIf { strokeOpacity == PixelFormat.OPAQUE }?.also {
+        fillArea?.subtract(it) // stroke is drawn on top of fill
+    }
     val opaqueFill = fillArea?.takeIf { fillOpacity == PixelFormat.OPAQUE }
-    val opaqueStroke = strokeArea?.takeIf { strokeOpacity == PixelFormat.OPAQUE }
-
-    // TODO detect when stroke overdraws fill
 
     // Dear reader, I'm very sorry for the crap following:
     return if (fillArea != null && strokeArea != null) {

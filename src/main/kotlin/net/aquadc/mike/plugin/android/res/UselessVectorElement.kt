@@ -173,13 +173,15 @@ private fun ProblemsHolder.checkVectorGroup(
 
         pathTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
             parse(rr, pathData, matrix, usefulPrecision)?.let { outline ->
-                toArea(rr, pathTag, outline)?.let { (area, opaqueArea) ->
-                    checkPath(pathTag, area, viewport, commonClip, clips, usefulClips, usefulPrecision)
-                    if (opaqueArea != null && paths.isNotEmpty()) {
-                        paths.forEach { it?.subtract(opaqueArea) }
+                toArea(rr, pathTag, outline)
+                    ?.takeIf { (area, _) ->
+                        checkPath(pathTag, area, viewport, commonClip, clips, usefulClips, usefulPrecision)
+                    }?.let { (area, opaqueArea) ->
+                        if (opaqueArea != null && paths.isNotEmpty()) {
+                            paths.forEach { it?.subtract(opaqueArea) }
+                        }
+                        paths.add(area)
                     }
-                    paths.add(area)
-                }
             }
         } ?: run {
             // let's conservatively think that an invalid path marks all clips as useful
@@ -467,9 +469,9 @@ private class TrimFix(
 private fun ProblemsHolder.checkPath(
     tag: XmlTag, path: Area, viewport: Area?, clipPath: Area?, clips: List<Area>,
     usefulClips: TIntHashSet, usefulPrecision: Int,
-) {
+): Boolean {
     if (viewport != null && path.also { it.intersect(viewport) }.effectivelyEmpty(usefulPrecision))
-        return report(tag, "The path is outside of viewport", removeTagFix)
+        return report(tag, "The path is outside of viewport", removeTagFix).let { false }
 
     if (usefulClips.size() < clips.size) {
         val reduced = Area()
@@ -486,7 +488,9 @@ private fun ProblemsHolder.checkPath(
     }
 
     if (clipPath != null && path.also { it.intersect(clipPath) }.effectivelyEmpty(usefulPrecision))
-        return report(tag, "The path is clipped away", removeTagFix)
+        return report(tag, "The path is clipped away", removeTagFix).let { false }
+
+    return true
 }
 
 private fun Area.effectivelyEmpty(usefulPrecision: Int): Boolean =

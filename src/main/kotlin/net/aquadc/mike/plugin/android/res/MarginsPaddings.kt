@@ -66,7 +66,7 @@ internal object MarginsPaddings {
         ) else {
             if (maHor != null) maybeReport(
                 holder, isOnTheFly, tmp, " is overridden by '${MARGINS[HORIZONTAL]}'", LIKE_UNUSED_SYMBOL,
-                MARGINS, LEFT, TOP, START, END,
+                MARGINS, LEFT, RIGHT, START, END,
             )
             if (maVer != null) maybeReport(
                 holder, isOnTheFly, tmp, " is overridden by '${MARGINS[VERTICAL]}'", LIKE_UNUSED_SYMBOL,
