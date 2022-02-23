@@ -3,6 +3,7 @@
     <li>Fix interface upcast hints after last fix</li>
     <li>Fix vector path optimizations: don't let numbers stick together when optimizing -0.01 to 0</li>
     <li>Reporting Kotlin Android Extensions imports as deprecated</li>
+    <li>Reporting overridden attributes in (layout_margin|padding)(|Left|Top|Right|Bottom|Start|End|Horizontal|Vertical)</li>
   </ul>
 
 ### 0.20

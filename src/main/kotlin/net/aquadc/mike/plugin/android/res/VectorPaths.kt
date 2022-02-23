@@ -28,7 +28,7 @@ private val nullToZero = null to 0
  */
 internal fun ProblemsHolder.toArea(rr: ResourceResolver?, tag: XmlTag, outline: Path2D): Pair<Area, Area?>? {
     val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) =
-        pathAttrs.map<String, XmlAttribute?>(XmlAttribute.EMPTY_ARRAY) { tag.getAttribute(it, ANDROID_NS) }
+        pathAttrs.map<String, XmlAttribute?> { tag.getAttribute(it, ANDROID_NS) }
     val fillColor = fCol ?: tag.findAaptAttrTag("fillColor")
     val (fillArea, fillOpacity) = fill(rr, outline, fillColor, fType, fA) ?: nullToZero
     val strokeColor = sCol ?: tag.findAaptAttrTag("strokeColor")

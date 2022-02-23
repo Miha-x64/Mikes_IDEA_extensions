@@ -30,6 +30,7 @@ class UselessResElement : LocalInspectionTool(), CleanupLocalInspectionTool {
                 DRAWABLE -> file.rootTag?.let(holder::checkDrawableTag)
                 ANIM, ANIMATOR -> file.rootTag?.let(::checkAnim)
                 XML -> file.rootTag?.let(::checkXml)
+                LAYOUT -> file.rootTag?.let { MarginsPaddings.checkLayoutTag(holder, isOnTheFly, it) }
                 else -> {} // nothing to do here
             }
         }
