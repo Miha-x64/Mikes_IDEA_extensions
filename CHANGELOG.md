@@ -1,3 +1,8 @@
+### 0.22
+  <ul>
+    <li>Fix reflective property replacement search when name is capitalized</li>
+  </ul>
+
 ### 0.21
   <ul>
     <li>Fix interface upcast hints after last fix</li>
