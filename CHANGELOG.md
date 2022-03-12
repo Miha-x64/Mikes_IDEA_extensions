@@ -1,6 +1,7 @@
 ### 0.22
   <ul>
     <li>Fix reflective property replacement search when name is capitalized</li>
+    <li>More compact backing property folding</li>
   </ul>
 
 ### 0.21

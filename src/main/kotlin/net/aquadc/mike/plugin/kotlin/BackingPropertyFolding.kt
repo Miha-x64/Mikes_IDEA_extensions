@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtReferenceExpression
 import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
+import java.util.regex.Pattern
 import kotlin.math.min
 
 class BackingPropertyFolding : FoldingBuilderEx() {
@@ -57,9 +58,9 @@ class BackingPropertyFolding : FoldingBuilderEx() {
                         backing.initializer?.let { append(" = ").append(it.text) }
                     },
                     "get: " + publicType.text, // getter body is known to be a reference to backing property
-                    property.takeIf { it.isVar }?.let { "${propSetterVisibility}set${property.setterParam(true)}${property.setter.body()}" },
-                    "private $backingName.get${backing.getter.body().let { if (it.isBlank()) "" else "()$it" }}",
-                    backing.takeIf { it.isVar }?.let { "private $backingName.set${backing.setterParam(false)}${backing.setter.body()}" },
+                    property.takeIf { it.isVar }?.let { "${propSetterVisibility}set${property.setterParam(true)}${property.setter.bodyAsSingleLine()}" },
+                    "private $backingName.get${backing.getter.bodyAsSingleLine().let { if (it.isBlank()) "" else "()$it" }}",
+                    backing.takeIf { it.isVar }?.let { "private $backingName.set${backing.setterParam(false)}${backing.setter.bodyAsSingleLine()}" },
                 )
             }
 
@@ -73,8 +74,17 @@ class BackingPropertyFolding : FoldingBuilderEx() {
                         else -> "(${name ?: ""}: $type)"
                     }
                 } ?: ""
-            private fun KtPropertyAccessor?.body() =
-                this?.bodyBlockExpression?.let { " ${it.text}" } ?: this?.bodyExpression?.let { " = ${it.text}" } ?: ""
+            private fun KtPropertyAccessor?.bodyAsSingleLine() =
+                this?.bodyBlockExpression?.let {
+                    val text = it.text
+                    val start = text.indexOf('{')
+                    val end = text.indexOf('}')
+                    " { " + LINE_BREAK.matcher(
+                        text.substring(if (start < 0) 0 else start + 1, if (end < 0) text.length else end).trim()
+                    ).replaceAll(" ↵ ") + " }"
+                }
+                    ?: this?.bodyExpression?.let { " = ${it.text}" }
+                    ?: ""
 
             private val KtProperty.isPublic: Boolean
                 get() = visibilityModifier() == null || hasModifier(KtTokens.PUBLIC_KEYWORD)
@@ -121,4 +131,8 @@ class BackingPropertyFolding : FoldingBuilderEx() {
 
     override fun getPlaceholderText(node: ASTNode): String? = null
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
+
+    private companion object {
+        private val LINE_BREAK = Pattern.compile("\\s*\\n\\s*", Pattern.MULTILINE)
+    }
 }
