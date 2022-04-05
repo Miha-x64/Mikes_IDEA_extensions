@@ -1,11 +1,14 @@
 package net.aquadc.mike.plugin.android.res
 
+import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemHighlightType.LIKE_UNUSED_SYMBOL
 import com.intellij.codeInspection.ProblemHighlightType.WEAK_WARNING
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.project.Project
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlTag
+import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.component6
 import net.aquadc.mike.plugin.component7
 import net.aquadc.mike.plugin.component8
@@ -32,50 +35,69 @@ internal object MarginsPaddings {
         MARGINS = directions.map { "layout_margin$it" }
     }
 
-    fun checkLayoutTag(holder: ProblemsHolder, isOnTheFly: Boolean, tag: XmlTag, tmp: Array<XmlAttribute?> = arrayOfNulls(PADDINGS.size)) {
+    fun checkLayoutTag(holder: ProblemsHolder, minSdk: Int, isOnTheFly: Boolean, tag: XmlTag, tmp: Array<XmlAttribute?> = arrayOfNulls(PADDINGS.size)) {
         PADDINGS.forEachIndexed { i, padding -> tmp[i] = tag.getAttribute(padding, ANDROID_NS) }
         val (_, _, _, _, paSta, paEnd, _, _, paAll) = tmp
-        if (paSta != null || paEnd != null) maybeReport(
+        val hasHR = paSta != null || paEnd != null
+        val badHR = hasHR && maybeReport(
             holder, isOnTheFly, tmp,
             if (paSta != null && paEnd != null) " is overridden by '${PADDINGS[START]}' and '${PADDINGS[END]}'"
             else " may be overridden by '${PADDINGS[if (paSta != null) START else END]}'",
             if (paSta != null && paEnd != null) LIKE_UNUSED_SYMBOL else WEAK_WARNING,
             PADDINGS, LEFT, RIGHT, HORIZONTAL,
-        ) else if (paAll != null) maybeReport(
+        )
+        val badH = badHR || (paAll != null && maybeReport(
             holder, isOnTheFly, tmp, " is overridden by '${PADDINGS[ALL]}'", LIKE_UNUSED_SYMBOL,
             PADDINGS, LEFT, RIGHT, HORIZONTAL,
-        ) else if (tmp[HORIZONTAL] != null) maybeReport(
+        ))
+        val badLR = badH || (tmp[HORIZONTAL] != null && maybeReport(
             holder, isOnTheFly, tmp, " is overridden by '${PADDINGS[HORIZONTAL]}'", LIKE_UNUSED_SYMBOL,
             PADDINGS, LEFT, RIGHT,
-        )
+        ))
 
-        if (paAll != null) maybeReport(
+        val badTB = paAll != null && maybeReport(
             holder, isOnTheFly, tmp, " is overridden by '${PADDINGS[ALL]}'", LIKE_UNUSED_SYMBOL,
             PADDINGS, TOP, BOTTOM, VERTICAL,
-        ) else if (tmp[VERTICAL] != null) maybeReport(
+        )
+        val badV = badTB || (tmp[VERTICAL] != null && maybeReport(
             holder, isOnTheFly, tmp, " is overridden by '${PADDINGS[VERTICAL]}'", LIKE_UNUSED_SYMBOL,
             PADDINGS, TOP, BOTTOM,
-        )
+        ))
+
+        if (badLR || badV || !maybeMerge(holder, tmp, PADDINGS, minSdk, HORIZONTAL, VERTICAL, ALL)) {
+            badLR || maybeMerge(holder, tmp, PADDINGS, minSdk, START, END, HORIZONTAL) ||
+                    maybeMerge(holder, tmp, PADDINGS, minSdk, LEFT, RIGHT, HORIZONTAL)
+
+            badV || maybeMerge(holder, tmp, PADDINGS, minSdk, TOP, BOTTOM, VERTICAL)
+        }
 
 
         MARGINS.forEachIndexed { i, margin -> tmp[i] = tag.getAttribute(margin, ANDROID_NS) }
         val (_, _, _, _, _, _, maHor, maVer, maAll) = tmp
-        if (maAll != null) maybeReport(
-            holder, isOnTheFly, tmp, " is overridden by '${MARGINS[ALL]}'", LIKE_UNUSED_SYMBOL,
-            MARGINS, LEFT, TOP, RIGHT, BOTTOM, START, END, HORIZONTAL, VERTICAL,
-        ) else {
-            if (maHor != null) maybeReport(
+        if (maAll != null)
+            maybeReport(
+                holder, isOnTheFly, tmp, " is overridden by '${MARGINS[ALL]}'", LIKE_UNUSED_SYMBOL,
+                MARGINS, LEFT, TOP, RIGHT, BOTTOM, START, END, HORIZONTAL, VERTICAL,
+            )
+        else {
+            val badH = maHor != null && maybeReport(
                 holder, isOnTheFly, tmp, " is overridden by '${MARGINS[HORIZONTAL]}'", LIKE_UNUSED_SYMBOL,
                 MARGINS, LEFT, RIGHT, START, END,
             )
-            if (maVer != null) maybeReport(
+            val badV = maVer != null && maybeReport(
                 holder, isOnTheFly, tmp, " is overridden by '${MARGINS[VERTICAL]}'", LIKE_UNUSED_SYMBOL,
                 MARGINS, TOP, BOTTOM,
             )
+            if (badH || badV || !maybeMerge(holder, tmp, MARGINS, minSdk, HORIZONTAL, VERTICAL, ALL)) {
+                badH || maybeMerge(holder, tmp, MARGINS, minSdk, START, END, HORIZONTAL) ||
+                        maybeMerge(holder, tmp, MARGINS, minSdk, LEFT, RIGHT, HORIZONTAL)
+
+                badV || maybeMerge(holder, tmp, MARGINS, minSdk, TOP, BOTTOM, VERTICAL)
+            }
         }
 
         tag.subTags.forEach {
-            checkLayoutTag(holder, isOnTheFly, it, tmp)
+            checkLayoutTag(holder, minSdk, isOnTheFly, it, tmp)
         }
 
         /*
@@ -129,16 +151,43 @@ internal object MarginsPaddings {
         names: Array<String>,
         which1: Int, which2: Int, which3: Int = -1, which4: Int = -1,
         which5: Int = -1, which6: Int = -1, which7: Int = -1, which8: Int = -1,
-    ) {
-        val fix = removeAttrFix.takeIf { isOnTheFly || highlight == LIKE_UNUSED_SYMBOL }
-        tmp[which1]?.let { holder.registerProblem(it, names[which1] + msg, highlight, fix) }
-        tmp[which2]?.let { holder.registerProblem(it, names[which2] + msg, highlight, fix) }
-        tmp.getOrNull(which3)?.let { holder.registerProblem(it, names[which3] + msg, highlight, fix) }
-        tmp.getOrNull(which4)?.let { holder.registerProblem(it, names[which4] + msg, highlight, fix) }
-        tmp.getOrNull(which5)?.let { holder.registerProblem(it, names[which5] + msg, highlight, fix) }
-        tmp.getOrNull(which6)?.let { holder.registerProblem(it, names[which6] + msg, highlight, fix) }
-        tmp.getOrNull(which7)?.let { holder.registerProblem(it, names[which7] + msg, highlight, fix) }
-        tmp.getOrNull(which8)?.let { holder.registerProblem(it, names[which8] + msg, highlight, fix) }
+    ): Boolean = removeAttrFix.takeIf { isOnTheFly || highlight == LIKE_UNUSED_SYMBOL }.let { fix ->
+        (tmp[which1]?.let { holder.registerProblem(it, names[which1] + msg, highlight, fix) } != null) or
+            (tmp[which2]?.let { holder.registerProblem(it, names[which2] + msg, highlight, fix) } != null) or
+            (tmp.getOrNull(which3)?.let { holder.registerProblem(it, names[which3] + msg, highlight, fix) } != null) or
+            (tmp.getOrNull(which4)?.let { holder.registerProblem(it, names[which4] + msg, highlight, fix) } != null) or
+            (tmp.getOrNull(which5)?.let { holder.registerProblem(it, names[which5] + msg, highlight, fix) } != null) or
+            (tmp.getOrNull(which6)?.let { holder.registerProblem(it, names[which6] + msg, highlight, fix) } != null) or
+            (tmp.getOrNull(which7)?.let { holder.registerProblem(it, names[which7] + msg, highlight, fix) } != null) or
+            (tmp.getOrNull(which8)?.let { holder.registerProblem(it, names[which8] + msg, highlight, fix) } != null)
+    }
+    private fun maybeMerge(
+        holder: ProblemsHolder, tmp: Array<XmlAttribute?>,
+        names: Array<String>, minSdk: Int,
+        from1: Int, from2: Int, into: Int,
+    ): Boolean = if (minSdk < 22 || tmp[into] != null) false else {
+        tmp[from1]?.let { attr1 ->
+            tmp[from2]?.let { attr2 ->
+                attr1.value?.takeIf { it == attr2.value }?.let {
+                    holder.registerProblem(
+                        attr1.parent,
+                        "${names[from1]} and ${names[from2]} can be merged into ${names[into]}",
+                        WEAK_WARNING,
+                        attr1.textRangeInParent.union(attr2.textRangeInParent),
+                        object : NamedLocalQuickFix("Merge indents") {
+                            override fun getName(): String = "Merge indents into ${names[into]}"
+                            override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+                                val tag = descriptor.psiElement as? XmlTag ?: return
+                                val attr = tag.getAttribute(names[from1], ANDROID_NS) ?: return
+                                attr.name =
+                                    (attr.namespacePrefix.takeIf(String::isNotBlank)?.plus(":") ?: "") + names[into]
+                                tag.getAttribute(names[from2], ANDROID_NS)?.delete()
+                            }
+                        }
+                    )
+                }
+            }
+        } != null
     }
 
 }

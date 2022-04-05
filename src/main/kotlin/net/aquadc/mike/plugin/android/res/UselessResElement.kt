@@ -17,6 +17,7 @@ import com.intellij.psi.xml.XmlFile
 import com.intellij.psi.xml.XmlTag
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.resTypeOf
+import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModuleModel
 
 /**
  * @author Mike Gorünóv
@@ -26,11 +27,16 @@ class UselessResElement : LocalInspectionTool(), CleanupLocalInspectionTool {
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): PsiElementVisitor = object : PsiElementVisitor() {
         override fun visitFile(file: PsiFile) {
-            when ((file as? XmlFile)?.androidFacet?.resTypeOf(file)) {
+            val af = (file as? XmlFile)?.androidFacet
+            when (af?.resTypeOf(file)) {
                 DRAWABLE -> file.rootTag?.let(holder::checkDrawableTag)
                 ANIM, ANIMATOR -> file.rootTag?.let(::checkAnim)
                 XML -> file.rootTag?.let(::checkXml)
-                LAYOUT -> file.rootTag?.let { MarginsPaddings.checkLayoutTag(holder, isOnTheFly, it) }
+                LAYOUT -> file.rootTag?.let {
+                    MarginsPaddings.checkLayoutTag(
+                        holder, androidModuleModel(af)?.minSdkVersion?.apiLevel ?: -1, isOnTheFly, it,
+                    )
+                }
                 else -> {} // nothing to do here
             }
         }
