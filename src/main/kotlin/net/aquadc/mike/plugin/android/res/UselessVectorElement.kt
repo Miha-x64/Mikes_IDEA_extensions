@@ -28,7 +28,6 @@ import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
-import net.aquadc.mike.plugin.miserlyFilter as filter
 
 private val vectorTransforms = arrayOf("scaleX", "scaleY", "rotation", "translateX", "translateY")
 private val vectorTransformDefaults = floatArrayOf(1f, 1f, 0f, 0f, 0f)
@@ -73,11 +72,11 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) {
     val pathTags = SmartList<XmlTag>()
     val paths = SmartList<Area>()
     checkVectorGroup(
-        rr, tag, null, viewport, null, usefulPrecision,
+        rr, tag, null, viewport, usefulPrecision,
         pathTags, paths, SmartList(), SmartList(), TIntHashSet(),
     )
 
-    // TODO also check the opposite: when the path adds nothing to the image
+    // TODO also check when the path adds nothing to the image
     check(pathTags.size == paths.size) { pathTags + " | " + paths }
     paths.forEachIndexed { i, path ->
         if (path?.effectivelyEmpty(usefulPrecision) == true) {
@@ -110,108 +109,86 @@ private fun String.scaled(skip: Int, factor: Float) =
 private fun ProblemsHolder.checkVectorGroup(
     rr: ResourceResolver?,
     tag: XmlTag,
-    parentMatrix: AffineTransform?,
-    viewport: Area?,
-    parentClip: Area?,
+    parentMatrix: AffineTransform?, parentClip: Area?,
     usefulPrecision: Int,
-    pathTags: SmartList<XmlTag>,
-    paths: SmartList<Area>,
-    clipTags: SmartList<XmlTag>,
-    clips: SmartList<Area>,
-    usefulClips: TIntHashSet,
+    pathTags: SmartList<XmlTag>, paths: SmartList<Area>,
+    clipTags: SmartList<XmlTag>, clips: SmartList<Area>, usefulClips: TIntHashSet,
 ) {
     val isRoot = tag.name == "vector"
-    val myPathsFrom = pathTags.size
-    tag.subTags.filterTo(pathTags) { it.name == "path" }
-    val groupTags = tag.subTags.filter { it.name == "group" }
-    val visualTagsCount = (pathTags.size - myPathsFrom) + groupTags.size
-    if (visualTagsCount == 0) return report(
-        tag, if (isRoot) "Empty vector" else "Empty group", if (isRoot) null else removeGroupFix
-    )
 
     val transformations =
         if (isRoot) null
         else FloatArray(vectorTransforms.size) { getFloat(rr, tag, vectorTransforms[it], vectorTransformDefaults[it]) }
+            .takeIf { !it.contentEquals(vectorTransformDefaults) }
 
-    val maxClipTagCount = tag.subTags.size - visualTagsCount
-    var clipTagCount = -1
-    if (transformations?.contentEquals(vectorTransformDefaults) == true &&
-        tag.getAttributeValue("name", ANDROID_NS) == null) {
-        val noClips =
-            maxClipTagCount == 0 || tag.subTags.count { it.name == "clip-path" }.also { clipTagCount = it } == 0
-        val noSiblings = tag.parentTag?.subTags?.size == 1
-        if (noClips && noSiblings)
-            report(tag, "Useless group: no name, no transformations, no clip-paths, no siblings", inlineGroupFix)
-        else if (noClips)
-            report(tag, "Useless group: no name, no transformations, no clip-paths", inlineGroupFix)
-        else if (noSiblings)
-            report(tag, "Useless group: no name, no transformations, no siblings", inlineGroupFix)
-        // TODO also report single-path and single-group groups
-    }
-
-    val matrix = localMatrix(
-        transformations,
-        getFloat(rr, tag, "pivotX", 0f),
-        getFloat(rr, tag, "pivotY", 0f),
-        parentMatrix
-    )
+    val matrix = transformations?.let {
+        localMatrix(it, getFloat(rr, tag, "pivotX", 0f), getFloat(rr, tag, "pivotY", 0f), parentMatrix)
+    } ?: parentMatrix
 
     val myClipsFrom = clipTags.size
-    val commonClip = if (maxClipTagCount > 0 && clipTagCount != 0) {
-        gatherClips(rr, tag, matrix, isRoot, parentClip, clipTags, clips, usefulPrecision)
-        check(clipTags.size == clips.size)
-        when (clipTags.size - myClipsFrom) {
-            0 -> null
-            1 -> clips[myClipsFrom]
-            else -> intersectAndCheckClips(clips, tag, isRoot, clipTags, myClipsFrom, usefulPrecision)
-        }
-    } else null
+    val myPathsFrom = pathTags.size
+    var localClip: Area? = parentClip
 
-    val pathTagsIter = pathTags.listIterator(myPathsFrom)
-    while (pathTagsIter.hasNext()) { // TODO propose merging pathDatas of sibling paths with same attrs
-        val pathTag = pathTagsIter.next()
-
-        pathTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
-            parse(rr, pathData, matrix, usefulPrecision)?.let { outline ->
-                toArea(rr, pathTag, outline)
-                    ?.takeIf { (area, _) ->
-                        checkPath(pathTag, area, viewport, commonClip, clips, usefulClips, usefulPrecision)
-                    }?.let { (area, opaqueArea) ->
-                        if (opaqueArea != null && paths.isNotEmpty()) {
-                            paths.forEach { it?.subtract(opaqueArea) }
+    tag.subTags.forEach { subTag ->
+        when (subTag.name) {
+            "clip-path" ->
+                checkClip(subTag, isRoot, rr, matrix, usefulPrecision, localClip)?.let { clip ->
+                    clipTags.add(subTag)
+                    clips.add(clip)
+                    localClip = clip
+                }
+            "group" ->
+                checkVectorGroup(
+                    rr, subTag, matrix, localClip, usefulPrecision, pathTags, paths, clipTags, clips, usefulClips,
+                )
+            "path" -> { // TODO propose merging pathDatas of sibling paths with same attrs
+                subTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
+                    parse(rr, pathData, matrix, usefulPrecision)
+                        ?.let { outline -> toArea(rr, subTag, outline) }
+                        ?.takeIf { (area, _) -> checkPathArea(subTag, area, localClip, clips, usefulClips, usefulPrecision) }
+                        ?.let { (area, opaqueArea) ->
+                            paths.takeIf { opaqueArea != null && it.isNotEmpty() }?.forEach { it.subtract(opaqueArea) }
+                            pathTags.add(subTag)
+                            paths.add(area)
                         }
-                        paths.add(area)
-                    }
+                } ?: run {
+                    // let's conservatively think that an invalid path marks all clips as useful
+                    if (usefulClips.size() < clips.size)
+                        clips.indices.forEach(usefulClips::add)
+                }
             }
-        } ?: run {
-            // let's conservatively think that an invalid path marks all clips as useful
-            if (usefulClips.size() < clips.size)
-                clips.indices.forEach(usefulClips::add)
-            pathTagsIter.remove()
         }
     }
 
-    groupTags.forEach {
-        checkVectorGroup(
-            rr, it, matrix, viewport, commonClip ?: parentClip, usefulPrecision,
-            pathTags, paths,
-            clipTags, clips, usefulClips,
-        )
-    }
+    if (myPathsFrom == pathTags.size) {
+        report(tag, if (isRoot) "Empty vector" else "Empty group", if (isRoot) null else removeGroupFix)
+    } else {
+        val hasClips = clips.size > myClipsFrom
+        if (hasClips) {
+            check(clipTags.size == clips.size)
+            for (i in myClipsFrom until clips.size)
+                if (!usefulClips.remove(i))
+                    report(clipTags[i], "The path doesn't clip any of its siblings", removeTagFix)
+            clips.subList(myClipsFrom, clips.size).clear()
+            clipTags.subList(myClipsFrom, clipTags.size).clear()
+        }
 
-    if (clips.size > myClipsFrom) {
-        for (i in myClipsFrom until clips.size)
-            if (!usefulClips.remove(i))
-                report(clipTags[i], "The path doesn't clip any of its siblings", removeTagFix)
-        clips.subList(myClipsFrom, clips.size).clear()
-        clipTags.subList(myClipsFrom, clipTags.size).clear()
+        if (!isRoot && transformations == null && tag.getAttributeValue("name", ANDROID_NS) == null) {
+            val noSiblings = tag.parentTag?.subTags?.size == 1
+            if (!hasClips && noSiblings)
+                report(tag, "Useless group: no name, no transformations, no useful clip-paths, no siblings", inlineGroupFix)
+            else if (!hasClips)
+                report(tag, "Useless group: no name, no transformations, no useful clip-paths", inlineGroupFix)
+            else if (noSiblings)
+                report(tag, "Useless group: no name, no transformations, no siblings", inlineGroupFix)
+            // TODO also report single-group groups and propose merging
+        }
+
     }
 }
 
-private fun localMatrix(transforms: FloatArray?, px: Float, py: Float, outerMatrix: AffineTransform?): AffineTransform? {
+private fun localMatrix(transforms: FloatArray, px: Float, py: Float, outerMatrix: AffineTransform?): AffineTransform {
 // borrowed from com.android.ide.common.vectordrawable.VdGroup.updateLocalMatrix
-    if (transforms == null) return outerMatrix
-
     val tempTrans = AffineTransform()
     val localMatrix = AffineTransform()
     tempTrans.translate(-px.toDouble(), -py.toDouble())
@@ -250,36 +227,6 @@ internal fun ProblemsHolder.toString(rr: ResourceResolver?, attr: XmlAttribute?,
     return value ?: default
 }
 
-private fun ProblemsHolder.intersectAndCheckClips(
-    clips: SmartList<Area>,
-    tag: XmlTag, isRoot: Boolean,
-    clipTags: SmartList<XmlTag>, ourClipsFrom: Int,
-    usefulPrecision: Int,
-): Area? {
-    val intersection = clips.subIntersection(ourClipsFrom)
-    return if (intersection.effectivelyEmpty(usefulPrecision)) {
-        registerProblem(
-            tag,
-            "Intersection of clip-paths is empty, thus the whole tag is invisible",
-            if (isRoot) null else removeGroupFix
-        )
-        null // ignore all clips, we've already reported on them
-    } else {
-        val victim = Area()
-        var i = ourClipsFrom
-        while (i < clips.size) {
-            victim.add(intersection)
-            victim.subtract(clips[i])
-            if (victim.effectivelyEmpty(usefulPrecision)) {
-                report(clipTags[i], "The clip-path is superseded by its siblings", removeTagFix)
-                clipTags.removeAt(i)
-                clips.removeAt(i) // never analyze this path further
-            } else i++
-        }
-        intersection
-    }
-}
-
 private fun List<Area>.subIntersection(from: Int): Area {
     var i = from
     val area = Area(this[i++])
@@ -287,50 +234,49 @@ private fun List<Area>.subIntersection(from: Int): Area {
     return area
 }
 
-private fun ProblemsHolder.gatherClips(
-    rr: ResourceResolver?, tag: XmlTag, matrix: AffineTransform?, isRoot: Boolean, parentClip: Area?,
-    tagsTo: SmartList<XmlTag>, clipsTo: SmartList<Area>, usefulPrecision: Int
-) {
-    val tagsFrom = tagsTo.size
-    val clipTags = tag.subTags.filterTo(tagsTo) { it.name == "clip-path" }
-    val clipTagsIter = clipTags.listIterator(tagsFrom)
-    while (clipTagsIter.hasNext()) {
-        val nextTag = clipTagsIter.next()
-        val pathData = nextTag.getAttribute("pathData", ANDROID_NS)?.valueElement
-        if (pathData == null) {
+private fun ProblemsHolder.checkClip(
+    clipTag: XmlTag,
+    isRoot: Boolean,
+    rr: ResourceResolver?,
+    matrix: AffineTransform?,
+    usefulPrecision: Int,
+    parentClip: Area?
+): Area? {
+    val parent = if (isRoot) "vector" else "group"
+    val pathData = clipTag.getAttribute("pathData", ANDROID_NS)?.valueElement
+    val removeParentGroupFix = if (isRoot) null else removeParentGroupFix
+    return if (pathData == null) {
+        registerProblem(
+            clipTag,
+            "The clip-path without pathData makes the whole $parent invisible",
+            removeParentGroupFix, removeTagFix,
+        )
+        null
+    } else {
+        val clipArea = parse(rr, pathData, matrix, usefulPrecision)?.let(::Area)
+        if (clipArea == null) {
+            null // bad path, ignore
+        } else if (clipArea.effectivelyEmpty(usefulPrecision)) {
             registerProblem(
-                nextTag,
-                "The clip-path without pathData makes this tag invisible",
-                if (isRoot) null else removeParentGroupFix
+                clipTag,
+                "The clip-path is empty making the whole $parent invisible",
+                removeParentGroupFix, removeTagFix,
             )
-            clipTagsIter.remove()
+            null
+        } else if (parentClip == null) {
+            clipArea // proceed with less precision
+        } else if (clipArea.also { it.intersect(parentClip) }.effectivelyEmpty(usefulPrecision)) {
+            registerProblem(
+                clipTag,
+                "The clip-path has empty intersection with inherited clip-path or viewport making the whole $parent invisible",
+                removeParentGroupFix, removeTagFix,
+            )
+            null
+        } else if (Area(parentClip).also { it.subtract(clipArea) }.effectivelyEmpty(usefulPrecision)) {
+            report(clipTag, "The clip-path clips nothing", removeTagFix)
+            null
         } else {
-            val clipArea = parse(rr, pathData, matrix, usefulPrecision)?.let(::Area)
-            if (clipArea == null) {
-                clipTagsIter.remove() // bad path, ignore
-            } else if (clipArea.effectivelyEmpty(usefulPrecision)) {
-                registerProblem(
-                    nextTag,
-                    "The clip-path is empty, thus the whole tag is invisible",
-                    if (isRoot) null else removeParentGroupFix
-                )
-                clipTagsIter.remove()
-            } else if (parentClip == null) {
-                clipsTo.add(clipArea) // proceed with less precision
-            } else if (clipArea.also { it.intersect(parentClip) }.effectivelyEmpty(usefulPrecision)) {
-                registerProblem(
-                    nextTag,
-                    "The clip-path has empty intersection with inherited clip-path or viewport. Thus it is useless, and the whole tag is invisible",
-                    if (isRoot) null else removeParentGroupFix,
-                    removeTagFix
-                )
-                clipTagsIter.remove()
-            } else if (Area(parentClip).also { it.subtract(clipArea) }.effectivelyEmpty(usefulPrecision)) {
-                registerProblem(nextTag, "The clip-path is superseded by inherited clip-path or viewport", removeTagFix)
-                clipTagsIter.remove()
-            } else {
-                clipsTo.add(clipArea)
-            }
+            clipArea
         }
     }
 }
@@ -466,39 +412,45 @@ private class TrimFix(
     private inline val Boolean.asInt get() = if (this) 1 else 0
 }
 
-private fun ProblemsHolder.checkPath(
-    tag: XmlTag, path: Area, viewport: Area?, clipPath: Area?, clips: List<Area>,
+private fun ProblemsHolder.checkPathArea(
+    tag: XmlTag, path: Area, clipPath: Area?, clips: List<Area>,
     usefulClips: TIntHashSet, usefulPrecision: Int,
 ): Boolean {
-    if (viewport != null && path.also { it.intersect(viewport) }.effectivelyEmpty(usefulPrecision))
-        return report(tag, "The path is outside of viewport", removeTagFix).let { false }
-
     if (usefulClips.size() < clips.size) {
         val reduced = Area()
-        clips.forEachIndexed { index, clip ->
+        var index = 0
+        while (index < clips.size) {
+            val clip = clips[index]
             if (index !in usefulClips) {
                 reduced.add(path)
                 reduced.subtract(clip)
                 // now `reduced` is a clipped-away part of path
-                if (!reduced.effectivelyEmpty(usefulPrecision))
-                    usefulClips.add(index)
+                if (!reduced.effectivelyEmpty(usefulPrecision) &&
+                    usefulClips.add(index) &&
+                    usefulClips.size() == clips.size)
+                        break
                 reduced.reset()
             }
+            index++
         }
     }
 
-    if (clipPath != null && path.also { it.intersect(clipPath) }.effectivelyEmpty(usefulPrecision))
-        return report(tag, "The path is clipped away", removeTagFix).let { false }
+    if (path.effectivelyEmpty(usefulPrecision))
+        report(tag, "The path is effectively empty", removeTagFix)
+    else if (clipPath != null && path.also { it.intersect(clipPath) }.effectivelyEmpty(usefulPrecision))
+        report(tag, "The path is clipped away or outside of viewport", removeTagFix)
+    else
+        return true
 
-    return true
+    return false
 }
 
-private fun Area.effectivelyEmpty(usefulPrecision: Int): Boolean =
-    isEmpty || (usefulPrecision >= 0 && effectiveAreaEmpty(usefulPrecision))
+private fun Area.effectivelyEmpty(usefulPrecision: Int): Boolean {
+    if (isEmpty) return true
+    else if (usefulPrecision < 0) return false
 
-private fun Area.effectiveAreaEmpty(usefulPrecision: Int): Boolean {
     val px = 1 / 10f.pow(usefulPrecision)
     val minArea = 3 * px * px // at least 3 square pixels on xxxxxxxhhhhdpi, maybe?
-    return bounds2D.let { it.width < px || it.height < px ||  it.width * it.height < minArea } ||
+    return bounds2D.let { it.width < px || it.height < px || it.width * it.height < minArea } ||
             computeSubShapes(this).all { computeSignedArea(it, 0.0).absoluteValue < minArea }
 }

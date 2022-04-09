@@ -3,6 +3,7 @@
     <li>Fix reflective property replacement search when name is capitalized</li>
     <li>More compact backing property folding</li>
     <li>Suggest merging (layout_margin|padding)(Left|Top|Right|Bottom|Start|End) pairs into (Horizontal|Vertical)</li>
+    <li>Fix clip-path application order in UselessResourceElement</li>
   </ul>
 
 ### 0.21
