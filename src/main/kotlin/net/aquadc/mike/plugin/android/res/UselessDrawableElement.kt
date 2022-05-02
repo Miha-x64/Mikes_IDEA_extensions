@@ -125,5 +125,5 @@ private fun ProblemsHolder.checkSelector(tag: XmlTag) {
 
 private val undocumentedLayerProps = arrayOf("start", "end", "width", "height", "gravity")
 private val layerInsets = arrayOf("left", "top", "right", "bottom")
-private val insetInsets = arrayOf("inset", "insetLeft", "insetTop", "insetRight", "insetBottom")
+private val insetInsets = arrayOf("insetLeft", "insetTop", "insetRight", "insetBottom", "inset")
 private val necessaryShapeTags = arrayOf("gradient", "size", "solid", "stroke")
