@@ -41,3 +41,13 @@ fun zzz() {}
 
 val zzz: (Enum<*>) -> Unit = { enum ->
 }
+
+object Public {
+    object public
+    @JvmField val enum = Thread.State.NEW
+
+    internal val protected = ""
+    internal object private {
+        @JvmField val enum = Thread.State.NEW
+    }
+}

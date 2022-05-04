@@ -9,7 +9,8 @@ import com.siyeh.ig.fixes.RenameFix
 import net.aquadc.mike.plugin.SortedArray
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.psi.psiUtil.isPublic
+import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
+import org.jetbrains.kotlin.psi.psiUtil.visibilityModifierType
 
 /**
  * @author Mike Gorünóv
@@ -39,8 +40,15 @@ class KtIdIsJavaKeywordInspection : LocalInspectionTool() {
         }
         override fun visitDeclaration(dcl: KtDeclaration) {
             if (dcl is KtParameter) return // named parameters are unusable from Java
-            if (!dcl.isPublic) return // also ignore local and private variables and functions
             if (dcl.isFunctionWithReified) return // `reified` makes function invisible for Java
+
+            var container: KtDeclaration = dcl
+            do {
+                if (KtPsiUtil.isLocal(container)) return
+                when (container.visibilityModifierType()) {
+                    KtTokens.PRIVATE_KEYWORD, KtTokens.INTERNAL_KEYWORD -> return
+                }
+            } while (container.containingClassOrObject?.also { container = it } != null)
 
             if (dcl is KtProperty && !dcl.hasModifier(KtTokens.CONST_KEYWORD) && dcl.jvmField == null) {
                 // keep eye on get/set if field if private

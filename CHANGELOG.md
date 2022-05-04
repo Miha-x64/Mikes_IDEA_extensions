@@ -5,6 +5,7 @@
     <li>Suggest merging (layout_margin|padding)(Left|Top|Right|Bottom|Start|End) pairs into (Horizontal|Vertical)</li>
     <li>Fix clip-path application order in UselessResourceElement</li>
     <li>Split paths and report useless sub-paths separately</li>
+    <li>Skip Java keywords in Kotlin declaration if its container is not exposed</li>
   </ul>
 
 ### 0.21
