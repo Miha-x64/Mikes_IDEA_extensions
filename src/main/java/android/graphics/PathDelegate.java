@@ -2,9 +2,9 @@ package android.graphics;
 
 import gnu.trove.TIntArrayList;
 import it.unimi.dsi.fastutil.floats.FloatArrays;
-import org.jetbrains.annotations.Nullable;
 
 import java.awt.geom.Path2D;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,92 +13,91 @@ import java.util.logging.Logger;
 // and seriously reworked it to satisfy my needs.
 
 public final class PathDelegate {
-    private final Path2D.Float mPath;
+    private final List<? super Path2D.Float> paths;
+    private Path2D.Float currentPath;
     private float mLastX;
     private float mLastY;
 
-    private PathDelegate() {
-        this.mPath = new Path2D.Float();
-        this.mLastX = 0.0F;
-        this.mLastY = 0.0F;
+    private PathDelegate(List<? super Path2D.Float> paths) {
+        this.paths = paths;
     }
-
-    public Path2D getJavaShape() {
-        return this.mPath;
+    private static boolean isEmpty(Path2D.Float path) {
+        return path.getPathIterator(null).isDone();
     }
-
-    public boolean isEmpty() {
-        return this.mPath.getPathIterator(null).isDone();
+    private Path2D.Float currentPath() {
+        return currentPath == null ? newPath() : currentPath;
+    }
+    private Path2D.Float newPath() {
+        if (paths == null) {
+            return currentPath == null ? (currentPath = new Path2D.Float()) : currentPath;
+        } else {
+            paths.add(currentPath = new Path2D.Float());
+            return currentPath;
+        }
     }
 
     public void moveTo(float x, float y) {
-        this.mPath.moveTo(this.mLastX = x, this.mLastY = y);
+        newPath().moveTo(this.mLastX = x, this.mLastY = y);
     }
 
     public void rMoveTo(float dx, float dy) {
-        this.mPath.moveTo(this.mLastX += dx, this.mLastY += dy);
+        newPath().moveTo(this.mLastX += dx, this.mLastY += dy);
     }
 
     public void lineTo(float x, float y) {
-        if (this.isEmpty()) {
-            this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
+        Path2D.Float path = currentPath();
+        if (isEmpty(path)) {
+            path.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
-        this.mPath.lineTo(this.mLastX = x, this.mLastY = y);
+        path.lineTo(this.mLastX = x, this.mLastY = y);
     }
 
     public void rLineTo(float dx, float dy) {
-        if (this.isEmpty()) {
-            this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
+        Path2D.Float path = currentPath();
+        if (isEmpty(path)) {
+            path.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
         if (!(Math.abs(dx) < 1.0E-4F) || !(Math.abs(dy) < 1.0E-4F)) {
-            dx += this.mLastX;
-            dy += this.mLastY;
-            this.mPath.lineTo(this.mLastX = dx, this.mLastY = dy);
+            path.lineTo(this.mLastX += dx, this.mLastY += dy);
         }
     }
 
     public void quadTo(float x1, float y1, float x2, float y2) {
-        this.mPath.quadTo(x1, y1, this.mLastX = x2, this.mLastY = y2);
+        currentPath().quadTo(x1, y1, this.mLastX = x2, this.mLastY = y2);
     }
 
     public void rQuadTo(float dx1, float dy1, float dx2, float dy2) {
-        if (this.isEmpty()) {
-            this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
+        Path2D.Float path = currentPath();
+        if (isEmpty(path)) {
+            path.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
-        dx1 += this.mLastX;
-        dy1 += this.mLastY;
-        dx2 += this.mLastX;
-        dy2 += this.mLastY;
-        this.mPath.quadTo(dx1, dy1, this.mLastX = dx2, this.mLastY = dy2);
+        quadTo(mLastX + dx1, mLastY + dy1, mLastX + dx2, mLastY + dy2);
     }
 
     public void cubicTo(float x1, float y1, float x2, float y2, float x3, float y3) {
-        if (this.isEmpty()) {
-            this.mPath.moveTo(0f, 0f);
+        Path2D.Float path = currentPath();
+        if (isEmpty(path)) {
+            path.moveTo(0f, 0f);
         }
 
-        this.mPath.curveTo(x1, y1, x2, y2, this.mLastX = x3, this.mLastY = y3);
+        path.curveTo(x1, y1, x2, y2, this.mLastX = x3, this.mLastY = y3);
     }
 
     public void rCubicTo(float dx1, float dy1, float dx2, float dy2, float dx3, float dy3) {
-        if (this.isEmpty()) {
-            this.mPath.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
+        Path2D.Float path = currentPath();
+        if (isEmpty(path)) {
+            path.moveTo(this.mLastX = 0.0F, this.mLastY = 0.0F);
         }
 
-        dx1 += this.mLastX;
-        dy1 += this.mLastY;
-        dx2 += this.mLastX;
-        dy2 += this.mLastY;
-        dx3 += this.mLastX;
-        dy3 += this.mLastY;
-        this.mPath.curveTo(dx1, dy1, dx2, dy2, this.mLastX = dx3, this.mLastY = dy3);
+        cubicTo(mLastX + dx1, mLastY + dy1, mLastX + dx2, mLastY + dy2, mLastX + dx3, mLastY + dy3);
     }
 
     public void close() {
-        this.mPath.closePath();
+        currentPath().closePath();
+        if (paths != null) currentPath = null;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -107,13 +106,22 @@ public final class PathDelegate {
 
     private static final Logger LOGGER = Logger.getLogger("PathParser");
 
-    @Nullable public static Path2D parse(String pathData, TIntArrayList floatRanges, int usefulPrecision) {
+    /**
+     * Parses {@param pathData} SVG path data sub-paths
+     * into {@param paths} if not null, or {@return full path} otherwise
+     */
+    public static Path2D.Float parse(
+            String pathData,
+            List<? super Path2D.Float> paths, TIntArrayList pathStarts, TIntArrayList floatRanges,
+            int usefulPrecision
+    ) {
         int start = 0;
         int end = 1;
 
-        PathDelegate path = new PathDelegate();
+        PathDelegate delegate = new PathDelegate(paths);
         float[] current = new float[6];
         char previousCommand = 'm';
+        Path2D.Float prevPath = delegate.currentPath;
 
         int[] tmp = new int[1];
         float[] buf = FloatArrays.EMPTY_ARRAY;
@@ -128,14 +136,21 @@ public final class PathDelegate {
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
                 if (count < 0) return null;
                 // TODO report unused or verbose commands
-                addCommand(path, current, previousCommand, previousCommand = pathData.charAt(start), results, count);
+                char next = pathData.charAt(start);
+                if ((previousCommand == 'z' || previousCommand == 'Z') && (next != 'm' && next != 'M')) delegate.moveTo(current[0], current[1]);
+                addCommand(delegate, current, previousCommand, previousCommand = next, results, count);
+                if (prevPath != (prevPath = delegate.currentPath) && prevPath != null && pathStarts != null) pathStarts.add(start);
             }
         }
 
-        if (end - start == 1 && start < pathData.length())
-            addCommand(path, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0);
+        if (end - start == 1 && start < pathData.length()) {
+            addCommand(delegate, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0);
+            if (prevPath != delegate.currentPath && pathStarts != null) pathStarts.add(end);
+        } else if (pathStarts != null) {
+            pathStarts.add(start);
+        }
 
-        return path.getJavaShape();
+        return paths == null ? delegate.currentPath : null;
     }
 
     private static int nextStart(String s, int end) {
@@ -271,7 +286,7 @@ public final class PathDelegate {
                 currentY = currentSegmentStartY;
                 ctrlPointX = currentSegmentStartX;
                 ctrlPointY = currentSegmentStartY;
-                path.moveTo(currentSegmentStartX, currentSegmentStartY);
+//              path.moveTo(currentSegmentStartX, currentSegmentStartY);
         }
 
         for(int k = 0; k < count; k += incr) {

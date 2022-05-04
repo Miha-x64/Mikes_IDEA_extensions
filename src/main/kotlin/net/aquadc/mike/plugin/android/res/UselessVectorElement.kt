@@ -1,33 +1,22 @@
 package net.aquadc.mike.plugin.android.res
 
-import android.graphics.PathDelegate
 import com.android.ide.common.resources.ResourceResolver
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.ProblemDescriptor
-import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.xml.XmlAttribute
-import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
-import de.javagl.geom.Shapes.computeSignedArea
-import de.javagl.geom.Shapes.computeSubShapes
-import gnu.trove.TIntArrayList
 import gnu.trove.TIntHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import org.jetbrains.plugins.groovy.codeInspection.fixes.RemoveElementQuickFix
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area
-import java.awt.geom.Path2D
 import java.awt.geom.Rectangle2D
-import kotlin.math.absoluteValue
 import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
 
 private val vectorTransforms = arrayOf("scaleX", "scaleY", "rotation", "translateX", "translateY")
 private val vectorTransformDefaults = floatArrayOf(1f, 1f, 0f, 0f, 0f)
@@ -45,9 +34,10 @@ private val inlineGroupFix = object : NamedLocalQuickFix("Inline contents") {
     }
 }
 
-internal fun ProblemsHolder.checkVector(tag: XmlTag) {
-    val rr =
-        tag.androidFacet?.let { ConfigurationManager.getOrCreateInstance(it).getConfiguration(file.virtualFile).resourceResolver }
+internal fun ProblemsHolder.checkVector(tag: XmlTag) { // TODO check for broken isStateful
+    val rr = tag.androidFacet?.let {
+        ConfigurationManager.getOrCreateInstance(it).getConfiguration(file.virtualFile).resourceResolver
+    }
 
     val maxIntrinsicWidthPx = rr.resolve(tag, "width", ANDROID_NS).toPixels()
     val maxIntrinsicHeightPx = rr.resolve(tag, "height", ANDROID_NS).toPixels()
@@ -69,21 +59,16 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) {
 
 
     val viewport = if (vWidth.isNaN() || vHeight.isNaN()) null else Area(Rectangle2D.Float(0f, 0f, vWidth, vHeight))
-    val pathTags = SmartList<XmlTag>()
-    val paths = SmartList<Area>()
+    val paths = SmartList<PathTag>()
     checkVectorGroup(
         rr, tag, null, viewport, usefulPrecision,
-        pathTags, paths, SmartList(), SmartList(), TIntHashSet(),
+        paths, SmartList(), SmartList(), TIntHashSet(),
     )
 
     // TODO also check when the path adds nothing to the image
-    check(pathTags.size == paths.size) { pathTags + " | " + paths }
-    paths.forEachIndexed { i, path ->
-        if (path?.effectivelyEmpty(usefulPrecision) == true) {
-            report(pathTags[i], "The path is fully overdrawn", removeTagFix)
-        }
+    for (i in paths.indices) {
+        paths[i].report(this)
     }
-    paths.clear()
 }
 
 private const val MAX_DP = 4f // xxxhdpi
@@ -111,7 +96,7 @@ private fun ProblemsHolder.checkVectorGroup(
     tag: XmlTag,
     parentMatrix: AffineTransform?, parentClip: Area?,
     usefulPrecision: Int,
-    pathTags: SmartList<XmlTag>, paths: SmartList<Area>,
+    paths: SmartList<PathTag>,
     clipTags: SmartList<XmlTag>, clips: SmartList<Area>, usefulClips: TIntHashSet,
 ) {
     val isRoot = tag.name == "vector"
@@ -126,7 +111,7 @@ private fun ProblemsHolder.checkVectorGroup(
     } ?: parentMatrix
 
     val myClipsFrom = clipTags.size
-    val myPathsFrom = pathTags.size
+    val myPathsFrom = paths.size
     var localClip: Area? = parentClip
 
     tag.subTags.forEach { subTag ->
@@ -139,18 +124,16 @@ private fun ProblemsHolder.checkVectorGroup(
                 }
             "group" ->
                 checkVectorGroup(
-                    rr, subTag, matrix, localClip, usefulPrecision, pathTags, paths, clipTags, clips, usefulClips,
+                    rr, subTag, matrix, localClip, usefulPrecision, paths, clipTags, clips, usefulClips,
                 )
             "path" -> { // TODO propose merging pathDatas of sibling paths with same attrs
                 subTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
-                    parse(rr, pathData, matrix, usefulPrecision)
-                        ?.let { outline -> toArea(rr, subTag, outline) }
-                        ?.takeIf { (area, _) -> checkPathArea(subTag, area, localClip, clips, usefulClips, usefulPrecision) }
-                        ?.let { (area, opaqueArea) ->
-                            paths.takeIf { opaqueArea != null && it.isNotEmpty() }?.forEach { it.subtract(opaqueArea) }
-                            pathTags.add(subTag)
-                            paths.add(area)
-                        }
+                    PathTag.parse(this, rr, pathData, matrix, usefulPrecision)?.also { pathTag ->
+                        pathTag.toAreas(this, rr, usefulPrecision)
+                        pathTag.applyClip(localClip, clips, usefulClips, usefulPrecision)
+                        pathTag.overdraw(paths, usefulPrecision)
+                        paths.add(pathTag)
+                    }
                 } ?: run {
                     // let's conservatively think that an invalid path marks all clips as useful
                     if (usefulClips.size() < clips.size)
@@ -160,30 +143,30 @@ private fun ProblemsHolder.checkVectorGroup(
         }
     }
 
-    if (myPathsFrom == pathTags.size) {
+    val hasPaths = myPathsFrom != paths.size
+    if (!hasPaths) {
         report(tag, if (isRoot) "Empty vector" else "Empty group", if (isRoot) null else removeGroupFix)
-    } else {
-        val hasClips = clips.size > myClipsFrom
-        if (hasClips) {
-            check(clipTags.size == clips.size)
-            for (i in myClipsFrom until clips.size)
-                if (!usefulClips.remove(i))
-                    report(clipTags[i], "The path doesn't clip any of its siblings", removeTagFix)
-            clips.subList(myClipsFrom, clips.size).clear()
-            clipTags.subList(myClipsFrom, clipTags.size).clear()
-        }
+    }
 
-        if (!isRoot && transformations == null && tag.getAttributeValue("name", ANDROID_NS) == null) {
-            val noSiblings = tag.parentTag?.subTags?.size == 1
-            if (!hasClips && noSiblings)
-                report(tag, "Useless group: no name, no transformations, no useful clip-paths, no siblings", inlineGroupFix)
-            else if (!hasClips)
-                report(tag, "Useless group: no name, no transformations, no useful clip-paths", inlineGroupFix)
-            else if (noSiblings)
-                report(tag, "Useless group: no name, no transformations, no siblings", inlineGroupFix)
-            // TODO also report single-group groups and propose merging
-        }
+    val hasClips = clips.size > myClipsFrom
+    if (hasClips) {
+        check(clipTags.size == clips.size)
+        for (i in myClipsFrom until clips.size)
+            if (!usefulClips.remove(i) && hasPaths) // remove all my clips from set reporting useless ones
+                report(clipTags[i], "The path doesn't clip any of its successors", removeTagFix)
+        clips.subList(myClipsFrom, clips.size).clear()
+        clipTags.subList(myClipsFrom, clipTags.size).clear()
+    }
 
+    if (hasPaths && !isRoot && transformations == null && tag.getAttributeValue("name", ANDROID_NS) == null) {
+        val noSiblings = tag.parentTag?.subTags?.size == 1
+        if (!hasClips && noSiblings)
+            report(tag, "Useless group: no name, no transformations, no useful clip-paths, no siblings", inlineGroupFix)
+        else if (!hasClips)
+            report(tag, "Useless group: no name, no transformations, no useful clip-paths", inlineGroupFix)
+        else if (noSiblings)
+            report(tag, "Useless group: no name, no transformations, no siblings", inlineGroupFix)
+        // TODO also report single-group groups and propose merging
     }
 }
 
@@ -221,9 +204,9 @@ internal fun ProblemsHolder.toFloat(rr: ResourceResolver?, attr: XmlAttribute?, 
     if (value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
 }
-internal fun ProblemsHolder.toString(rr: ResourceResolver?, attr: XmlAttribute?, default: String): String {
+internal fun ProblemsHolder.toString(rr: ResourceResolver?, attr: XmlAttribute?, default: String?): String? {
     val value = attr?.let(rr::resolve)
-    if (value == default) report(attr, "Attribute has default value", removeAttrFix)
+    if (default != null && value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
 }
 
@@ -253,13 +236,12 @@ private fun ProblemsHolder.checkClip(
         )
         null
     } else {
-        val clipArea = parse(rr, pathData, matrix, usefulPrecision)?.let(::Area)
+        val clipArea = PathTag.parse(this, rr, pathData, matrix, usefulPrecision)?.merged()
         if (clipArea == null) {
             null // bad path, ignore
         } else if (clipArea.effectivelyEmpty(usefulPrecision)) {
             registerProblem(
-                clipTag,
-                "The clip-path is empty making the whole $parent invisible",
+                clipTag, "The clip-path is empty making the whole $parent invisible",
                 removeParentGroupFix, removeTagFix,
             )
             null
@@ -279,178 +261,4 @@ private fun ProblemsHolder.checkClip(
             clipArea
         }
     }
-}
-
-private fun ProblemsHolder.parse(rr: ResourceResolver?, pathAttr: XmlAttributeValue, matrix: AffineTransform?, usefulPrecision: Int): Path2D? {
-    val outRanges = TIntArrayList()
-    val rawPathData = pathAttr.value
-    val pathData = rr.resolve(rawPathData) ?: return null
-    val path = PathDelegate.parse(pathData, outRanges, usefulPrecision)
-    val rangeNodeCount = outRanges.size()
-    val rangeCount = rangeNodeCount / 2
-    if (rangeCount > 0) {
-        var canTrimCarefully = false
-        for (i in 0 until rangeNodeCount step 2) {
-            if (outRanges[i + 1] - pathData.indexOf('.', outRanges[i]) > usefulPrecision + 2) { // plus dot plus extra digit
-                canTrimCarefully = true
-                break
-            }
-        }
-
-        if (canTrimCarefully || isOnTheFly) {
-            val beginValueAt = pathAttr.text.indexOf(rawPathData)
-            registerProblem(
-                pathAttr,
-                "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
-                ProblemHighlightType.WEAK_WARNING,
-                if (pathData === rawPathData)
-                    TextRange(beginValueAt + outRanges[0], beginValueAt + outRanges[rangeNodeCount - 1])
-                else TextRange.from(beginValueAt, rawPathData.length),
-
-                if (isOnTheFly) TrimFix(outRanges, "Trim aggressively", usefulPrecision, pathData) else null,
-                if (canTrimCarefully) TrimFix(outRanges, "Trim carefully", usefulPrecision + 1, pathData) else null,
-            )
-        }
-    } // TODO check for useless operations
-
-    if (matrix != null) path?.transform(matrix)
-    return path
-}
-
-private class TrimFix(
-    private val ranges: TIntArrayList,
-    name: String,
-    private val targetPrecision: Int,
-    private val pathData: String,
-) : NamedLocalQuickFix(name) {
-    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val value = StringBuilder(pathData)
-        val tmpFloat = StringBuilder(10)
-        for (i in (ranges.size()-2) downTo 0 step 2) {
-            val start = ranges[i]
-            val end = ranges[i + 1]
-            val minus = tmpFloat.replace(0, tmpFloat.length, value, start, end)[0] == '-'
-            if (tmpFloat.trimToPrecision()[0] != '-' && minus && value[start - 1].isDigit())
-                tmpFloat.insert(0, ' ')
-            value.replace(start, end, tmpFloat)
-        }
-        (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
-    }
-
-    private fun StringBuilder.trimToPrecision(): StringBuilder {
-        var carry = false
-        run { // lower precision
-            val precision = length - 1 - indexOf('.')
-            if (precision > targetPrecision) {
-                val trim = precision - targetPrecision
-                val iol = lastIndex
-                repeat(trim) { i ->
-                    carry = this[iol - i] - '0' + carry.asInt > 4
-                }
-                delete(length - trim, length)
-            }
-        }
-        run<Unit> { // clean up and carry
-            var fractional = true
-            while (isNotEmpty()) {
-                val iol = lastIndex
-                val ch = this[iol]
-                if (ch == '.') {
-                    fractional = false
-                } else if (fractional && (carry && ch == '9' || !carry && ch == '0')) {
-                    // carry over to the previous digit
-                } else if (fractional && carry && ch in '0'..'8') {
-                    this[iol]++
-                    carry = false
-                    break
-                } else break
-                deleteCharAt(iol)
-            }
-
-            var iol = lastIndex
-            if (!fractional) { // carry whole part
-                while (iol >= 0 && carry) {
-                    val ch = this[iol]
-                    if (ch == '9') {
-                        this[iol--] = '0'
-                    } else if (ch in '0'..'8') {
-                        this[iol] = ch + 1
-                        carry = false
-                    } else {
-                        check(ch == '-')
-                        break
-                    }
-                }
-            }
-
-            if (carry)
-                insert(max(iol, 0), '1')
-            else if (isEmpty() || (length == 1 && this[0] == '-')) {
-                append('0')
-            }
-        }
-
-        if (length == 2 && this[0] == '-' && this[1] == '0')
-            deleteCharAt(0)
-
-        return this
-    }
-
-    private fun StringBuilder.replace(
-        at: Int, till: Int,
-        with: CharSequence, from: Int = 0, to: Int = with.length,
-    ): StringBuilder {
-        val victimLen = till - at
-        val replLen = to - from
-        repeat(min(victimLen, replLen)) { this[at + it] = with[from + it] }
-        return if (replLen > victimLen)
-            insert(at + victimLen, with, from + victimLen, from + replLen)
-        else
-            delete(at + replLen, at + victimLen)
-    }
-
-    private inline val Boolean.asInt get() = if (this) 1 else 0
-}
-
-private fun ProblemsHolder.checkPathArea(
-    tag: XmlTag, path: Area, clipPath: Area?, clips: List<Area>,
-    usefulClips: TIntHashSet, usefulPrecision: Int,
-): Boolean {
-    if (usefulClips.size() < clips.size) {
-        val reduced = Area()
-        var index = 0
-        while (index < clips.size) {
-            val clip = clips[index]
-            if (index !in usefulClips) {
-                reduced.add(path)
-                reduced.subtract(clip)
-                // now `reduced` is a clipped-away part of path
-                if (!reduced.effectivelyEmpty(usefulPrecision) &&
-                    usefulClips.add(index) &&
-                    usefulClips.size() == clips.size)
-                        break
-                reduced.reset()
-            }
-            index++
-        }
-    }
-
-    if (path.effectivelyEmpty(usefulPrecision))
-        report(tag, "The path is effectively empty", removeTagFix)
-    else if (clipPath != null && path.also { it.intersect(clipPath) }.effectivelyEmpty(usefulPrecision))
-        report(tag, "The path is clipped away or outside of viewport", removeTagFix)
-    else
-        return true
-
-    return false
-}
-
-private fun Area.effectivelyEmpty(usefulPrecision: Int): Boolean {
-    if (isEmpty) return true
-    else if (usefulPrecision < 0) return false
-
-    val px = 1 / 10f.pow(usefulPrecision)
-    val minArea = 3 * px * px // at least 3 square pixels on xxxxxxxhhhhdpi, maybe?
-    return bounds2D.let { it.width < px || it.height < px || it.width * it.height < minArea } ||
-            computeSubShapes(this).all { computeSignedArea(it, 0.0).absoluteValue < minArea }
 }

@@ -53,24 +53,20 @@ public class Shapes
      * @param flatness The flatness for the shape path iterator
      * @return The regions
      */
-    static List<List<Point2D>> computeRegions(
-            Shape shape, double flatness)
-    {
-        List<List<Point2D>> regions = new ArrayList<List<Point2D>>();
+    static List<List<Point2D>> computeRegions(Shape shape, double flatness) {
+        List<List<Point2D>> regions = new ArrayList<>();
         PathIterator pi = shape.getPathIterator(null, flatness);
-        double coords[] = new double[6];
+        float[] coords = new float[6];
         List<Point2D> region = Collections.emptyList();
-        while (!pi.isDone())
-        {
-            switch (pi.currentSegment(coords))
-            {
+        while (!pi.isDone()) {
+            switch (pi.currentSegment(coords)) {
                 case PathIterator.SEG_MOVETO:
-                    region = new ArrayList<Point2D>();
-                    region.add(new Point2D.Double(coords[0], coords[1]));
+                    region = new ArrayList<>();
+                    region.add(new Point2D.Float(coords[0], coords[1]));
                     break;
 
                 case PathIterator.SEG_LINETO:
-                    region.add(new Point2D.Double(coords[0], coords[1]));
+                    region.add(new Point2D.Float(coords[0], coords[1]));
                     break;
 
                 case PathIterator.SEG_CLOSE:
@@ -122,8 +118,7 @@ public class Shapes
         double yn = pn.getY();
         sum0 += xn * y0;
         sum1 += x0 * yn;
-        double area = 0.5 * (sum0 - sum1);
-        return area;
+        return 0.5 * (sum0 - sum1);
     }
 
     /**
@@ -160,22 +155,18 @@ public class Shapes
      * @param shape The input shape
      * @return The sub-shapes
      */
-    public static List<Shape> computeSubShapes(Shape shape)
-    {
+    public static List<Shape> computeSubShapes(Shape shape) {
         List<Shape> result = new ArrayList<Shape>();
         PathIterator pi = shape.getPathIterator(null);
-        double[] coords = new double[6];
-        double previous[] = new double[2];
-        double first[] = new double[2];
+        float[] coords = new float[6];
+        float[] previous = new float[2];
+        float[] first = new float[2];
         Path2D currentShape = null;
-        while (!pi.isDone())
-        {
+        while (!pi.isDone()) {
             int segment = pi.currentSegment(coords);
-            switch (segment)
-            {
+            switch (segment) {
                 case PathIterator.SEG_MOVETO:
-                    if (currentShape != null)
-                    {
+                    if (currentShape != null) {
                         result.add(currentShape);
                         currentShape = null;
                     }
@@ -186,8 +177,7 @@ public class Shapes
                     break;
 
                 case PathIterator.SEG_CLOSE:
-                    if (currentShape != null)
-                    {
+                    if (currentShape != null) {
                         currentShape.closePath();
                         result.add(currentShape);
                         currentShape = null;
@@ -197,9 +187,8 @@ public class Shapes
                     break;
 
                 case PathIterator.SEG_LINETO:
-                    if (currentShape == null)
-                    {
-                        currentShape = new Path2D.Double();
+                    if (currentShape == null) {
+                        currentShape = new Path2D.Float();
                         currentShape.moveTo(previous[0], previous[1]);
                     }
                     currentShape.lineTo(coords[0], coords[1]);
@@ -208,28 +197,21 @@ public class Shapes
                     break;
 
                 case PathIterator.SEG_QUADTO:
-                    if (currentShape == null)
-                    {
-                        currentShape = new Path2D.Double();
+                    if (currentShape == null) {
+                        currentShape = new Path2D.Float();
                         currentShape.moveTo(previous[0], previous[1]);
                     }
-                    currentShape.quadTo(
-                            coords[0], coords[1],
-                            coords[2], coords[3]);
+                    currentShape.quadTo(coords[0], coords[1], coords[2], coords[3]);
                     previous[0] = coords[2];
                     previous[1] = coords[3];
                     break;
 
                 case PathIterator.SEG_CUBICTO:
-                    if (currentShape == null)
-                    {
-                        currentShape = new Path2D.Double();
+                    if (currentShape == null) {
+                        currentShape = new Path2D.Float();
                         currentShape.moveTo(previous[0], previous[1]);
                     }
-                    currentShape.curveTo(
-                            coords[0], coords[1],
-                            coords[2], coords[3],
-                            coords[4], coords[5]);
+                    currentShape.curveTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5]);
                     previous[0] = coords[4];
                     previous[1] = coords[5];
                     break;
@@ -241,8 +223,7 @@ public class Shapes
             }
             pi.next();
         }
-        if (currentShape != null)
-        {
+        if (currentShape != null) {
             result.add(currentShape);
             currentShape = null;
         }
@@ -253,8 +234,7 @@ public class Shapes
     /**
      * Private constructor to prevent instantiation
      */
-    private Shapes()
-    {
+    private Shapes() {
         // Private constructor to prevent instantiation
     }
 
