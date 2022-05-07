@@ -52,6 +52,11 @@
             groupPath="Kotlin" groupName="Style issues" level="WEAK WARNING" language="kotlin" enabledByDefault="true"
             implementationClass="net.aquadc.mike.plugin.android.ReplaceAndroidMethodWithKotlinAnalog" />
 
+        <localInspection
+            shortName="shapeAttrApplicationOrder" groupName="Android" language="UAST" enabledByDefault="true"
+            level="WARNING" displayName="Shape attribute application order"
+            implementationClass="net.aquadc.mike.plugin.android.ShapeAttrApplicationOrder" />
+
         <codeInsight.lineMarkerProvider
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
         <codeInsight.lineMarkerProvider

@@ -1,3 +1,9 @@
+### 0.23
+  <ul>
+    <li>Added inspection about shape (GradientDrawable) attribute application order</li>
+  </ul>
+
+
 ### 0.22
   <ul>
     <li>Fix reflective property replacement search when name is capitalized</li>

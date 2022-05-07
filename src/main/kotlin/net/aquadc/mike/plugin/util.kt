@@ -323,3 +323,15 @@ inline fun <reified R : Any> IntArray.miserlyMapNullize(transform: (Int) -> R?):
     if (isEmpty()) null else Array(size) { transform(this[it]) ?: return null }
 
 operator fun <T> ((T) -> Boolean).not(): (T) -> Boolean = { !this(it) }
+
+fun PsiElement.getParentUntil(c1: Class<out PsiElement>, c2: Class<out PsiElement>): PsiElement? {
+    var element = this
+    while (true) {
+        element = (element.parent ?: return null).also {
+            if (c1.isInstance(it) || c2.isInstance(it)) {
+                @Suppress("UNCHECKED_CAST")
+                return element
+            }
+        }
+    }
+}

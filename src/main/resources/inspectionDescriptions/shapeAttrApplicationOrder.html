@@ -1,0 +1,19 @@
+<html>
+<body>
+
+<p>
+    Due to a bug in Android SDK <code>GradientDrawable</code> class, changing corner radius will not recompute opacity before
+    <a href="https://github.com/aosp-mirror/platform_frameworks_base/commit/29c8b5458ac2f1d9b61412d1b9cf718c196c05df">Android P fix</a>.
+    The main consequence is having a ripple with straight corners on top of a rounded rectangle.
+    Thus, re-computation should be triggered using another property setters such as shape, color, or stroke.
+</p>
+<p>
+    See <a href="https://twitter.com/miha_x64/status/1445927243251949576">explanation</a> (<a href="https://nitter.net/miha_x64/status/1445927243251949576">mirror</a>)
+    for more info.
+</p>
+
+
+<p><small>The inspection is provided by <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Mike's IDEA Extensions</a>.</small></p>
+
+</body>
+</html>
