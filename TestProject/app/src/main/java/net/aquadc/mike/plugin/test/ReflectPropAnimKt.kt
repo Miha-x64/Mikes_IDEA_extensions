@@ -9,10 +9,10 @@ import android.view.View
 @TargetApi(21)
 fun anims() {
     ObjectAnimator().setPropertyName("alpha")
-    ObjectAnimator().propertyName = "alpha"
+//    ObjectAnimator().propertyName = "alpha"
     ObjectAnimator().run {
         setPropertyName("alpha")
-        propertyName = "alpha"
+//        propertyName = "alpha"
     }
     ObjectAnimator().setProperty(View.ALPHA)
     ObjectAnimator().propertyName

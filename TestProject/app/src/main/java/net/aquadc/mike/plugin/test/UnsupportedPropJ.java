@@ -6,7 +6,7 @@ import android.widget.VideoView;
 
 public class UnsupportedPropJ {
     @SuppressWarnings("unused")
-    void test(Context context) {
+    static void test(Context context) {
         new View(context).setOnClickListener(null);
         new VideoView(context).setOnClickListener(null);
         new VideoView(context) {}.setOnClickListener(null);

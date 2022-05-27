@@ -10,7 +10,14 @@ fun whatever() {
     println(BigInteger("1"))
     println(BigDecimal.ONE.compareTo(BigDecimal.ZERO))
     println(BigInteger.ONE.compareTo(BigInteger.ZERO))
-    println(BigInteger.ONE.let { it.compareTo(BigInteger.ZERO) })
+    println(BigDecimal.ONE > BigDecimal.ZERO)
+    println(BigInteger.ONE > BigInteger.ZERO)
+    println(BigDecimal.ONE <= BigDecimal.ZERO)
+    println(BigInteger.ONE <= BigInteger.ZERO)
+    println(BigInteger.ONE.let {
+        println()
+        it.compareTo(BigInteger.ZERO)
+    })
     println(BigInteger.ONE.run {
         println()
         compareTo(BigInteger.ZERO)

@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UElement
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.toUElement
@@ -44,9 +45,12 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
 
-        override fun visitCallExpr(node: UCallExpression): Boolean {
+        override fun visitCallExpr(
+            node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
+            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+        ): Boolean {
             node.sourcePsi?.let { srcPsi ->
-                MATCHERS_TO_FIXES.firstOrNull { it.tryReport(holder, node, srcPsi) }
+                MATCHERS_TO_FIXES.firstOrNull { it.tryReport(holder, valueArguments, srcPsi) }
             }
 
             return true
@@ -59,10 +63,9 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
         private val argIndices: IntArray,
         private val replaceMethodWith: String?, // null: don't; "": get rid of; "$name": name
     ) {
-        fun tryReport(holder: ProblemsHolder, call: UCallExpression, srcPsi: PsiElement): Boolean {
+        fun tryReport(holder: ProblemsHolder, args: List<UExpression>, srcPsi: PsiElement): Boolean {
             if (!matcher.test(srcPsi)) return false
 
-            val args = call.valueArguments
             val replacements = if (isStandardViewProperty(args) && argIndices.all { i -> args[i].sourcePsi != null })
                 argIndices.mapNullize { argIndex ->
                     args[argIndex].evaluateString()?.let { VIEW_PROPERTY_FIXES[it.decapitalize()] }

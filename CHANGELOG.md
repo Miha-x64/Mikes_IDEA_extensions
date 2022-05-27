@@ -1,6 +1,7 @@
 ### 0.23
   <ul>
     <li>Added inspection about shape (GradientDrawable) attribute application order</li>
+    <li>Support comparison operators when reporting `Big(Integer|Decimal).compareTo(ZERO)`</li>
   </ul>
 
 

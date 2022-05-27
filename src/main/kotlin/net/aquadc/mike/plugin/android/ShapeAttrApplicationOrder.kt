@@ -9,11 +9,14 @@ import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.SortedArray
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.getParentUntil
-import net.aquadc.mike.plugin.resolvedClassFqn
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.psiUtil.getNextSiblingIgnoringWhitespace
+import org.jetbrains.uast.UBinaryExpression
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UQualifiedReferenceExpression
+import org.jetbrains.uast.UReferenceExpression
+import org.jetbrains.uast.UThisExpression
 import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.tryResolve
@@ -26,30 +29,41 @@ class ShapeAttrApplicationOrder : UastInspection() {
 
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,
-    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
+    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor(assignment = true) {
 
-        override fun visitCallExpr(node: UCallExpression): Boolean {
-            checkForRadius(holder, node)
+        override fun visitCallExpr(
+            node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
+            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+        ): Boolean {
+            checkForRadius(src, kind, declaringClassFqn, receiver, methodName)
             return true
         }
 
-        private fun checkForRadius(holder: ProblemsHolder, node: UCallExpression) {
-            val src = node.sourcePsi
-            val af = src?.containingFile?.androidFacet ?: return
+        private fun checkForRadius(
+            src: PsiElement, kind: UastCallKind,
+            declaringClassFqn: String, receiver: UExpression?, methodName: String,
+        ) {
+            val af = src.containingFile?.androidFacet ?: return
             if ((AndroidModuleModel.get(af)?.minSdkVersion?.apiLevel ?: Int.MAX_VALUE) >= 28) return
-            if (node.kind == UastCallKind.METHOD_CALL &&
-                node.methodName.let { it == "setCornerRadius" || it == "setCornerRadii" } &&
-                node.resolvedClassFqn == "android.graphics.drawable.GradientDrawable"
-            ) {
+
+            if (kind == UastCallKind.METHOD_CALL &&
+                methodName.let { it == "setCornerRadius" || it == "setCornerRadii" } &&
+                declaringClassFqn == "android.graphics.drawable.GradientDrawable") {
+                val nodeReceiver = receiver?.takeIf { it !is UThisExpression }
                 var nextNode: PsiElement? = src.getParentUntil(PsiCodeBlock::class.java, KtBlockExpression::class.java)
                 while (nextNode?.getNextSiblingIgnoringWhitespace(false).also { nextNode = it } != null) {
                     var nextCallExpr = nextNode.toUElement()
                     if (nextCallExpr is UQualifiedReferenceExpression) nextCallExpr = nextCallExpr.selector
-                    nextCallExpr as? UCallExpression ?: continue
-                    if (nextCallExpr.kind == UastCallKind.METHOD_CALL &&
+                    if (nextCallExpr is UCallExpression &&
+                        nextCallExpr.kind == UastCallKind.METHOD_CALL &&
                         (nextCallExpr.methodName ?: "") in computeOpacityCallers &&
-                        (nextCallExpr.receiver == node.receiver ||
-                                nextCallExpr.receiver?.tryResolve() == node.receiver?.tryResolve())) {
+                        sameReceiver(nextCallExpr, nodeReceiver)
+                    ) {
+                        return
+                    } else if (nextCallExpr is UBinaryExpression &&
+                        nextCallExpr.leftOperand.also { nextCallExpr = it } is UReferenceExpression &&
+                            ((nextCallExpr as UReferenceExpression).resolvedName ?: "") in computeOpacityCallers &&
+                            sameReceiver(nextCallExpr as UReferenceExpression, nodeReceiver)) {
                         return
                     }
                 }
@@ -58,6 +72,20 @@ class ShapeAttrApplicationOrder : UastInspection() {
                         "Otherwise, opacity may not be computed properly")
             }
         }
+
+        private fun sameReceiver(nextCallExpr: UExpression, nodeReceiver: UExpression?) =
+            when (nextCallExpr) {
+                is UCallExpression -> {
+                    val receiver = nextCallExpr.receiver?.takeIf { it !is UThisExpression }
+                    (receiver == nodeReceiver || receiver?.tryResolve() == nodeReceiver?.tryResolve())
+                }
+                is UQualifiedReferenceExpression -> {
+                    val receiver = nextCallExpr.receiver.takeIf { it !is UThisExpression }
+                    (receiver == nodeReceiver || receiver?.tryResolve() == nodeReceiver?.tryResolve())
+                }
+                else ->
+                    nodeReceiver == null
+            }
     }
 
     private companion object {

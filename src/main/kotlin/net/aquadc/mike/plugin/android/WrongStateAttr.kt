@@ -1,6 +1,7 @@
 package net.aquadc.mike.plugin.android
 
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.psi.PsiElement
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
@@ -21,28 +22,26 @@ class WrongStateAttr : UastInspection() {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
-        override fun visitCallExpr(node: UCallExpression): Boolean =
-            if (node.kind === UastCallKind.CONSTRUCTOR_CALL &&
-                node.resolvedClassFqn == "android.content.res.ColorStateList"
-            ) {
+        override fun visitCallExpr(
+            node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
+            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+        ): Boolean =
+            if (kind === UastCallKind.CONSTRUCTOR_CALL && declaringClassFqn == "android.content.res.ColorStateList") {
                 // android.content.res.ColorStateList.ColorStateList(int[][], int[])
-                node.valueArguments.firstOrNull()?.asArrayOf()?.valueArguments?.forEach { it.check(holder) }
+                valueArguments.firstOrNull()?.asArrayOf()?.valueArguments?.forEach { it.check(holder) }
                 true
-            } else if (node.kind === METHOD_CALL && node.methodName == "addState" &&
-                node.resolvedClassFqn.let {
+            } else if (kind === METHOD_CALL && methodName == "addState" &&
+                declaringClassFqn.let {
                     it == "android.animation.StateListAnimator" || it == "android.graphics.drawable.StateListDrawable"
                 }
             ) {
                 // android.animation.StateListAnimator.addState(int[], android.animation.Animator)
                 // android.graphics.drawable.StateListDrawable.addState(int[], android.graphics.drawable.Drawable)
-                node.valueArguments.firstOrNull()?.check(holder)
+                valueArguments.firstOrNull()?.check(holder)
                 true
             } else {
                 true // skip any other expression
             }
-
-        private val UCallExpression.resolvedClassFqn: String?
-            get() = resolve()?.containingClass?.qualifiedName
 
         private fun UExpression.check(holder: ProblemsHolder) {
             asArrayOf("int")?.valueArguments?.forEach {

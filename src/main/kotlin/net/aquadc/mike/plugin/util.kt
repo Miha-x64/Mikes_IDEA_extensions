@@ -20,9 +20,14 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
+import org.jetbrains.uast.UBinaryExpression
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UQualifiedReferenceExpression
+import org.jetbrains.uast.UReferenceExpression
+import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.USimpleNameReferenceExpression
+import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import kotlin.math.min
 
@@ -36,19 +41,73 @@ abstract class UastInspection : LocalInspectionTool() {
 
 }
 
-abstract class FunctionCallVisitor : AbstractUastNonRecursiveVisitor() {
+abstract class FunctionCallVisitor(
+    private val assignment: Boolean = false,
+    private val comparison: Boolean = false,
+) : AbstractUastNonRecursiveVisitor() {
     final override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean =
         node.sourcePsi?.language === KotlinLanguage.INSTANCE // ugly workaround to skip KtDotQualifiedExpression
     final override fun visitSimpleNameReferenceExpression(node: USimpleNameReferenceExpression) =
         true
-    final override fun visitCallExpression(node: UCallExpression): Boolean =
-        node.sourcePsi is PsiExpressionStatement // some wisdom from IDEA sources, not sure whether it is useful
-                || visitCallExpr(node)
-    abstract fun visitCallExpr(node: UCallExpression): Boolean
+    final override fun visitCallExpression(node: UCallExpression): Boolean {
+        node.sourcePsi?.let { src ->
+            if (src is PsiExpressionStatement) // some wisdom from IDEA sources, not sure whether it is useful
+                return true
+
+            val method = if (node.kind == UastCallKind.CONSTRUCTOR_CALL) "<init>" else node.methodName
+            val cls = node.resolvedClassFqn
+            val args = if (node.valueArgumentCount == 0) emptyList() else object : AbstractList<UExpression>() {
+                override val size: Int get() = node.valueArgumentCount
+                override fun get(index: Int): UExpression = node.valueArguments[index]
+            }
+            if (method != null && cls != null) {
+                visitCallExpr(node, src, node.kind, null, cls, node.receiver, method, args)
+                return true
+            }
+        }
+        return true
+    }
+
+    final override fun visitBinaryExpression(node: UBinaryExpression): Boolean {
+        val src = node.sourcePsi ?: return true
+        val op = node.operatorIdentifier?.name
+        if (assignment && op == "=") {
+            (node.leftOperand as? UReferenceExpression)?.let { leftRef ->
+                val name = leftRef.resolvedName
+                val cls = leftRef.resolvedClassFqn
+                if (name != null && cls != null) {
+                    val receiver = when (leftRef) {
+                        is UCallExpression -> leftRef.receiver
+                        is UQualifiedReferenceExpression -> leftRef.receiver
+                        else -> null
+                    }
+                    return visitCallExpr(
+                        node, src, UastCallKind.METHOD_CALL, op,
+                        cls, receiver, name, listOf(node.rightOperand),
+                    )
+                }
+            }
+        } else if (comparison && (op == "<" || op == "<=" || op == ">" || op == ">=")) {
+            (node.leftOperand as? UReferenceExpression)?.let { leftRef ->
+                val cls = leftRef.resolvedClassFqn
+                if (cls != null) {
+                    return visitCallExpr(
+                        node, src, UastCallKind.METHOD_CALL, op,
+                        cls, node.leftOperand, "compareTo", listOf(node.rightOperand),
+                    )
+                }
+            }
+        }
+        return true
+    }
+    abstract fun visitCallExpr(
+        node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
+        declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+    ): Boolean
 }
 
-val UCallExpression.resolvedClassFqn: String?
-    get() = resolve()?.containingClass?.qualifiedName
+val UResolvable.resolvedClassFqn: String?
+    get() = (resolve() as? PsiMember)?.containingClass?.qualifiedName
 
 fun CallMatcher.test(expr: PsiElement): Boolean = when (expr) {
     is PsiMethodCallExpression -> test(expr)

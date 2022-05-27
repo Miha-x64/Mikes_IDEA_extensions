@@ -27,14 +27,13 @@ import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.PsiType
 import com.intellij.psi.impl.source.tree.java.PsiLiteralExpressionImpl.parseStringCharacters
-import com.intellij.psi.util.PsiLiteralUtil.*
+import com.intellij.psi.util.PsiLiteralUtil.getStringLiteralContent
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.SmartList
 import it.unimi.dsi.fastutil.bytes.ByteArrays
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
-import net.aquadc.mike.plugin.resolvedClassFqn
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -43,9 +42,10 @@ import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtReferenceExpression
-import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UReferenceExpression
+import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.getAsJavaPsiElement
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -64,12 +64,15 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
-        override fun visitCallExpr(node: UCallExpression): Boolean =
-            if (node.methodName == "parseColor" && node.resolvedClassFqn == "android.graphics.Color") {
-                node.sourcePsi?.let { src ->
-                    node.valueArguments.firstOrNull()?.sourcePsi?.let { argSrc ->
-                        report(holder, src.parent as? KtDotQualifiedExpression ?: src, argSrc)
-                    }
+        override fun visitCallExpr(
+            node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
+            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+        ): Boolean =
+            if (kind == UastCallKind.METHOD_CALL &&
+                methodName == "parseColor" &&
+                declaringClassFqn == "android.graphics.Color") {
+                valueArguments.firstOrNull()?.sourcePsi?.let { argSrc ->
+                    report(holder, src.parent as? KtDotQualifiedExpression ?: src, argSrc)
                 }
                 true
             } else false

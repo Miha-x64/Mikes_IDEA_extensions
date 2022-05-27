@@ -12,6 +12,8 @@ import java.util.logging.Logger;
 // so I've borrowed these to avoid NoClassDefFoundError,
 // and seriously reworked it to satisfy my needs.
 
+// Spec: https://www.w3.org/TR/SVG/paths.html
+
 public final class PathDelegate {
     private final List<? super Path2D.Float> paths;
     private Path2D.Float currentPath;
@@ -134,7 +136,12 @@ public final class PathDelegate {
                 int len = endTrimmed - start;
                 float[] results = buf.length < len ? (buf = new float[len]) : buf;
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
-                if (count < 0) return null;
+                if (count < 0) {
+                    if (paths != null) paths.clear();
+                    if (pathStarts != null) pathStarts.clear();
+                    if (floatRanges != null) floatRanges.clear();
+                    return null;
+                }
                 // TODO report unused or verbose commands
                 char next = pathData.charAt(start);
                 if ((previousCommand == 'z' || previousCommand == 'Z') && (next != 'm' && next != 'M')) delegate.moveTo(current[0], current[1]);

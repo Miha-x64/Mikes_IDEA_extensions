@@ -8,12 +8,11 @@ import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
-import net.aquadc.mike.plugin.resolvedClassFqn
 import net.aquadc.mike.plugin.test
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtElement
-import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.UastCallKind.Companion.CONSTRUCTOR_CALL
 import org.jetbrains.uast.UastCallKind.Companion.METHOD_CALL
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -33,10 +32,13 @@ class BigDecimalConstantInspection : UastInspection(), CleanupLocalInspectionToo
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
 
-        override fun visitCallExpr(node: UCallExpression): Boolean {
-            when (node.kind) {
-                METHOD_CALL -> visitMethodCall(node)
-                CONSTRUCTOR_CALL -> visitNewExpression(node)
+        override fun visitCallExpr(
+            node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
+            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+        ): Boolean {
+            when (kind) {
+                METHOD_CALL -> visitMethodCall(src, declaringClassFqn, valueArguments)
+                CONSTRUCTOR_CALL -> visitNewExpression(src, declaringClassFqn, valueArguments)
             }
             return true
         }
@@ -44,35 +46,27 @@ class BigDecimalConstantInspection : UastInspection(), CleanupLocalInspectionToo
         /**
          * Use constant instead of BigDecimal.valueOf()
          */
-        private fun visitMethodCall(node: UCallExpression) {
-            node.sourcePsi?.let { src ->
-                if (CONSTRUCTOR_METHOD.test(src)) {
-                    node.resolve()?.containingClass?.qualifiedName?.let { className ->
-                        val constVal = node.takeIf { it.valueArgumentCount == 1 }
-                            ?.valueArguments?.single()?.let(UExpression::evaluate) as? Number
-                        constVal?.let(::constantOfNumber)?.let { replacement ->
-                            complain(src, className, replacement)
-                        }
+        private fun visitMethodCall(src: PsiElement, declaringClassFqn: String, args: List<UExpression>) {
+            if (CONSTRUCTOR_METHOD.test(src)) {
+                (args.singleOrNull()?.let(UExpression::evaluate) as? Number)
+                    ?.let(::constantOfNumber)?.let { replacement ->
+                        complain(src, declaringClassFqn, replacement)
                     }
-                }
             }
         }
 
         /**
          * Use constant instead of new BigDecimal()
          */
-        fun visitNewExpression(expression: UCallExpression) { // TODO gets triggered several times for single expression
-            val src = expression.sourcePsi ?: return
-            val className = expression.resolvedClassFqn ?: return
-            val argVal = expression.takeIf { className.isBigNumber() && it.valueArgumentCount == 1 }
-                ?.valueArguments?.single()?.evaluate() ?: return
+        fun visitNewExpression(src: PsiElement, declaringClassFqn: String, args: List<UExpression>) {
+            val argVal = args.takeIf { declaringClassFqn.isBigNumber() }?.singleOrNull()?.evaluate() ?: return
 
             when (argVal) {
                 is Number -> constantOfNumber(argVal)
                 is String -> constantOfString(argVal)
                 else -> null // that's ok e.g. 12.34
             }?.let { replacement ->
-                complain(src, className, replacement)
+                complain(src, declaringClassFqn, replacement)
             }
         }
 

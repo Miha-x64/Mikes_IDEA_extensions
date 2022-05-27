@@ -6,7 +6,7 @@ import java.math.BigInteger;
 @SuppressWarnings("unused")
 public class BigIntegersJava {
 
-    void whatever() {
+    static void whatever() {
         System.out.println(BigDecimal.valueOf(0));
         System.out.println(BigInteger.valueOf(0));
         System.out.println(new BigDecimal("1"));

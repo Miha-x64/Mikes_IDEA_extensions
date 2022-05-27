@@ -4,13 +4,16 @@ import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiElement
 import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.test
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UImportStatement
+import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModelModule
 
@@ -34,8 +37,11 @@ class UnsupportedFeatureInspection : UastInspection() {
             return true
         }
 
-        override fun visitCallExpr(node: UCallExpression): Boolean {
-            check(node)
+        override fun visitCallExpr(
+            node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
+            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+        ): Boolean {
+            (node as? UCallExpression)?.let(::check)
             return true
         }
 
@@ -44,13 +50,16 @@ class UnsupportedFeatureInspection : UastInspection() {
             androidModelModule(src.containingFile?.androidFacet ?: return)
                 ?.minSdkVersion?.apiLevel?.takeIf { it < 26 } ?: return
             val className = (node.receiverType as? PsiClassType)?.resolve()?.qualifiedName ?: return
-            if (className == "android.widget.VideoView" && VideoView_setOnClickListener.test(src))
-                holder.registerProblem(node.methodIdentifier?.sourcePsi ?: src, "This call is useless before SDK 26")
+            if (className == "android.widget.VideoView" && VideoView_setListener.test(src))
+                holder.registerProblem(
+                    node.methodIdentifier?.sourcePsi ?: src,
+                    "VideoView click and touch listeners do not work before SDK 26",
+                )
         }
     }
 
     private companion object {
-        private val VideoView_setOnClickListener =
+        private val VideoView_setListener =
             CallMatcher.anyOf(
                 CallMatcher.instanceCall("android.view.View", "setOnClickListener")
                     .parameterTypes("android.view.View.OnClickListener"),

@@ -2,12 +2,15 @@ package net.aquadc.mike.plugin.test
 
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
+import androidx.annotation.RequiresApi
 
 
-fun main(args: Array<String>) {
+@RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+fun main() {
     GradientDrawable().apply {
         cornerRadius = 4f
-        setColor(Color.RED)
+        color = null
     }
 
     val d = GradientDrawable()
