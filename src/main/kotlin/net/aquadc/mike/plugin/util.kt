@@ -1,6 +1,5 @@
 package net.aquadc.mike.plugin
 
-import com.android.resources.ResourceFolderType
 import com.intellij.codeInsight.FileModificationService
 import com.intellij.codeInspection.*
 import com.intellij.lang.java.JavaLanguage
@@ -11,8 +10,6 @@ import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.uast.UastVisitorAdapter
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
-import org.jetbrains.android.facet.AndroidFacet
-import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.idea.references.mainReference
@@ -148,9 +145,6 @@ fun CallMatcher.test(expr: KtExpression): Boolean {
 val KtBinaryExpression.leftRef: KtReferenceExpression?
     get() = (left as? KtDotQualifiedExpression)?.selectorExpression?.referenceExpression()
         ?: left as? KtReferenceExpression
-
-val KtBinaryExpression.leftQual: KtExpression?
-    get() = (left as? KtDotQualifiedExpression)?.receiverExpression
 
 val KtReferenceExpression.referencedName: String?
     get() = (this as? KtNameReferenceExpression)?.getReferencedName()
@@ -328,9 +322,6 @@ inline fun <T, R : Comparable<R>> Array<out T>.maxByIf(selector: (T) -> R, predi
     }
     return maxValue
 }
-
-fun AndroidFacet.resTypeOf(file: PsiFile): ResourceFolderType? =
-    ModuleResourceManagers.getInstance(this).localResourceManager.getFileResourceFolderType(file)
 
 inline fun <T> Array<out T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     val iof = indexOfFirst(predicate)

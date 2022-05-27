@@ -15,7 +15,6 @@ import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UImportStatement
 import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModelModule
 
 /**
  * @author Mike Gorünóv
@@ -47,8 +46,7 @@ class UnsupportedFeatureInspection : UastInspection() {
 
         private fun check(node: UCallExpression) {
             val src = node.sourcePsi ?: return
-            androidModelModule(src.containingFile?.androidFacet ?: return)
-                ?.minSdkVersion?.apiLevel?.takeIf { it < 26 } ?: return
+            src.containingFile?.androidFacet?.androidMinSdk()?.apiLevel?.takeIf { it < 26 } ?: return
             val className = (node.receiverType as? PsiClassType)?.resolve()?.qualifiedName ?: return
             if (className == "android.widget.VideoView" && VideoView_setListener.test(src))
                 holder.registerProblem(

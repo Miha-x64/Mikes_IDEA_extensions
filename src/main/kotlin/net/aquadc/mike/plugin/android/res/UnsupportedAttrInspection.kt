@@ -10,10 +10,10 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.XmlRecursiveElementVisitor
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlFile
-import net.aquadc.mike.plugin.resTypeOf
+import net.aquadc.mike.plugin.android.androidMinSdk
+import net.aquadc.mike.plugin.android.resTypeOf
 import java.text.MessageFormat
 import java.util.*
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModelModule
 import java.lang.Character.MIN_VALUE as nullChar
 
 /**
@@ -64,7 +64,7 @@ class UnsupportedAttrInspection : LocalInspectionTool() {
         override fun visitFile(file: PsiFile) {
             if (file !is XmlFile) return
             val af = file.androidFacet ?: return
-            val minSdk = androidModelModule(af)?.minSdkVersion?.apiLevel ?: return
+            val minSdk = af.androidMinSdk()?.apiLevel ?: return
             val resType = af.resTypeOf(file)?.takeIf(resTypes::contains) ?: return
             file.accept(object : XmlRecursiveElementVisitor() {
                 override fun visitXmlAttribute(attribute: XmlAttribute) {

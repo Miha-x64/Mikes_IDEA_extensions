@@ -2,6 +2,7 @@
   <ul>
     <li>Added inspection about shape (GradientDrawable) attribute application order</li>
     <li>Support comparison operators when reporting `Big(Integer|Decimal).compareTo(ZERO)`</li>
+    <li>Fixed binary incompatibility with Android Studio Chipmunk | 2021.2.1 Patch 1</li>
   </ul>
 
 

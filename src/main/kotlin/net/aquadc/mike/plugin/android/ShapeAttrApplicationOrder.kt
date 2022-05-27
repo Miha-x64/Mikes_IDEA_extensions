@@ -1,6 +1,5 @@
 package net.aquadc.mike.plugin.android
 
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiCodeBlock
@@ -44,7 +43,7 @@ class ShapeAttrApplicationOrder : UastInspection() {
             declaringClassFqn: String, receiver: UExpression?, methodName: String,
         ) {
             val af = src.containingFile?.androidFacet ?: return
-            if ((AndroidModuleModel.get(af)?.minSdkVersion?.apiLevel ?: Int.MAX_VALUE) >= 28) return
+            if ((af.androidMinSdk()?.apiLevel ?: Int.MAX_VALUE) >= 28) return
 
             if (kind == UastCallKind.METHOD_CALL &&
                 methodName.let { it == "setCornerRadius" || it == "setCornerRadii" } &&

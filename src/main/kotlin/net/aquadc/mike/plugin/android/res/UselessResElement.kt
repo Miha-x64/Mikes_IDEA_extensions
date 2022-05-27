@@ -16,8 +16,8 @@ import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlFile
 import com.intellij.psi.xml.XmlTag
 import net.aquadc.mike.plugin.NamedLocalQuickFix
-import net.aquadc.mike.plugin.resTypeOf
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel.get as androidModuleModel
+import net.aquadc.mike.plugin.android.androidMinSdk
+import net.aquadc.mike.plugin.android.resTypeOf
 
 /**
  * @author Mike Gorünóv
@@ -33,9 +33,7 @@ class UselessResElement : LocalInspectionTool(), CleanupLocalInspectionTool {
                 ANIM, ANIMATOR -> file.rootTag?.let(::checkAnim)
                 XML -> file.rootTag?.let(::checkXml)
                 LAYOUT -> file.rootTag?.let {
-                    MarginsPaddings.checkLayoutTag(
-                        holder, androidModuleModel(af)?.minSdkVersion?.apiLevel ?: -1, isOnTheFly, it,
-                    )
+                    MarginsPaddings.checkLayoutTag(holder, af.androidMinSdk()?.apiLevel ?: -1, isOnTheFly, it)
                 }
                 else -> {} // nothing to do here
             }
