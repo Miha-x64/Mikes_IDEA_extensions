@@ -42,8 +42,11 @@ abstract class FunctionCallVisitor(
     private val assignment: Boolean = false,
     private val comparison: Boolean = false,
 ) : AbstractUastNonRecursiveVisitor() {
-    final override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean =
-        node.sourcePsi?.language === KotlinLanguage.INSTANCE // ugly workaround to skip KtDotQualifiedExpression
+    final override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean {
+        if (node.sourcePsi?.language === KotlinLanguage.INSTANCE) return true
+        node.selector.accept(this)
+        return true
+    }
     final override fun visitSimpleNameReferenceExpression(node: USimpleNameReferenceExpression) =
         true
     final override fun visitCallExpression(node: UCallExpression): Boolean {
@@ -58,8 +61,7 @@ abstract class FunctionCallVisitor(
                 override fun get(index: Int): UExpression = node.valueArguments[index]
             }
             if (method != null && cls != null) {
-                visitCallExpr(node, src, node.kind, null, cls, node.receiver, method, args)
-                return true
+                return visitCallExpr(node, src, node.kind, null, cls, node.receiver, method, args)
             }
         }
         return true
@@ -68,7 +70,8 @@ abstract class FunctionCallVisitor(
     final override fun visitBinaryExpression(node: UBinaryExpression): Boolean {
         val src = node.sourcePsi ?: return true
         val op = node.operatorIdentifier?.name
-        if (assignment && op == "=") {
+        if (assignment && op == "=" && false) {
+            //             DISABLED ^^^^^^^^ seems to be already handled by UAST!
             (node.leftOperand as? UReferenceExpression)?.let { leftRef ->
                 val name = leftRef.resolvedName
                 val cls = leftRef.resolvedClassFqn
