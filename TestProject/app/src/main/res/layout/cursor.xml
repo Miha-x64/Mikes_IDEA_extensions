@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        android:hint="layer-list"
+        android:textCursorDrawable="@drawable/cursor_layer"/>
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        android:hint="inset"
+        android:textCursorDrawable="@drawable/cursor_inset"/>
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        android:hint="shape"
+        android:textCursorDrawable="@drawable/cursor_shape" />
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="64dp"
+        android:gravity="center_horizontal" android:paddingHorizontal="16dp">
+        <TextView
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:text="shape"
+            android:gravity="center"
+            android:background="@drawable/cursor_shape" />
+        <TextView
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:text="inset"
+            android:gravity="center"
+            android:background="@drawable/cursor_inset" />
+        <TextView
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:text="layer-list"
+            android:gravity="center"
+            android:background="@drawable/cursor_layer" />
+    </LinearLayout>
+
+</LinearLayout>
