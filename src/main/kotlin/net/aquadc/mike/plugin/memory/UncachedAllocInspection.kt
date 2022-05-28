@@ -1,21 +1,15 @@
 package net.aquadc.mike.plugin.memory
 
-import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR_OR_WARNING
 import com.intellij.codeInspection.ProblemHighlightType.WEAK_WARNING
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.lang.java.JavaLanguage
-import com.intellij.openapi.project.Project
+import com.intellij.lang.LanguageRefactoringSupport
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.TreeElement
-import com.intellij.psi.util.PsiEditorUtil.findEditor
+import com.intellij.refactoring.RefactoringActionHandler
 import com.siyeh.ig.fixes.IntroduceConstantFix
-import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.referencedName
-import org.jetbrains.kotlin.idea.refactoring.introduce.introduceConstant.KtIntroduceConstantHandlerCompat
-import org.jetbrains.kotlin.idea.refactoring.introduce.introduceConstant.INTRODUCE_CONSTANT
-import org.jetbrains.kotlin.idea.refactoring.introduce.introduceConstant.IntroduceConstantExtractionOptions
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.util.textRangeIn
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -78,14 +72,9 @@ class UncachedAllocInspection : UastInspection() {
                     "This allocation should be cached",
                     if (isEnumVals) WEAK_WARNING else GENERIC_ERROR_OR_WARNING,
                     isOnTheFly,
-                    if (expr.language == JavaLanguage.INSTANCE) IntroduceConstantFix()
-                    else IntroduceConstantExtractionOptions?.let {
-                        object : NamedLocalQuickFix(INTRODUCE_CONSTANT) {
-                            override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                                val el = descriptor.psiElement
-                                KtIntroduceConstantHandlerCompat
-                                    .invoke(project, findEditor(el) ?: return, el.containingFile ?: return, null)
-                            }
+                    LanguageRefactoringSupport.INSTANCE.forContext(expr)?.introduceConstantHandler?.let {
+                        object : IntroduceConstantFix() {
+                            override fun getHandler(): RefactoringActionHandler = it
                         }
                     }
                 ))

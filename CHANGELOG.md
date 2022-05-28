@@ -5,6 +5,8 @@
     <li>Fixed binary incompatibility with Android Studio Chipmunk | 2021.2.1 Patch 1</li>
     <li>Reporting unsorted arrays passed to <code>obtainStyledAttributes</code></li>
     <li>Relaxed warning on “useless” layer-lists: they may actually behave differently than insets</li>
+    <li>Fallen back to standard introduceConstantHandler when suggesting fix for uncached allocations inspection due to incompatibility with IU-222.2270.31 (2022.2 (eap))
+(may not work for Kotlin)</li>
   </ul>
 
 
