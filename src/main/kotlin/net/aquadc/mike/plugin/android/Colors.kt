@@ -274,8 +274,8 @@ class CopyPasteColor : CopyPastePreProcessor {
             val hex = color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, ByteArrays.EMPTY_ARRAY)
             val kotlin = file.language == KotlinLanguage.INSTANCE
             identifier?.insert(0, if (kotlin) "private const val " else "private static final int ")
-                ?.append(" = ")?.append(hex)?.append(if (kotlin) ".toInt()" else ";")?.toString()
-                ?: if (kotlin) data.clear().append(hex).append(".toInt()").toString() else hex
+                ?.append(" = ")?.append(hex)?.append(if (kotlin && color < 0) ".toInt()" else if (kotlin) "" else ";")?.toString()
+                ?: if (kotlin) data.clear().append(hex).append(if (color < 0) ".toInt()" else "").toString() else hex
         }
     }
 

@@ -7,6 +7,7 @@
     <li>Relaxed warning on “useless” layer-lists: they may actually behave differently than insets</li>
     <li>Fallen back to standard introduceConstantHandler when suggesting fix for uncached allocations inspection due to incompatibility with IU-222.2270.31 (2022.2 (eap))
 (may not work for Kotlin)</li>
+    <li>When pasting colors in Kotlin, adding <code>.toInt()</code> only if necessary</li>
   </ul>
 
 
