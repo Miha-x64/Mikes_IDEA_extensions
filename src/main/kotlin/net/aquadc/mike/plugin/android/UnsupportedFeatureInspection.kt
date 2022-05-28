@@ -16,11 +16,11 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UImportStatement
+import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UParenthesizedExpression
 import org.jetbrains.uast.UReferenceExpression
 import org.jetbrains.uast.UVariable
 import org.jetbrains.uast.UastCallKind
-import org.jetbrains.uast.kotlin.declarations.KotlinUMethod
 import org.jetbrains.uast.resolveToUElement
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.tryResolve
@@ -129,7 +129,7 @@ class UnsupportedFeatureInspection : UastInspection() {
                     is UReferenceExpression -> {
                         val referrent = expr.resolveToUElement()
                         (referrent as? UVariable)?.uastInitializer
-                            ?: ((referrent as? KotlinUMethod)?.sourcePsi as? KtProperty)?.initializer
+                            ?: ((referrent as? UMethod)?.sourcePsi as? KtProperty)?.initializer
                                 ?.toUElementOfType<UExpression>()?.also { expr = it }
                             ?: return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass} | $referrent"); null }
                     }
