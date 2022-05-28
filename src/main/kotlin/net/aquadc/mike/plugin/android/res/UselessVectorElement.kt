@@ -159,13 +159,13 @@ private fun ProblemsHolder.checkVectorGroup(
     }
 
     if (hasPaths && !isRoot && transformations == null && tag.getAttributeValue("name", ANDROID_NS) == null) {
-        val noSiblings = tag.parentTag?.subTags?.size == 1
-        if (!hasClips && noSiblings)
-            report(tag, "Useless group: no name, no transformations, no useful clip-paths, no siblings", inlineGroupFix)
+        val noSuccessors = tag.parentTag?.subTags?.let { it.indexOf(tag) == it.lastIndex } ?: false
+        if (!hasClips && noSuccessors)
+            report(tag, "Useless group: no name, no transformations, no useful clip-paths, no successors", inlineGroupFix)
         else if (!hasClips)
             report(tag, "Useless group: no name, no transformations, no useful clip-paths", inlineGroupFix)
-        else if (noSiblings)
-            report(tag, "Useless group: no name, no transformations, no siblings", inlineGroupFix)
+        else if (noSuccessors)
+            report(tag, "Useless group: no name, no transformations, no successors", inlineGroupFix)
         // TODO also report single-group groups and propose merging
     }
 }
