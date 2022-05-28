@@ -1,6 +1,7 @@
 package net.aquadc.mike.plugin.android.res
 
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
 import com.intellij.psi.codeStyle.CodeStyleManager
@@ -38,8 +39,8 @@ private fun ProblemsHolder.checkLayerList(tag: XmlTag) {
             }
             report(
                 tag,
-                if (insets == 0) "The layer-list with single item is useless"
-                else "The layer-list with single item having insets should be replaced with <inset>",
+                if (insets == 0) "The layer-list with single item may be useless"
+                else "The layer-list with single item having insets could be replaced with <inset>",
                 if (itemChild == null
                     || (itemChild is XmlAttribute && insets == 0) // oops, no easy way to inline
                     || (itemChild is XmlTag && insets != 0 &&
@@ -79,7 +80,8 @@ private fun ProblemsHolder.checkLayerList(tag: XmlTag) {
                             CodeStyleManager.getInstance(project).reformat(layerList)
                         }
                     }
-                }
+                },
+                ProblemHighlightType.WEAK_WARNING
             )
         }
     }

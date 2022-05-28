@@ -4,6 +4,7 @@
     <li>Support comparison operators when reporting `Big(Integer|Decimal).compareTo(ZERO)`</li>
     <li>Fixed binary incompatibility with Android Studio Chipmunk | 2021.2.1 Patch 1</li>
     <li>Reporting unsorted arrays passed to <code>obtainStyledAttributes</code></li>
+    <li>Relaxed warning on “useless” layer-lists: they may actually behave differently than insets</li>
   </ul>
 
 

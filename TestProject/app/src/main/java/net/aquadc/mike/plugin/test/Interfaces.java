@@ -15,7 +15,7 @@ public class Interfaces implements Cloneable {
 
     private void a() {
         a(1, 1, 1, Collections.<Number>emptyList(), null, this);
-        InterfacesKt.a(1, 1, Collections.<Number>emptyList(), null, this);
+//        InterfacesKt.a(1, 1, Collections.<Number>emptyList(), null, this);
         collections(
                 new ArrayList(),
                 new ArrayList(),
