@@ -12,7 +12,6 @@ import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.UField
-import org.jetbrains.uast.kotlin.KotlinUField
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import java.util.concurrent.atomic.*
 
@@ -71,7 +70,7 @@ class AtomicAsVolatileInspection : UastInspection() {
     }
 
     private val UField.uTypeElement: PsiElement get() =
-        ((this as? KotlinUField)?.sourcePsi as? KtProperty)?.typeReference?.typeElement ?: // Kotlin explicit type, or
+        ((this as? UField)?.sourcePsi as? KtProperty)?.typeReference?.typeElement ?: // Kotlin explicit type, or
         typeReference?.sourcePsi ?: // Java type, or
         uastInitializer?.sourcePsi ?: // initializer expression (let's think that type is inferred), or
         this // the whole field declaration, if something went wrong
