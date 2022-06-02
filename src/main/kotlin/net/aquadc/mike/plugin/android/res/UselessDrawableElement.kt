@@ -41,9 +41,10 @@ private fun ProblemsHolder.checkLayerList(tag: XmlTag) {
                 tag,
                 if (insets == 0) "The layer-list with single item may be useless"
                 else "The layer-list with single item having insets could be replaced with <inset>",
-                if (itemChild == null
-                    || (itemChild is XmlAttribute && insets == 0) // oops, no easy way to inline
-                    || (itemChild is XmlTag && insets != 0 &&
+                if (!isOnTheFly ||
+                    itemChild == null ||
+                    (itemChild is XmlAttribute && insets == 0) || // oops, no easy way to inline
+                    (itemChild is XmlTag && insets != 0 &&
                             (insets and insetInsets.foldIndexed(0) { i, acc, inset ->
                                 acc or if (itemChild.getAttribute(inset, ANDROID_NS) == null) 0 else 1 shl i
                             }) != 0) // <item left="x"><inset insetLeft="y"> could be hard or impossible to merge

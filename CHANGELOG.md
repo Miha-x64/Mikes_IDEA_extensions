@@ -1,3 +1,9 @@
+### 0.24
+  <ul>
+    <li>Showing a quickfix for inlining layer-list only if on-the-fly to force conscious choice</li>
+  </ul>
+
+
 ### 0.23
   <ul>
     <li>Added inspection about shape (GradientDrawable) attribute application order</li>
