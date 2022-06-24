@@ -10,7 +10,7 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.util.parentOfType
@@ -64,30 +64,27 @@ internal class PathTag private constructor(
             val pathData = rr.resolve(rawPathData) ?: return null
 
             val floatRanges = TIntArrayList()
-            val pathStarts: TIntArrayList?
-            val paths = run {
-                val tag = pathAttr.parentOfType<XmlTag>()!!
-                if (tag.name == "path" && // not clip-path!
-                    holder.toString(rr, tag.getAttribute("fillType", ANDROID_NS), null) == "evenOdd") {
-                    pathStarts = null
-                    // FIXME: take evenOdd sub-paths seriously
-                    SmartList(PathDelegate.parse(pathData, null, null, floatRanges, usefulPrecision))
-                } else {
-                    // can't report on sub-paths somewhere in strings.xml or wherever
-                    pathStarts = if (rawPathData == pathData) TIntArrayList() else null
 
-                    ArrayList<Path2D.Float>().also {
-                        PathDelegate.parse(pathData, it, pathStarts, floatRanges, usefulPrecision)
-                    }
-                }
+            // can't report on sub-paths somewhere in strings.xml or wherever
+            val pathStarts = if (rawPathData == pathData) TIntArrayList() else null
+            val evenOdd = pathAttr.parentOfType<XmlTag>()!!.let { tag ->
+                tag.name == "path" && // no fillType for clipPath
+                        holder.toString(rr, tag.getAttribute("fillType", ANDROID_NS), null) == "evenOdd"
+            }
+            val paths = SmartList<Path2D.Float>().also {
+                PathDelegate.parse(pathData, it, pathStarts, floatRanges, usefulPrecision, evenOdd)
+            }
+            when (paths.size) {
+                0 -> return null
+                1 -> {}
+                else -> merge(paths, pathStarts, evenOdd)
             }
             check(pathStarts == null || paths.size == pathStarts.size() - 1) {
                 "${paths.size} paths but ${pathStarts!!.size()} start indices in path $pathData"
             }
-            if (paths.isEmpty()) return null
 
             val beginValueAt = pathAttr.text.indexOf(rawPathData)
-            pathStarts?.let {
+            pathStarts?.let { // offset by XML attribute quote (")
                 repeat(pathStarts.size()) {
                     pathStarts[it] += beginValueAt
                 }
@@ -100,6 +97,44 @@ internal class PathTag private constructor(
 
             if (matrix != null) paths.forEach { it.transform(matrix) }
             return PathTag(pathAttr, paths, pathStarts)
+        }
+
+        /** Handles intersections which can lead to “donut holes” and invert the whole sub-path meaning. */
+        private fun merge(paths: SmartList<Path2D.Float>, pathStarts: TIntArrayList?, /*TODO*/evenOdd: Boolean) {
+            val areas = paths.mapTo(SmartList(), ::Area)
+            var i = 0
+            while (i < paths.size) {
+                var victim: Area? = null
+                var j = i + 1
+                while (j < paths.size) {
+                    if (victim == null) victim = Area(areas[i])
+                    victim.subtract(areas[j])
+                    if (!areas[i].equals(victim)) {
+                        victim = null
+                        merge(paths, areas, pathStarts, i, j)
+                        j = i
+                    }
+                    j++
+                }
+                i++
+            }
+        }
+        private fun merge(
+            paths: SmartList<Path2D.Float>, areas: SmartList<Area>,
+            pathStarts: TIntArrayList?,
+            from: Int, till: Int,
+        ) {
+            for (i in (from + 1) .. till) paths[from].append(paths[i], false)
+            areas[from] = Area(paths[from])
+            val diff = till - from
+            if (diff == 1) {
+                paths.removeAt(from + 1)
+                areas.removeAt(from + 1)
+            } else {
+                paths.subList(from + 1, till + 1).clear()
+                areas.subList(from + 1, till + 1).clear()
+            }
+            pathStarts?.remove(from + 1, diff)
         }
 
         private fun ProblemsHolder.proposeTrimming(
@@ -178,7 +213,6 @@ internal class PathTag private constructor(
                 ?.also { opaque += it }
 
             val fillArea = outline.takeIf { filledSubPaths != null }
-                ?.also { if (evenOdd) outline.windingRule = Path2D.WIND_EVEN_ODD }
                 ?.toArea()?.without(opaqueStrokeArea) // stroke is drawn on top of fill
                 ?.takeIf { !it.effectivelyEmpty(usefulPrecision) }
                 ?.also { fillArea ->
@@ -200,7 +234,7 @@ internal class PathTag private constructor(
         val noFill = filledSubPaths == null || filledSubPaths.cardinality() == 0
         val noStroke = strokedSubPaths == null || strokedSubPaths.cardinality() == 0
         if (noFill && noStroke) {
-            return holder.report(tag, "Invisible path", removeTagFix)
+            return holder.report(tag, "Invisible path: none of sub-paths are filled or stroked", removeTagFix)
         }
 
         if (noFill) {
@@ -354,8 +388,7 @@ internal class PathTag private constructor(
                         else if (it[1].equals('f', true) && it[2].equals('f', true) && alpha == 1f) PixelFormat.OPAQUE
                         else PixelFormat.TRANSLUCENT
                     else ->
-                        Logger.getInstance("Mike's IDEA Extensions: VectorPaths").error("Unexpected color format: $it")
-                            .let { null }
+                        null
                 }
             } ?: PixelFormat.UNKNOWN
             is XmlTag -> PixelFormat.UNKNOWN
@@ -371,7 +404,7 @@ internal class PathTag private constructor(
                         subArea.subtract(opaqueArea)
                         if (subArea.effectivelyEmpty(usefulPrecision)) {
                             subAreas[i] = null
-                            (overdrawnSubPaths ?: BitSet().also { overdrawnSubPaths = it }).set(i)
+                            (path.overdrawnSubPaths ?: BitSet().also { path.overdrawnSubPaths = it }).set(i)
                         }
                     }
                 }
@@ -386,7 +419,13 @@ internal class PathTag private constructor(
         val subAreas = subAreas ?: return
         when (subAreas.count { it == null }) {
             0 -> return // everything is perfect
-            subAreas.size -> return holder.report(pathTag, "Invisible path", removeTagFix)
+            subAreas.size -> {
+                val what = invisiblePathDiagnosis(
+                    (overdrawnSubPaths?.cardinality() ?: 0) > 0,
+                    (clippedAwaySubPaths?.cardinality() ?: 0) > 0,
+                )
+                return holder.report(pathTag, "The path is fully $what", removeTagFix)
+            }
         }
 
         // some areas are empty, some others are not. Analyze!
@@ -396,15 +435,20 @@ internal class PathTag private constructor(
             if (filledSubPaths?.get(i) != true && strokedSubPaths?.get(i) != true) {
                 if (!holder.reportSubPath(i, "invisible sub-path"))
                     break
-            } else if (clippedAwaySubPaths?.get(i) == true) {
-                if (!holder.reportSubPath(i, "clipped away sub-path"))
-                    break
-            } else if (overdrawnSubPaths?.get(i) == true) {
-                if (!holder.reportSubPath(i, "overdrawn sub-path"))
+            } else if (clippedAwaySubPaths?.get(i) == true || overdrawnSubPaths?.get(i) == true) {
+                val what = invisiblePathDiagnosis(clippedAwaySubPaths?.get(i) == true, overdrawnSubPaths?.get(i) == true)
+                if (!holder.reportSubPath(i, "$what sub-path"))
                     break
             }
         }
     }
+    private fun invisiblePathDiagnosis(overdrawn: Boolean, clippedAway: Boolean): String = when {
+        overdrawn && clippedAway -> "overdrawn and clipped away"
+        overdrawn -> "overdrawn"
+        clippedAway -> "clipped away"
+        else -> logger<PathTag>().error("invalid invisiblePathMessage(false, false)").let { "" }
+    }
+
     private fun ProblemsHolder.reportSubPath(at: Int, complaint: String): Boolean =
         if (subPathRanges == null) {
             registerProblem(

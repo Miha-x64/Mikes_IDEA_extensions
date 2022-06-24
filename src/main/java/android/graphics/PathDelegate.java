@@ -16,12 +16,14 @@ import java.util.logging.Logger;
 
 public final class PathDelegate {
     private final List<? super Path2D.Float> paths;
+    private final int windingRule;
     private Path2D.Float currentPath;
     private float mLastX;
     private float mLastY;
 
-    private PathDelegate(List<? super Path2D.Float> paths) {
+    private PathDelegate(List<? super Path2D.Float> paths, int windingRule) {
         this.paths = paths;
+        this.windingRule = windingRule;
     }
     private static boolean isEmpty(Path2D.Float path) {
         return path.getPathIterator(null).isDone();
@@ -30,12 +32,12 @@ public final class PathDelegate {
         return currentPath == null ? newPath() : currentPath;
     }
     private Path2D.Float newPath() {
-        if (paths == null) {
+        /*if (paths == null) {
             return currentPath == null ? (currentPath = new Path2D.Float()) : currentPath;
-        } else {
-            paths.add(currentPath = new Path2D.Float());
+        } else {*/
+            paths.add(currentPath = new Path2D.Float(windingRule));
             return currentPath;
-        }
+//        }
     }
 
     public void moveTo(float x, float y) {
@@ -99,7 +101,7 @@ public final class PathDelegate {
 
     public void close() {
         currentPath().closePath();
-        if (paths != null) currentPath = null;
+        /*if (paths != null)*/ currentPath = null;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -112,15 +114,15 @@ public final class PathDelegate {
      * Parses {@param pathData} SVG path data sub-paths
      * into {@param paths} if not null, or {@return full path} otherwise
      */
-    public static Path2D.Float parse(
+    public static void parse(
             String pathData,
             List<? super Path2D.Float> paths, TIntArrayList pathStarts, TIntArrayList floatRanges,
-            int usefulPrecision
+            int usefulPrecision, boolean evenOdd
     ) {
         int start = 0;
         int end = 1;
 
-        PathDelegate delegate = new PathDelegate(paths);
+        PathDelegate delegate = new PathDelegate(paths, evenOdd ? Path2D.WIND_EVEN_ODD : Path2D.WIND_NON_ZERO);
         float[] current = new float[6];
         char previousCommand = 'm';
         Path2D.Float prevPath = delegate.currentPath;
@@ -137,10 +139,10 @@ public final class PathDelegate {
                 float[] results = buf.length < len ? (buf = new float[len]) : buf;
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
                 if (count < 0) {
-                    if (paths != null) paths.clear();
+                    /*if (paths != null)*/ paths.clear();
                     if (pathStarts != null) pathStarts.clear();
                     if (floatRanges != null) floatRanges.clear();
-                    return null;
+                    return;
                 }
                 // TODO report unused or verbose commands
                 char next = pathData.charAt(start);
@@ -156,8 +158,6 @@ public final class PathDelegate {
         } else if (pathStarts != null) {
             pathStarts.add(start);
         }
-
-        return paths == null ? delegate.currentPath : null;
     }
 
     private static int nextStart(String s, int end) {

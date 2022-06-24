@@ -1,6 +1,7 @@
 ### 0.24
   <ul>
     <li>Showing a quickfix for inlining layer-list only if on-the-fly to force conscious choice</li>
+    <li>UselessResElement: merging intersecting sub-path into single to support “donut hole” effect</li>
   </ul>
 
 
