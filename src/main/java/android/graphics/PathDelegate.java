@@ -139,25 +139,34 @@ public final class PathDelegate {
                 float[] results = buf.length < len ? (buf = new float[len]) : buf;
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
                 if (count < 0) {
-                    /*if (paths != null)*/ paths.clear();
-                    if (pathStarts != null) pathStarts.clear();
-                    if (floatRanges != null) floatRanges.clear();
+                    clear(paths, pathStarts, floatRanges);
                     return;
                 }
                 // TODO report unused or verbose commands
                 char next = pathData.charAt(start);
                 if ((previousCommand == 'z' || previousCommand == 'Z') && (next != 'm' && next != 'M')) delegate.moveTo(current[0], current[1]);
-                addCommand(delegate, current, previousCommand, previousCommand = next, results, count);
+                if (!addCommand(delegate, current, previousCommand, previousCommand = next, results, count)) {
+                    clear(paths, pathStarts, floatRanges);
+                    return;
+                }
                 if (prevPath != (prevPath = delegate.currentPath) && prevPath != null && pathStarts != null) pathStarts.add(start);
             }
         }
 
         if (end - start == 1 && start < pathData.length()) {
-            addCommand(delegate, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0);
+            if (!addCommand(delegate, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0)) {
+                clear(paths, pathStarts, floatRanges);
+                return;
+            }
             if (prevPath != delegate.currentPath && pathStarts != null) pathStarts.add(end);
         } else if (pathStarts != null) {
             pathStarts.add(start);
         }
+    }
+    private static void clear(List<?> paths, TIntArrayList pathStarts, TIntArrayList floatRanges) {
+        /*if (paths != null)*/paths.clear();
+        if (pathStarts != null) pathStarts.clear();
+        if (floatRanges != null) floatRanges.clear();
     }
 
     private static int nextStart(String s, int end) {
@@ -256,7 +265,7 @@ public final class PathDelegate {
         return 0;
     }
 
-    private static void addCommand(PathDelegate path, float[] current, char previousCmd, char cmd, float[] val, int count) {
+    private static boolean addCommand(PathDelegate path, float[] current, char previousCmd, char cmd, float[] val, int count) {
         int incr = 2;
         float currentX = current[0];
         float currentY = current[1];
@@ -296,7 +305,8 @@ public final class PathDelegate {
 //              path.moveTo(currentSegmentStartX, currentSegmentStartY);
         }
 
-        for(int k = 0; k < count; k += incr) {
+        for (int k = 0; k < count; k += incr) {
+            if (k + incr > val.length) return false;
             float reflectiveCtrlPointX;
             float reflectiveCtrlPointY;
             switch(cmd) {
@@ -456,6 +466,7 @@ public final class PathDelegate {
         current[3] = ctrlPointY;
         current[4] = currentSegmentStartX;
         current[5] = currentSegmentStartY;
+        return true;
     }
 
     private static void drawArc(PathDelegate p, float x0, float y0, float x1, float y1, float a, float b, float theta, boolean isMoreThanHalf, boolean isPositiveArc) {

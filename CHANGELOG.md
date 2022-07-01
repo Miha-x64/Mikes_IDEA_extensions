@@ -2,6 +2,7 @@
 
   <ul>
     <li>Fixed trimming tails in <code>pathData</code> for floats with exponent</li>
+    <li>Fixed crash when parsing incomplete <code>pathData</code></li>
   </ul>
 
 ### 0.24
