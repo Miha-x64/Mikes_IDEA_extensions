@@ -33,6 +33,7 @@ import java.awt.geom.AffineTransform
 import java.awt.geom.Area
 import java.awt.geom.Path2D
 import java.awt.geom.PathIterator
+import java.math.BigDecimal
 import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.pow
@@ -491,6 +492,11 @@ private class TrimFix(
             val start = ranges[i]
             val end = ranges[i + 1]
             val minus = tmpFloat.replace(0, tmpFloat.length, value, start, end)[0] == '-'
+            if (tmpFloat.contains('e')) {
+                val bd = BigDecimal(tmpFloat.toString())
+                tmpFloat.clear()
+                tmpFloat.append(bd.toPlainString())
+            }
             if (tmpFloat.trimToPrecision()[0] != '-' && minus && value[start - 1].isDigit())
                 tmpFloat.insert(0, ' ')
             value.replace(start, end, tmpFloat)

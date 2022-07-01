@@ -1,3 +1,9 @@
+### 0.25
+
+  <ul>
+    <li>Fixed trimming tails in <code>pathData</code> for floats with exponent</li>
+  </ul>
+
 ### 0.24
   <ul>
     <li>Showing a quickfix for inlining layer-list only if on-the-fly to force conscious choice</li>
