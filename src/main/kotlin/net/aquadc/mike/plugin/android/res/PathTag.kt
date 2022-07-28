@@ -301,6 +301,7 @@ internal class PathTag private constructor(
                     }
                 }
             }
+            opaqueArea?.intersect(clipPath)
         }
     }
 
