@@ -4,6 +4,7 @@
     <li>Fixed trimming tails in <code>pathData</code> for floats with exponent</li>
     <li>Fixed crash when parsing <code>pathData</code> which is incomplete or starts with spaces/linebreaks/etc</li>
     <li>Fixed handling overdraw of clipped paths</li>
+    <li>Reporting that <code>RecyclerView.setOnClickListener</code> is unsupported; stopped mistakenly reporting <code>VideoView.setOnTouchListener</code></li>
   </ul>
 
 ### 0.24

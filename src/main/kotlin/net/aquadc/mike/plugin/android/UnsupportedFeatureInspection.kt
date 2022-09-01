@@ -50,17 +50,26 @@ class UnsupportedFeatureInspection : UastInspection() {
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
             declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean {
-            (node as? UCallExpression)?.let { checkVideoView(it, src) }
+            (node as? UCallExpression)?.let { checkListenerSupport(it, src) }
             checkObtainStyled(src, declaringClassFqn, methodName, valueArguments)
             return true
         }
-        private fun checkVideoView(node: UCallExpression, src: PsiElement) {
+        private fun checkListenerSupport(node: UCallExpression, src: PsiElement) {
             src.containingFile?.androidFacet?.androidMinSdk()?.apiLevel?.takeIf { it < 26 } ?: return
             val className = (node.receiverType as? PsiClassType)?.resolve()?.qualifiedName ?: return
-            if (className == "android.widget.VideoView" && VideoView_setListener.test(src))
+            if (className == "android.widget.VideoView" && View_setOnClickListener.test(src))
                 holder.registerProblem(
                     node.methodIdentifier?.sourcePsi ?: src,
-                    "VideoView click and touch listeners do not work before SDK 26",
+                    "VideoView click listener does not work before SDK 26",
+                    // clicks were ignored by not calling super:
+                    // https://github.com/aosp-mirror/platform_frameworks_base/blob/lollipop-mr1-release/core/java/android/widget/VideoView.java#L661
+                )
+            else if (className == "androidx.recyclerview.widget.RecyclerView" && View_setOnClickListener.test(src))
+                holder.registerProblem(
+                    node.methodIdentifier?.sourcePsi ?: src,
+                    "RecyclerView click listener does not work"
+                    // clicks are ignored by not calling super:
+                    // https://android.googlesource.com/platform/frameworks/support/+/64cde70e6cbe6ec9b743786aad419a854b18d89f/recyclerview/recyclerview/src/main/java/androidx/recyclerview/widget/RecyclerView.java#3709
                 )
         }
         private fun checkObtainStyled(src: PsiElement, declaringClassFqn: String, method: String, args: List<UExpression>) {
@@ -145,13 +154,9 @@ class UnsupportedFeatureInspection : UastInspection() {
     }
 
     private companion object {
-        private val VideoView_setListener =
-            CallMatcher.anyOf(
-                CallMatcher.instanceCall("android.view.View", "setOnClickListener")
-                    .parameterTypes("android.view.View.OnClickListener"),
-                CallMatcher.instanceCall("android.view.View", "setOnTouchListener")
-                    .parameterTypes("android.view.View.OnTouchListener"),
-            )
+        private val View_setOnClickListener =
+            CallMatcher.instanceCall("android.view.View", "setOnClickListener")
+                .parameterTypes("android.view.View.OnClickListener")
 
         private val INT_ARRAY = PsiPrimitiveType.INT.createArrayType()
     }
