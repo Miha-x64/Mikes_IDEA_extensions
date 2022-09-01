@@ -2,7 +2,7 @@
 
   <ul>
     <li>Fixed trimming tails in <code>pathData</code> for floats with exponent</li>
-    <li>Fixed crash when parsing incomplete <code>pathData</code></li>
+    <li>Fixed crash when parsing <code>pathData</code> which is incomplete or starts with spaces/linebreaks/etc</li>
     <li>Fixed handling overdraw of clipped paths</li>
   </ul>
 

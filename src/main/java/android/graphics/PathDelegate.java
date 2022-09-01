@@ -129,11 +129,12 @@ public final class PathDelegate {
 
         int[] tmp = new int[1];
         float[] buf = FloatArrays.EMPTY_ARRAY;
-        for (; end < pathData.length(); start = end++) {
+        int pdLen = pathData.length();
+        for (; end < pdLen; start = end++) {
             end = nextStart(pathData, end);
-            while (pathData.charAt(start) <= ' ') start++;
+            while (start < pdLen && pathData.charAt(start) <= ' ') start++;
             int endTrimmed = end;
-            while (pathData.charAt(endTrimmed - 1) <= ' ') endTrimmed--;
+            while (endTrimmed >= start && pathData.charAt(endTrimmed - 1) <= ' ') endTrimmed--;
             if (endTrimmed - start > 0) {
                 int len = endTrimmed - start;
                 float[] results = buf.length < len ? (buf = new float[len]) : buf;
@@ -153,7 +154,7 @@ public final class PathDelegate {
             }
         }
 
-        if (end - start == 1 && start < pathData.length()) {
+        if (end - start == 1 && start < pdLen) {
             if (!addCommand(delegate, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0)) {
                 clear(paths, pathStarts, floatRanges);
                 return;
