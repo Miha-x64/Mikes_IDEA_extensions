@@ -2,9 +2,18 @@
 <body>
 
 <p>
-    Reports useless elements of XML Drawable resources, such as single-item layer-lists, insetless insets, empty shapes,
+    Reports useless or redundant elements of XML resources.
+</p>
+<p>
+    For Drawables: single-item layer-lists, insetless insets, empty shapes,
     and vector elements: empty paths and clip-paths, invisible paths, useless clip-paths and groups,
     attributes with no effect.
+</p>
+<p>
+    For layouts: suspicious combinations of margin/padding left/top/right/bottom/start/end and horizontal/vertical.
+</p>
+<p>
+    For anim, animators, state list animators: empty and single-item sets.
 </p>
 
 <p><small>The inspection is provided by <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Mike's IDEA Extensions</a>.</small></p>
