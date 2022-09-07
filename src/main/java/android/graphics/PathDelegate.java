@@ -1,5 +1,6 @@
 package android.graphics;
 
+import gnu.trove.TFloatArrayList;
 import gnu.trove.TIntArrayList;
 import it.unimi.dsi.fastutil.floats.FloatArrays;
 
@@ -116,7 +117,8 @@ public final class PathDelegate {
      */
     public static void parse(
             String pathData,
-            List<? super Path2D.Float> paths, TIntArrayList pathStarts, TIntArrayList floatRanges,
+            List<? super Path2D.Float> paths,
+            TIntArrayList pathStarts, TIntArrayList floatRanges, TFloatArrayList endPositions,
             int usefulPrecision, boolean evenOdd
     ) {
         int start = 0;
@@ -140,34 +142,42 @@ public final class PathDelegate {
                 float[] results = buf.length < len ? (buf = new float[len]) : buf;
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
                 if (count < 0) {
-                    clear(paths, pathStarts, floatRanges);
+                    clear(paths, pathStarts, floatRanges, endPositions);
                     return;
                 }
-                // TODO report unused or verbose commands
                 char next = pathData.charAt(start);
                 if ((previousCommand == 'z' || previousCommand == 'Z') && (next != 'm' && next != 'M')) delegate.moveTo(current[0], current[1]);
                 if (!addCommand(delegate, current, previousCommand, previousCommand = next, results, count)) {
-                    clear(paths, pathStarts, floatRanges);
+                    clear(paths, pathStarts, floatRanges, endPositions);
                     return;
                 }
-                if (prevPath != (prevPath = delegate.currentPath) && prevPath != null && pathStarts != null) pathStarts.add(start);
+                if (prevPath != (prevPath = delegate.currentPath) && prevPath != null) {
+                    if (pathStarts != null) pathStarts.add(start);
+                    if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
+                }
             }
         }
 
         if (end - start == 1 && start < pdLen) {
             if (!addCommand(delegate, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0)) {
-                clear(paths, pathStarts, floatRanges);
+                clear(paths, pathStarts, floatRanges, endPositions);
                 return;
             }
             if (prevPath != delegate.currentPath && pathStarts != null) pathStarts.add(end);
-        } else if (pathStarts != null) {
-            pathStarts.add(start);
+        } else {
+            if (pathStarts != null) pathStarts.add(start);
+            if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
         }
     }
-    private static void clear(List<?> paths, TIntArrayList pathStarts, TIntArrayList floatRanges) {
+    private static void add(TFloatArrayList into, float x, float y) {
+        into.add(x);
+        into.add(y);
+    }
+    private static void clear(List<?> paths, TIntArrayList pathStarts, TIntArrayList floatRanges, TFloatArrayList endPositions) {
         /*if (paths != null)*/paths.clear();
         if (pathStarts != null) pathStarts.clear();
         if (floatRanges != null) floatRanges.clear();
+        if (endPositions != null) endPositions.clear();
     }
 
     private static int nextStart(String s, int end) {
@@ -221,10 +231,8 @@ public final class PathDelegate {
             }
         }
 
-        if (usefulPrecision >= 0 && dotAt >= 0 && currentIndex - dotAt - 1 > usefulPrecision) {
-            floatRanges.add(start);
-            floatRanges.add(currentIndex);
-        }
+        floatRanges.add(start);
+        floatRanges.add(currentIndex);
 
         outEndPosition[0] = currentIndex;
         return endWithNegOrDot;

@@ -20,6 +20,7 @@ import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
 import de.javagl.geom.Shapes
+import gnu.trove.TFloatArrayList
 import gnu.trove.TIntArrayList
 import gnu.trove.TIntHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
@@ -27,6 +28,8 @@ import net.aquadc.mike.plugin.component6
 import net.aquadc.mike.plugin.component7
 import net.aquadc.mike.plugin.component8
 import net.aquadc.mike.plugin.component9
+import net.aquadc.mike.plugin.indexOfFirst
+import net.aquadc.mike.plugin.toInt
 import java.awt.BasicStroke
 import java.awt.Shape
 import java.awt.geom.AffineTransform
@@ -36,6 +39,7 @@ import java.awt.geom.PathIterator
 import java.math.BigDecimal
 import java.util.*
 import kotlin.math.absoluteValue
+import kotlin.math.min
 import kotlin.math.pow
 import net.aquadc.mike.plugin.miserlyMap as map
 
@@ -44,6 +48,9 @@ internal class PathTag private constructor(
     private val pathDataAttr: XmlAttributeValue,
     private val outlines: MutableList<Path2D.Float>,
     private val subPathRanges: TIntArrayList?,
+    private val endPositions: TFloatArrayList?, // (x, y) positions in the ends of sub-paths
+    private val floatRanges: TIntArrayList,
+    private val valueShiftInText: Int,
 ) {
     private val pathTag get() = pathDataAttr.parentOfType<XmlTag>()!!
     private var subAreas: MutableList<Area?>? = null
@@ -68,12 +75,13 @@ internal class PathTag private constructor(
 
             // can't report on sub-paths somewhere in strings.xml or wherever
             val pathStarts = if (rawPathData == pathData) TIntArrayList() else null
+            val endPositions = if (rawPathData == pathData) TFloatArrayList() else null
             val evenOdd = pathAttr.parentOfType<XmlTag>()!!.let { tag ->
                 tag.name == "path" && // no fillType for clipPath
                         holder.toString(rr, tag.getAttribute("fillType", ANDROID_NS), null) == "evenOdd"
             }
             val paths = SmartList<Path2D.Float>().also {
-                PathDelegate.parse(pathData, it, pathStarts, floatRanges, usefulPrecision, evenOdd)
+                PathDelegate.parse(pathData, it, pathStarts, floatRanges, endPositions, usefulPrecision, evenOdd)
             }
             when (paths.size) {
                 0 -> return null
@@ -85,19 +93,12 @@ internal class PathTag private constructor(
             }
 
             val beginValueAt = pathAttr.text.indexOf(rawPathData)
-            pathStarts?.let { // offset by XML attribute quote (")
-                repeat(pathStarts.size()) {
-                    pathStarts[it] += beginValueAt
-                }
-                pathStarts.add(beginValueAt + rawPathData.length)
-            }
+//          pathStarts?.add(rawPathData.length) - seems to be useless, FIXME remove if OK
 
-            if (floatRanges.size() > 0) {
-                holder.proposeTrimming(floatRanges, pathData, usefulPrecision, pathAttr, rawPathData, beginValueAt)
-            }
+            holder.tryProposeTrimming(floatRanges, pathData, usefulPrecision, pathAttr, rawPathData, beginValueAt)
 
             if (matrix != null) paths.forEach { it.transform(matrix) }
-            return PathTag(pathAttr, paths, pathStarts)
+            return PathTag(pathAttr, paths, pathStarts, endPositions, floatRanges, beginValueAt)
         }
 
         /** Handles intersections which can lead to “donut holes” and invert the whole sub-path meaning. */
@@ -138,7 +139,7 @@ internal class PathTag private constructor(
             pathStarts?.remove(from + 1, diff)
         }
 
-        private fun ProblemsHolder.proposeTrimming(
+        private fun ProblemsHolder.tryProposeTrimming(
             floatRanges: TIntArrayList,
             pathData: String,
             usefulPrecision: Int,
@@ -147,25 +148,33 @@ internal class PathTag private constructor(
             beginValueAt: Int
         ) {
             val rangeNodeCount = floatRanges.size()
-            val rangeCount = rangeNodeCount / 2
             var canTrimCarefully = false
+            var trimmableFloats: TIntArrayList? = null
             for (i in 0 until rangeNodeCount step 2) {
-                if (floatRanges[i + 1] - pathData.indexOf('.', floatRanges[i]) > usefulPrecision + 2) {
-                    canTrimCarefully = true  //                        plus dot plus extra digit ^^^
-                    break
+                val iod = pathData.indexOf('.', floatRanges[i])
+                if (iod < 0 || iod > floatRanges[i + 1]) continue
+                val precision = floatRanges[i + 1] - iod
+                if (precision > usefulPrecision + 1) {
+                    (trimmableFloats ?: TIntArrayList().also { trimmableFloats = it }).apply {
+                        add(floatRanges[i])
+                        add(floatRanges[i + 1])
+                    }
+                    if (precision > usefulPrecision + 2) {
+                        canTrimCarefully = true  //   ^ plus dot plus extra digit
+                    }
                 }
             }
 
-            if (canTrimCarefully || isOnTheFly) {
+            trimmableFloats?.takeIf { canTrimCarefully || isOnTheFly }?.let { tfs ->
                 registerProblem(
                     pathAttr,
-                    "subpixel precision" + if (rangeCount == 1) "" else " ($rangeCount items)",
+                    "subpixel precision" + if (tfs.size() == 2) "" else " (${tfs.size() / 2} items)",
                     ProblemHighlightType.WEAK_WARNING,
                     if (pathData === rawPathData)
-                        TextRange(beginValueAt + floatRanges[0], beginValueAt + floatRanges[rangeNodeCount - 1])
+                        TextRange(beginValueAt + tfs[0], beginValueAt + tfs[tfs.size() - 1])
                     else TextRange.from(beginValueAt, rawPathData.length),
-                    if (isOnTheFly) TrimFix(floatRanges, "Trim aggressively", usefulPrecision, pathData) else null,
-                    if (canTrimCarefully) TrimFix(floatRanges, "Trim carefully", usefulPrecision + 1, pathData) else null,
+                    if (isOnTheFly) TrimFix(tfs, "Trim aggressively", usefulPrecision, pathData) else null,
+                    if (canTrimCarefully) TrimFix(tfs, "Trim carefully", usefulPrecision + 1, pathData) else null,
                 )
             }
         }
@@ -458,10 +467,10 @@ internal class PathTag private constructor(
             )
             false
         } else {
-            val deadRange = TextRange.create(subPathRanges[at], subPathRanges[at + 1])
+            val deadRange = TextRange.create(valueShiftInText + subPathRanges[at], valueShiftInText + subPathRanges[at + 1])
             registerProblem(
                 pathDataAttr, complaint, ProblemHighlightType.LIKE_UNUSED_SYMBOL, deadRange,
-                removeSubPathFix(pathDataAttr.text, deadRange),
+                removeSubPathFix(pathDataAttr.text, at, subPathRanges, endPositions, floatRanges, valueShiftInText),
             )
             true
         }
@@ -567,18 +576,48 @@ private class TrimFix(
     private inline val Boolean.asInt get() = if (this) 1 else 0
 }
 
-private fun removeSubPathFix(pathDataAttrValueText: String, deadRange: TextRange): LocalQuickFix? {
-    for (i in deadRange.endOffset until pathDataAttrValueText.length) {
-        val ch = pathDataAttrValueText[i]
-        if (ch.isLowerCase()) return null // TODO heal relative paths, too
-    }
+private fun removeSubPathFix(
+    pathDataAttrValueText: String,
+    at: Int,
+    subPathRanges: TIntArrayList, endPositions: TFloatArrayList?, floatRanges: TIntArrayList,
+    valueShiftInText: Int,
+): LocalQuickFix? {
+    val startOffset = subPathRanges[at]
+    var endOffset = subPathRanges[at + 1] + valueShiftInText
+    val nextPathStart = if (endOffset < pathDataAttrValueText.length) pathDataAttrValueText[endOffset] else 0.toChar()
+    val replacement =
+        if (!nextPathStart.isLetter() || nextPathStart.isUpperCase()) ""
+        else if (nextPathStart == 'm' && endPositions != null) {
+            // So here we are: got path like M1 2m3 4 5 6, wanna get M(1+3) (2+4)l5 6
+            // 1. "M1 2" are startPositions of "m3 4 5 6"
+            // 2. Find these "3 4"
+            var cursor = floatRanges.indexOfFirst { it > subPathRanges[at + 1] }
+            check((cursor and 1) == 0) { // they are pairs
+                "The failed failure failingly failed."
+            }
+            val x = endPositions[2 * at] + pathDataAttrValueText
+                .substring(floatRanges[cursor++] + valueShiftInText, floatRanges[cursor++] + valueShiftInText).toFloat()
+            val y = endPositions[2 * at + 1] + pathDataAttrValueText
+                .substring(floatRanges[cursor++] + valueShiftInText, floatRanges[cursor++] + valueShiftInText).toFloat()
+            // 3. Whether we need "l"?
+            var nextCmd = false
+            for (i in floatRanges[cursor - 1] until floatRanges[cursor])
+                if (pathDataAttrValueText[i + valueShiftInText].isLetter()) {
+                    nextCmd = true
+                    break
+                }
+            // 4. eat this "m3 4 "
+            endOffset = floatRanges[cursor - nextCmd.toInt()] + valueShiftInText
+
+            "M${if (x == x.toInt().toFloat()) x.toInt() else x},${if (y == y.toInt().toFloat()) y.toInt() else y}${if (nextCmd) "" else "l"}"
+        } else return null
     return object : NamedLocalQuickFix("Remove sub-path") {
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
             val attrVal = (descriptor.psiElement as? XmlAttributeValue) ?: return
             val value = attrVal.value
             val shift = attrVal.text.indexOf(value)
             (attrVal.parent as XmlAttribute).setValue(
-                value.removeRange(deadRange.startOffset - shift, deadRange.endOffset - shift)
+                value.replaceRange(startOffset, endOffset - shift, replacement)
             )
         }
     }
@@ -590,7 +629,7 @@ private fun StringBuilder.replace(
 ): StringBuilder {
     val victimLen = till - at
     val replLen = to - from
-    repeat(kotlin.math.min(victimLen, replLen)) { this[at + it] = with[from + it] }
+    repeat(min(victimLen, replLen)) { this[at + it] = with[from + it] }
     return if (replLen > victimLen)
         insert(at + victimLen, with, from + victimLen, from + replLen)
     else

@@ -5,6 +5,7 @@
     <li>Fixed crash when parsing <code>pathData</code> which is incomplete or starts with spaces/linebreaks/etc</li>
     <li>Fixed handling overdraw of clipped paths</li>
     <li>Reporting that <code>RecyclerView.setOnClickListener</code> is unsupported; stopped mistakenly reporting <code>VideoView.setOnTouchListener</code></li>
+    <li>Quickfix for removing empty vector sub-path and fixing the following relative moveTo command</li>
   </ul>
 
 ### 0.24

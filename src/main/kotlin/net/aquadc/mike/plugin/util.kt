@@ -10,6 +10,7 @@ import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.uast.UastVisitorAdapter
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
+import gnu.trove.TIntArrayList
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.idea.references.mainReference
@@ -388,3 +389,14 @@ fun PsiElement.getParentUntil(c1: Class<out PsiElement>, c2: Class<out PsiElemen
         }
     }
 }
+
+inline fun TIntArrayList.indexOfFirst(predicate: (Int) -> Boolean): Int {
+    for (i in 0 until size())
+        if (predicate(get(i)))
+            return i
+    return -1
+}
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun Boolean.toInt(): Int =
+    if (this) 1 else 0
