@@ -43,8 +43,8 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
         <li>Layouts: overridden attributes in (layout_margin|padding)(Left|Top|Right|Bottom|Start|End|Horizontal|Vertical|*)</li>
       </ul>
     </li>
-    <li>Android utility methods should be replaced with Kotlin extension</li>
-    <li><code>VideoView.setOnClickListener</code> won't work until SDK26; Kotlin Android Extensions are deprecated</li>
+    <li>Android utility methods should be replaced with Kotlin extensions</li>
+    <li><code>setOnClickListener</code> doesn't work in <code>VideoView</code> until SDK26, in <code>RecyclerView</code>; Kotlin Android Extensions are deprecated</li>
   </ul>
 
   <h3>Editor tweaks</h3>

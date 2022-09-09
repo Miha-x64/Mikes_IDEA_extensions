@@ -17,7 +17,7 @@
 
 ### 0.23
   <ul>
-    <li>Added inspection about shape (GradientDrawable) attribute application order</li>
+    <li>Added inspection about programmatic <code>GradientDrawable</code> (a.k.a. <code>&lt;shape></code>) attribute application order</li>
     <li>Support comparison operators when reporting `Big(Integer|Decimal).compareTo(ZERO)`</li>
     <li>Fixed binary incompatibility with Android Studio Chipmunk | 2021.2.1 Patch 1</li>
     <li>Reporting unsorted arrays passed to <code>obtainStyledAttributes</code></li>
@@ -25,7 +25,7 @@
     <li>Fallen back to standard introduceConstantHandler when suggesting fix for uncached allocations inspection due to incompatibility with IU-222.2270.31 (2022.2 (eap))
 (may not work for Kotlin)</li>
     <li>When pasting colors in Kotlin, adding <code>.toInt()</code> only if necessary</li>
-    <li>When detecting <code>&lt;group></code> usefulness, looking at successors, not siblings</li>
+    <li>When detecting vector <code>&lt;group></code> usefulness, looking at successors, not siblings</li>
   </ul>
 
 
@@ -35,7 +35,7 @@
     <li>More compact backing property folding</li>
     <li>Suggest merging (layout_margin|padding)(Left|Top|Right|Bottom|Start|End) pairs into (Horizontal|Vertical)</li>
     <li>Fix clip-path application order in UselessResourceElement</li>
-    <li>Split paths and report useless sub-paths separately</li>
+    <li>Split vector paths and report useless sub-paths separately</li>
     <li>Skip Java keywords in Kotlin declaration if its container is not exposed</li>
   </ul>
 
