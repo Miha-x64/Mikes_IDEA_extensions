@@ -24,13 +24,9 @@ import gnu.trove.TFloatArrayList
 import gnu.trove.TIntArrayList
 import gnu.trove.TIntHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
-import net.aquadc.mike.plugin.component6
-import net.aquadc.mike.plugin.component7
-import net.aquadc.mike.plugin.component8
-import net.aquadc.mike.plugin.component9
+import net.aquadc.mike.plugin.addAll
 import net.aquadc.mike.plugin.indexOfFirst
 import net.aquadc.mike.plugin.toInt
-import java.awt.BasicStroke
 import java.awt.Shape
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area
@@ -41,16 +37,17 @@ import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.min
 import kotlin.math.pow
-import net.aquadc.mike.plugin.miserlyMap as map
 
 
 internal class PathTag private constructor(
     private val pathDataAttr: XmlAttributeValue,
     private val outlines: MutableList<Path2D.Float>,
-    private val subPathRanges: TIntArrayList?,
-    private val endPositions: TFloatArrayList?, // (x, y) positions in the ends of sub-paths
+    private val subPathRanges: List<TIntArrayList>?,
+    private val startPositions: List<TFloatArrayList>?,
+    private val endPositions: List<TFloatArrayList>?,
     private val floatRanges: TIntArrayList,
     private val valueShiftInText: Int,
+    private val paint: PathPaintAttrs?,
 ) {
     private val pathTag get() = pathDataAttr.parentOfType<XmlTag>()!!
     private var subAreas: MutableList<Area?>? = null
@@ -61,6 +58,7 @@ internal class PathTag private constructor(
     private var overdrawnSubPaths: BitSet? = null
 
     companion object {
+        private val T000 = Triple(null, null, null)
         fun parse(
             holder: ProblemsHolder,
             rr: ResourceResolver?,
@@ -76,34 +74,75 @@ internal class PathTag private constructor(
             // can't report on sub-paths somewhere in strings.xml or wherever
             val pathStarts = if (rawPathData == pathData) TIntArrayList() else null
             val endPositions = if (rawPathData == pathData) TFloatArrayList() else null
-            val evenOdd = pathAttr.parentOfType<XmlTag>()!!.let { tag ->
-                tag.name == "path" && // no fillType for clipPath
-                        holder.toString(rr, tag.getAttribute("fillType", ANDROID_NS), null) == "evenOdd"
-            }
+            val tag = pathAttr.parentOfType<XmlTag>()!!
+
+            val paint = if (tag.name == "path") PathPaintAttrs(tag, holder, rr) else null
+            val evenOdd = paint?.fillTypeEvenOdd == true
             val paths = SmartList<Path2D.Float>().also {
                 PathDelegate.parse(pathData, it, pathStarts, floatRanges, endPositions, usefulPrecision, evenOdd)
             }
-            when (paths.size) {
-                0 -> return null
-                1 -> {}
-                else -> merge(paths, pathStarts, evenOdd)
+            if (paths.isEmpty())
+                return null
+            if (pathStarts != null && paths.size != pathStarts.size() - 1 &&
+                pathStarts[pathStarts.size() - 1] != rawPathData.length) {
+                // heal ranges for a broken path, may happen when editing path by hand on the fly
+                pathStarts.add(rawPathData.length)
             }
             check(pathStarts == null || paths.size == pathStarts.size() - 1) {
-                "${paths.size} paths but ${pathStarts!!.size()} start indices in path $pathData"
+                "${paths.size} paths but ${pathStarts!!.size()} start indices in path $pathData: $pathStarts"
             }
+            val (subPathRanges, startPoss, endPoss) =
+                if (paths.size > 1 && paint?.fillOpacity != PixelFormat.TRANSPARENT) {
+                    merge(paths, pathStarts, endPositions, evenOdd)
+                } else if (paths.size > 1 && pathStarts != null) {
+                    val ends = endPositions?.let {
+                        List(it.size() / 2) { i ->
+                            TFloatArrayList().apply { add(it[2 * i]); add(it[2 * i + 1]) }
+                        }
+                    }
+                    Triple(
+                        ranges(pathStarts, paths),
+                        ends?.let { listOf(TFloatArrayList().apply { add(0f); add(0f) }) + it.dropLast(1) },
+                        ends,
+                    )
+                } else if (pathStarts != null) {
+                    Triple(
+                        listOf(pathStarts.also { check(it.size() == 2) }),
+                        listOf(TFloatArrayList().apply { add(0f); add(0f) }),
+                        endPositions?.let(::listOf),
+                    )
+                } else {
+                    T000
+                }
 
             val beginValueAt = pathAttr.text.indexOf(rawPathData)
-//          pathStarts?.add(rawPathData.length) - seems to be useless, FIXME remove if OK
 
             holder.tryProposeTrimming(floatRanges, pathData, usefulPrecision, pathAttr, rawPathData, beginValueAt)
 
             if (matrix != null) paths.forEach { it.transform(matrix) }
-            return PathTag(pathAttr, paths, pathStarts, endPositions, floatRanges, beginValueAt)
+            return PathTag(pathAttr, paths, subPathRanges, startPoss, endPoss, floatRanges, beginValueAt, paint)
         }
 
         /** Handles intersections which can lead to “donut holes” and invert the whole sub-path meaning. */
-        private fun merge(paths: SmartList<Path2D.Float>, pathStarts: TIntArrayList?, /*TODO*/evenOdd: Boolean) {
-            val areas = paths.mapTo(SmartList(), ::Area)
+        private fun merge(
+            paths: SmartList<Path2D.Float>, pathStarts: TIntArrayList?, endPositions: TFloatArrayList?, /*TODO*/evenOdd: Boolean,
+        ): Triple<ArrayList<TIntArrayList>?, ArrayList<TFloatArrayList>?, ArrayList<TFloatArrayList>?> {
+            val areas = paths.mapTo(ArrayList(), ::Area)
+            val ranges: ArrayList<TIntArrayList>? = ranges(pathStarts, paths)
+            var startPoss: ArrayList<TFloatArrayList>? = null
+            var endPoss: ArrayList<TFloatArrayList>? = null
+            if (endPositions != null) {
+                startPoss = ArrayList(paths.size)
+                endPoss = ArrayList(paths.size)
+                startPoss.add(TFloatArrayList().also { it.add(0f); it.add(0f) })
+                repeat(paths.size - 1) { i ->
+                    val p = TFloatArrayList(2).apply { add(endPositions[2 * i]); add(endPositions[2 * i + 1]) }
+                    startPoss.add(p)
+                    endPoss.add(p.clone() as TFloatArrayList)
+                }
+                val i = paths.size - 1
+                endPoss.add(TFloatArrayList(2).apply { add(endPositions[2 * i]); add(endPositions[2 * i + 1]) })
+            }
             var i = 0
             while (i < paths.size) {
                 var victim: Area? = null
@@ -113,30 +152,57 @@ internal class PathTag private constructor(
                     victim.subtract(areas[j])
                     if (!areas[i].equals(victim)) {
                         victim = null
-                        merge(paths, areas, pathStarts, i, j)
+                        merge(paths, areas, ranges, startPoss, endPoss, i, j)
                         j = i
                     }
                     j++
                 }
                 i++
             }
+            return Triple(ranges, startPoss, endPoss)
         }
-        private fun merge(
-            paths: SmartList<Path2D.Float>, areas: SmartList<Area>,
+        private fun ranges(
             pathStarts: TIntArrayList?,
-            from: Int, till: Int,
+            paths: SmartList<Path2D.Float>
+        ): ArrayList<TIntArrayList>? {
+            var ranges: ArrayList<TIntArrayList>? = null
+            if (pathStarts != null)
+                ranges = paths.indices.mapTo(ArrayList(paths.size)) { i ->
+                    TIntArrayList(2).apply { add(pathStarts[i]); add(pathStarts[i + 1]) }
+                }
+            return ranges
+        }
+
+        private fun merge(
+            paths: SmartList<Path2D.Float>, areas: ArrayList<Area>,
+            ranges: ArrayList<TIntArrayList>?,
+            startPositions: ArrayList<TFloatArrayList>?, endPositions: ArrayList<TFloatArrayList>?,
+            i: Int, j: Int,
         ) {
-            for (i in (from + 1) .. till) paths[from].append(paths[i], false)
-            areas[from] = Area(paths[from])
-            val diff = till - from
-            if (diff == 1) {
-                paths.removeAt(from + 1)
-                areas.removeAt(from + 1)
-            } else {
-                paths.subList(from + 1, till + 1).clear()
-                areas.subList(from + 1, till + 1).clear()
+            paths[i].append(paths[j], false)
+            paths.removeAt(j)
+            areas[i] = Area(paths[i])
+            areas.removeAt(j)
+            if (ranges != null) {
+                val myRanges = ranges[i]
+                val victimRanges = ranges[j]
+                if (myRanges[myRanges.size() - 1] == victimRanges[0]) {
+                    myRanges.remove(myRanges.size() - 1)
+                    victimRanges.remove(0)
+                    startPositions?.get(j)?.remove(0, 2)
+                    endPositions?.get(i)?.let { it.remove(it.size() - 2, 2) }
+                }
+                myRanges.addAll(victimRanges)
+                ranges.removeAt(j)
             }
-            pathStarts?.remove(from + 1, diff)
+            if (startPositions != null) {
+                startPositions[i].addAll(startPositions[j])
+                startPositions.removeAt(j)
+            }
+            if (endPositions != null) {
+                endPositions[i].addAll(endPositions[j])
+                endPositions.removeAt(j)
+            }
         }
 
         private fun ProblemsHolder.tryProposeTrimming(
@@ -179,33 +245,24 @@ internal class PathTag private constructor(
             }
         }
 
-        private val pathAttrs = arrayOf(
-            "fillColor", "fillType", "fillAlpha",
-            "strokeColor", "strokeWidth", "strokeLineCap", "strokeLineJoin", "strokeMiterLimit", "strokeAlpha",
-        )
         private val dummyFloats = FloatArray(6) // don't mind synchronization, values are never read
-        private val nullToZero = null to 0
     }
 
-    fun toAreas(holder: ProblemsHolder, rr: ResourceResolver?, usefulPrecision: Int) {
-        val tag = pathTag
-        val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) = pathAttrs.map { tag.getAttribute(it, ANDROID_NS) }
-        val fillColor = fCol ?: tag.findAaptAttrTag("fillColor")
-        val strokeColor = sCol ?: tag.findAaptAttrTag("strokeColor")
+    fun toAreas(holder: ProblemsHolder, usefulPrecision: Int) {
+        val stroke = paint!!.stroke
+        val sCap = paint.strokeLineCapEl
+        val sJoin = paint.strokeLineJoinEl
+        val fType = paint.fillTypeEl
 
-        val fillOpacity = fillColor.opacity(rr, holder.toFloat(rr, fA, 1f))
-        val (stroke, strokeOpacity) = holder.stroke(rr, sWidth, strokeColor, sCap, sJoin, sMiter, sA) ?: nullToZero
-
-        var filledSubPaths = if (fillOpacity == PixelFormat.TRANSPARENT) null else BitSet(outlines.size)
+        var filledSubPaths = if (paint.fillOpacity == PixelFormat.TRANSPARENT) null else BitSet(outlines.size)
         var strokedSubPaths = if (stroke == null) null else BitSet(outlines.size)
         if (filledSubPaths == null && strokedSubPaths == null) {
-            return holder.report(tag, "Invisible path: no fill, no stroke", removeTagFix)
+            return holder.report(pathTag, "Invisible path: no fill, no stroke", removeTagFix)
         }
 
         val strokeCaps = if (stroke == null || sCap == null) null else BitSet(outlines.size)
         val strokeJoins = if (stroke == null || sJoin == null) null else BitSet(outlines.size)
 
-        val evenOdd = holder.toString(rr, fType, "nonZero") == "evenOdd"
         var reallyEvenOdd = false
 
         var opaque: Area? = null
@@ -219,7 +276,7 @@ internal class PathTag private constructor(
                 ?.takeIf { !it.effectivelyEmpty(usefulPrecision) }
                 ?.also { strokedSubPaths!!.set(index) }
             val opaqueStrokeArea = strokeArea
-                ?.takeIf { strokeOpacity == PixelFormat.OPAQUE }
+                ?.takeIf { paint.strokeOpacity == PixelFormat.OPAQUE }
                 ?.also { opaque += it }
 
             val fillArea = outline.takeIf { filledSubPaths != null }
@@ -227,8 +284,8 @@ internal class PathTag private constructor(
                 ?.takeIf { !it.effectivelyEmpty(usefulPrecision) }
                 ?.also { fillArea ->
                     filledSubPaths!!.set(index)
-                    if (fillOpacity == PixelFormat.OPAQUE) opaque += fillArea
-                    if (evenOdd && !reallyEvenOdd)
+                    if (paint.fillOpacity == PixelFormat.OPAQUE) opaque += fillArea
+                    if (paint.fillTypeEvenOdd && !reallyEvenOdd)
                         if (!outline.also { it.windingRule = Path2D.WIND_NON_ZERO }.toArea().equals(fillArea))
                             reallyEvenOdd = true
                 }
@@ -244,22 +301,22 @@ internal class PathTag private constructor(
         val noFill = filledSubPaths == null || filledSubPaths.cardinality() == 0
         val noStroke = strokedSubPaths == null || strokedSubPaths.cardinality() == 0
         if (noFill && noStroke) {
-            return holder.report(tag, "Invisible path: none of sub-paths are filled or stroked", removeTagFix)
+            return holder.report(pathTag, "Invisible path: none of sub-paths are filled or stroked", removeTagFix)
         }
 
         if (noFill) {
             holder.reportNoFill(
-                fillColor, fType, fA,
+                paint.fillColorEl, fType, paint.fillAlphaEl,
                 if (filledSubPaths == null) "attribute has no effect with uncolored or transparent fill"
                 else "attribute has no effect with open path",
             )
             filledSubPaths = null
-        } else if (evenOdd && !reallyEvenOdd) {
+        } else if (paint.fillTypeEvenOdd && !reallyEvenOdd) {
             holder.report(fType!!, "attribute has no effect", removeAttrFix)
         }
 
         if (noStroke) {
-            holder.reportNoStroke(sWidth, sCol, sCap, sJoin, sMiter, sA)
+            holder.reportNoStroke(paint.strokeWidthEl, paint.strokeColorEl, sCap, sJoin, paint.strokeMiterEl, paint.strokeAlphaEl)
             strokedSubPaths = null
         } else {
             if (strokeCaps?.cardinality() == 0) holder.report(sCap!!, "attribute has no effect", removeAttrFix)
@@ -320,37 +377,6 @@ internal class PathTag private constructor(
         a?.let { report(it, complaint, removeAttrFix) }
     }
 
-    /**
-     * @return stroke and opacity
-     */
-    private fun ProblemsHolder.stroke(
-        rr: ResourceResolver?,
-        width: XmlAttribute?,
-        col: XmlElement?, cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?, a: XmlAttribute?
-    ): Pair<BasicStroke, Int>? {
-        val strokeWidth = toFloat(rr, width, 0f)
-        val opacity = col.opacity(rr, toFloat(rr, a, 1f))
-        return if (strokeWidth != 0f && opacity != PixelFormat.TRANSPARENT) {
-            val capName = toString(rr, cap, "butt")
-            val joinName = toString(rr, join, "miter")
-            BasicStroke(
-                strokeWidth,
-                when (capName) {
-                    "round" -> BasicStroke.CAP_ROUND
-                    "square" -> BasicStroke.CAP_SQUARE
-                    else -> BasicStroke.CAP_BUTT
-                },
-                when (joinName) {
-                    "round" -> BasicStroke.JOIN_ROUND
-                    "bevel" -> BasicStroke.JOIN_BEVEL
-                    else -> BasicStroke.JOIN_MITER
-                },
-                toFloat(rr, miter, 4f)
-            ) to opacity
-        } else {
-            null
-        }
-    }
     private fun ProblemsHolder.reportNoStroke(
         width: XmlAttribute?, col: XmlElement?,
         cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?,
@@ -383,29 +409,6 @@ internal class PathTag private constructor(
         if (joins) join?.set(index)
     }
 
-    private fun XmlElement?.opacity(rr: ResourceResolver?, alpha: Float) =
-        if (alpha == 0f || this == null) PixelFormat.TRANSPARENT else when (this) {
-            is XmlAttribute -> rr.resolve(this)?.takeIf { it.isNotBlank() && !it.endsWith(".xml") }?.let {
-                when (it.length.takeIf { _ -> it.startsWith('#') }) { //              TODO ^^^^ resolve color state lists and gradients
-                    4, 7 ->
-                        if (alpha == 1f) PixelFormat.OPAQUE
-                        else PixelFormat.TRANSLUCENT
-                    5 ->
-                        if (it[1] == '0') PixelFormat.TRANSPARENT
-                        else if (it[1].equals('f', true) && alpha == 1f) PixelFormat.OPAQUE
-                        else PixelFormat.TRANSLUCENT
-                    9 ->
-                        if (it[1] == '0' && it[2] == '0') PixelFormat.TRANSPARENT
-                        else if (it[1].equals('f', true) && it[2].equals('f', true) && alpha == 1f) PixelFormat.OPAQUE
-                        else PixelFormat.TRANSLUCENT
-                    else ->
-                        null
-                }
-            } ?: PixelFormat.UNKNOWN
-            is XmlTag -> PixelFormat.UNKNOWN
-            else -> throw IllegalArgumentException()
-        }
-
     fun overdraw(paths: List<PathTag>, usefulPrecision: Int) {
         val opaqueArea = opaqueArea ?: return
         paths.forEach { path ->
@@ -427,6 +430,8 @@ internal class PathTag private constructor(
         if (filledSubPaths == null && strokedSubPaths == null)
             return // nothing to do here, the path is crippled from the very beginning
 
+        tryProposeSplit(holder)
+
         val subAreas = subAreas ?: return
         when (subAreas.count { it == null }) {
             0 -> return // everything is perfect
@@ -440,7 +445,6 @@ internal class PathTag private constructor(
         }
 
         // some areas are empty, some others are not. Analyze!
-
         for (i in subAreas.indices) {
             // TODO glue sibling paths together
             if (filledSubPaths?.get(i) != true && strokedSubPaths?.get(i) != true) {
@@ -453,6 +457,45 @@ internal class PathTag private constructor(
             }
         }
     }
+    private fun tryProposeSplit(holder: ProblemsHolder) {
+        if (holder.isOnTheFly && startPositions != null &&
+            subPathRanges != null && subPathRanges.size > 1 &&
+            pathTag.name == "path" && pathTag.subTags.isEmpty()) {
+            holder.registerProblem(
+                pathTag, "", ProblemHighlightType.INFORMATION,
+                splitPathFix(subPathRanges, startPositions)
+            )
+        }
+    }
+    private fun splitPathFix(
+        subPathRanges: List<TIntArrayList>, startPositions: List<TFloatArrayList>,
+    ) = object : NamedLocalQuickFix("Split path") {
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            val tag = descriptor.psiElement as? XmlTag
+            val parent = tag?.parentOfType<XmlTag>() ?: return
+            val pathData = tag.getAttributeValue("pathData", ANDROID_NS) ?: return
+            val splits = subPathRanges.mapIndexed { i, ranges ->
+                buildString(pathData.length / subPathRanges.size) {
+                    repeat(ranges.size() / 2) {
+                        val viLen = pathStartReplacement(pathData, floatRanges, ranges[2 * it], startPositions[i], it)
+                        if (viLen < 0) return
+                        append(pathData, ranges[2 * it] + viLen, ranges[2 * it + 1])
+                    }
+                }
+            }
+            tag.setAttribute("pathData", ANDROID_NS, splits.first())
+
+            splits.drop(1).asReversed().forEach { split ->
+                val child = parent.createChildTag("path", null, null, false)
+                tag.attributes.forEach {
+                    child.setAttribute(it.name, it.value)
+                }
+                child.setAttribute(parent.getPrefixByNamespace(ANDROID_NS) + ":pathData", split)
+                parent.addAfter(child, tag)
+            }
+        }
+    }
+
     private fun invisiblePathDiagnosis(overdrawn: Boolean, clippedAway: Boolean): String = when {
         overdrawn && clippedAway -> "overdrawn and clipped away"
         overdrawn -> "overdrawn"
@@ -467,10 +510,14 @@ internal class PathTag private constructor(
             )
             false
         } else {
-            val deadRange = TextRange.create(valueShiftInText + subPathRanges[at], valueShiftInText + subPathRanges[at + 1])
+            val myRanges = subPathRanges[at]
+            val deadRange =
+                TextRange.create(valueShiftInText + myRanges[0], valueShiftInText + myRanges[myRanges.size() - 1])
             registerProblem(
-                pathDataAttr, complaint, ProblemHighlightType.LIKE_UNUSED_SYMBOL, deadRange,
-                removeSubPathFix(pathDataAttr.text, at, subPathRanges, endPositions, floatRanges, valueShiftInText),
+                pathDataAttr, complaint,
+                if (myRanges.size() == 2) ProblemHighlightType.LIKE_UNUSED_SYMBOL else ProblemHighlightType.WEAK_WARNING,
+                deadRange,
+                removeSubPathFix(pathDataAttr.value, at, subPathRanges, endPositions, floatRanges),
             )
             true
         }
@@ -577,50 +624,81 @@ private class TrimFix(
 }
 
 private fun removeSubPathFix(
-    pathDataAttrValueText: String,
+    pathData: String,
     at: Int,
-    subPathRanges: TIntArrayList, endPositions: TFloatArrayList?, floatRanges: TIntArrayList,
-    valueShiftInText: Int,
+    subPathRanges: List<TIntArrayList>, endPositions: List<TFloatArrayList>?, floatRanges: TIntArrayList,
 ): LocalQuickFix? {
-    val startOffset = subPathRanges[at]
-    var endOffset = subPathRanges[at + 1] + valueShiftInText
-    val nextPathStart = if (endOffset < pathDataAttrValueText.length) pathDataAttrValueText[endOffset] else 0.toChar()
-    val replacement =
-        if (!nextPathStart.isLetter() || nextPathStart.isUpperCase()) ""
-        else if (nextPathStart == 'm' && endPositions != null) {
-            // So here we are: got path like M1 2m3 4 5 6, wanna get M(1+3) (2+4)l5 6
-            // 1. "M1 2" are startPositions of "m3 4 5 6"
-            // 2. Find these "3 4"
-            var cursor = floatRanges.indexOfFirst { it > subPathRanges[at + 1] }
-            check((cursor and 1) == 0) { // they are pairs
-                "The failed failure failingly failed."
-            }
-            val x = endPositions[2 * at] + pathDataAttrValueText
-                .substring(floatRanges[cursor++] + valueShiftInText, floatRanges[cursor++] + valueShiftInText).toFloat()
-            val y = endPositions[2 * at + 1] + pathDataAttrValueText
-                .substring(floatRanges[cursor++] + valueShiftInText, floatRanges[cursor++] + valueShiftInText).toFloat()
-            // 3. Whether we need "l"?
-            var nextCmd = false
-            for (i in floatRanges[cursor - 1] until floatRanges[cursor])
-                if (pathDataAttrValueText[i + valueShiftInText].isLetter()) {
-                    nextCmd = true
-                    break
-                }
-            // 4. eat this "m3 4 "
-            endOffset = floatRanges[cursor - nextCmd.toInt()] + valueShiftInText
-
-            "M${if (x == x.toInt().toFloat()) x.toInt() else x},${if (y == y.toInt().toFloat()) y.toInt() else y}${if (nextCmd) "" else "l"}"
-        } else return null
+    val myRanges = subPathRanges[at]
+    val myEndPositions = endPositions?.get(at)
+    val replacementRanges = myRanges.clone() as TIntArrayList
+    val sb = StringBuilder()
+    val replacements = List(myRanges.size() / 2) {
+        val endOffset = myRanges[2 * it + 1]
+        sb.clear()
+        val victimLen = sb.pathStartReplacement(pathData, floatRanges, endOffset, myEndPositions, it)
+        if (victimLen < 0) return null
+        replacementRanges[2 * it + 1] = endOffset + victimLen
+        sb.toString()
+    }
     return object : NamedLocalQuickFix("Remove sub-path") {
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
             val attrVal = (descriptor.psiElement as? XmlAttributeValue) ?: return
             val value = attrVal.value
-            val shift = attrVal.text.indexOf(value)
-            (attrVal.parent as XmlAttribute).setValue(
-                value.replaceRange(startOffset, endOffset - shift, replacement)
-            )
+            val fixed =
+                if (replacements.size == 1) value.replaceRange(replacementRanges[0], replacementRanges[1], replacements[0])
+                else StringBuilder(value).apply {
+                    for (i in replacements.lastIndex downTo 0)
+                        replace(replacementRanges[2 * i], replacementRanges[2 * i + 1], replacements[i])
+                }.toString()
+            (attrVal.parent as XmlAttribute).setValue(fixed)
         }
     }
+}
+
+private fun StringBuilder.pathStartReplacement(
+    pathData: String,
+    floatRanges: TIntArrayList,
+    pathStartOffset: Int,
+    startPositions: TFloatArrayList?,
+    startPosAt: Int
+): Int {
+    val pathStart = if (pathStartOffset < pathData.length) pathData[pathStartOffset] else 0.toChar()
+    return if (!pathStart.isLetter() || pathStart.isUpperCase()) 0
+    else if (pathStart == 'm' && startPositions != null) {
+        // So here we are: got path like M1 2m3 4 5 6, wanna get M(1+3) (2+4)l5 6
+        // 1. "M1 2" are startPositions of "m3 4 5 6"
+        // 2. Find these "3 4"
+        var cursor = floatRanges.indexOfFirst { v -> v > pathStartOffset }
+        check((cursor and 1) == 0) { // they are pairs
+            "The failed failure failingly failed."
+        }
+        val mx = pathData.substring(floatRanges[cursor++], floatRanges[cursor++]).toFloat()
+        val my = pathData.substring(floatRanges[cursor++], floatRanges[cursor++]).toFloat()
+        val x = startPositions[2 * startPosAt] + mx
+        val y = startPositions[2 * startPosAt + 1] + my
+        // 3. Whether we need "l"?
+        var nextCmd = false
+        val lastIndex = if (floatRanges.size() > cursor) cursor else {
+            // a sub-path starts and ends with a single moveto ...M[x)[y)$
+            //                                                          ^ so we stop here
+            nextCmd = true // and think that a command follows, so we don't need lineto
+            cursor - 1
+        }
+        for (i in floatRanges[cursor - 1] until floatRanges[lastIndex])
+            if (pathData[i].isLetter()) {
+                nextCmd = true
+                break
+            }
+
+        append('M')
+        if (x == x.toInt().toFloat()) append(x.toInt()) else append(x)
+        append(',')
+        if (y == y.toInt().toFloat()) append(y.toInt()) else append(y)
+        if (!nextCmd) append('l')
+
+        // 4. eat this "m3 4 "
+        floatRanges[min(cursor - nextCmd.toInt(), lastIndex)] - pathStartOffset
+    } else -1
 }
 
 private fun StringBuilder.replace(

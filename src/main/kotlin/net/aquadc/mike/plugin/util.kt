@@ -10,6 +10,7 @@ import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.uast.UastVisitorAdapter
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
+import gnu.trove.TFloatArrayList
 import gnu.trove.TIntArrayList
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.core.ShortenReferences
@@ -395,6 +396,17 @@ inline fun TIntArrayList.indexOfFirst(predicate: (Int) -> Boolean): Int {
         if (predicate(get(i)))
             return i
     return -1
+}
+
+fun TIntArrayList.addAll(other: TIntArrayList) {
+    ensureCapacity(size() + other.size())
+    for (i in 0 until other.size())
+        add(other[i])
+}
+fun TFloatArrayList.addAll(other: TFloatArrayList) {
+    ensureCapacity(size() + other.size())
+    for (i in 0 until other.size())
+        add(other[i])
 }
 
 @Suppress("NOTHING_TO_INLINE")

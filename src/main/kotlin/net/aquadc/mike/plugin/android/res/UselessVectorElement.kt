@@ -129,7 +129,7 @@ private fun ProblemsHolder.checkVectorGroup(
             "path" -> { // TODO propose merging pathDatas of sibling paths with same attrs
                 subTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
                     PathTag.parse(this, rr, pathData, matrix, usefulPrecision)?.also { pathTag ->
-                        pathTag.toAreas(this, rr, usefulPrecision)
+                        pathTag.toAreas(this, usefulPrecision)
                         pathTag.applyClip(localClip, clips, usefulClips, usefulPrecision)
                         pathTag.overdraw(paths, usefulPrecision)
                         paths.add(pathTag)
@@ -208,13 +208,6 @@ internal fun ProblemsHolder.toString(rr: ResourceResolver?, attr: XmlAttribute?,
     val value = attr?.let(rr::resolve)
     if (default != null && value == default) report(attr, "Attribute has default value", removeAttrFix)
     return value ?: default
-}
-
-private fun List<Area>.subIntersection(from: Int): Area {
-    var i = from
-    val area = Area(this[i++])
-    while (i < size) area.intersect(this[i++])
-    return area
 }
 
 private fun ProblemsHolder.checkClip(

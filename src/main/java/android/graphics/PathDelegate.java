@@ -146,28 +146,29 @@ public final class PathDelegate {
                     return;
                 }
                 char next = pathData.charAt(start);
-                if ((previousCommand == 'z' || previousCommand == 'Z') && (next != 'm' && next != 'M')) delegate.moveTo(current[0], current[1]);
+                float lastX = delegate.mLastX, lastY = delegate.mLastY;
+                if ((previousCommand == 'z' || previousCommand == 'Z') && (next != 'm' && next != 'M'))
+                    delegate.moveTo(current[0], current[1]);
                 if (!addCommand(delegate, current, previousCommand, previousCommand = next, results, count)) {
                     clear(paths, pathStarts, floatRanges, endPositions);
                     return;
                 }
-                if (prevPath != (prevPath = delegate.currentPath) && prevPath != null) {
+                if (delegate.currentPath != null && prevPath != delegate.currentPath) {
                     if (pathStarts != null) pathStarts.add(start);
-                    if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
+                    if (endPositions != null && delegate.paths.size() > 1) add(endPositions, lastX, lastY);
                 }
+                prevPath = delegate.currentPath;
             }
         }
 
-        if (end - start == 1 && start < pdLen) {
+        if (end - start == 1 && start < pdLen) { // 'z' case, one last command
             if (!addCommand(delegate, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0)) {
                 clear(paths, pathStarts, floatRanges, endPositions);
                 return;
             }
-            if (prevPath != delegate.currentPath && pathStarts != null) pathStarts.add(end);
-        } else {
-            if (pathStarts != null) pathStarts.add(start);
-            if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
         }
+        if (pathStarts != null) pathStarts.add(pdLen);
+        if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
     }
     private static void add(TFloatArrayList into, float x, float y) {
         into.add(x);
@@ -311,7 +312,8 @@ public final class PathDelegate {
                 currentY = currentSegmentStartY;
                 ctrlPointX = currentSegmentStartX;
                 ctrlPointY = currentSegmentStartY;
-//              path.moveTo(currentSegmentStartX, currentSegmentStartY);
+                path.mLastX = currentSegmentStartX;
+                path.mLastY = currentSegmentStartY;
         }
 
         for (int k = 0; k < count; k += incr) {
