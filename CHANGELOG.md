@@ -8,6 +8,7 @@
     <li>Quickfix for removing empty vector sub-path and fixing the following relative moveTo command</li>
     <li>Quickfix for splitting <code>&lt;path></code> tag</li>
     <li>Live templates for SVG and Android Vector Drawable pathData</li>
+    <li>Suggest merging (layout_margin|padding)(Left|Top|Right|Bottom|Start|End) pairs into (Horizontal|Vertical) even for SDK&lt;22 (without highlight though)</li>
   </ul>
 
 ### 0.24

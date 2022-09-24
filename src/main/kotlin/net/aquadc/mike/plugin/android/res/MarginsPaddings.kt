@@ -2,8 +2,7 @@ package net.aquadc.mike.plugin.android.res
 
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.codeInspection.ProblemHighlightType.LIKE_UNUSED_SYMBOL
-import com.intellij.codeInspection.ProblemHighlightType.WEAK_WARNING
+import com.intellij.codeInspection.ProblemHighlightType.*
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
 import com.intellij.psi.xml.XmlAttribute
@@ -165,14 +164,14 @@ internal object MarginsPaddings {
         holder: ProblemsHolder, tmp: Array<XmlAttribute?>,
         names: Array<String>, minSdk: Int,
         from1: Int, from2: Int, into: Int,
-    ): Boolean = if (minSdk < 22 || tmp[into] != null) false else {
+    ): Boolean = if ((minSdk < 22 && !holder.isOnTheFly) || tmp[into] != null) false else {
         tmp[from1]?.let { attr1 ->
             tmp[from2]?.let { attr2 ->
                 attr1.value?.takeIf { it == attr2.value }?.let {
                     holder.registerProblem(
                         attr1.parent,
                         "${names[from1]} and ${names[from2]} can be merged into ${names[into]}",
-                        WEAK_WARNING,
+                        if (minSdk < 22) INFORMATION else WEAK_WARNING,
                         attr1.textRangeInParent.union(attr2.textRangeInParent),
                         object : NamedLocalQuickFix("Merge indents") {
                             override fun getName(): String = "Merge indents into ${names[into]}"
