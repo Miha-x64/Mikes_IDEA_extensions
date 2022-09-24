@@ -7,6 +7,7 @@
     <li>Reporting that <code>RecyclerView.setOnClickListener</code> is unsupported; stopped mistakenly reporting <code>VideoView.setOnTouchListener</code></li>
     <li>Quickfix for removing empty vector sub-path and fixing the following relative moveTo command</li>
     <li>Quickfix for splitting <code>&lt;path></code> tag</li>
+    <li>Live templates for SVG and Android Vector Drawable pathData</li>
   </ul>
 
 ### 0.24

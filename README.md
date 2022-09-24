@@ -53,6 +53,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Inlay hints when overriding an interface method, e. g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
     <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code> for Android</li>
     <li>Backing property folding for Kotlin</li>
+    <li>Live templates for SVG and Android Vector Drawable pathData</li>
   </ul>
 
 <!-- end plugin.xml -->

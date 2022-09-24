@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templateSet group="SVG Path">
+
+    <template
+        name="rect" description="Rectangle(width, height) in SVG pathData"
+        value="h$W$v$H$h-$W$v-$H$"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="W" expression="svgExtract(&quot;viewportWidth&quot;)" alwaysStopAt="true" />
+        <variable name="H" expression="svgExtract(&quot;viewportHeight&quot;)" alwaysStopAt="true" />
+    </template>
+    <template
+        name="rectCcw" description="Rectangle(width, height) in SVG pathData"
+        value="v$H$h$W$v-$H$h-$W$"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="W" expression="svgExtract(&quot;viewportWidth&quot;)" alwaysStopAt="true" />
+        <variable name="H" expression="svgExtract(&quot;viewportHeight&quot;)" alwaysStopAt="true" />
+    </template>
+
+    <template
+        name="circle" description="Circle(radius) in SVG pathData"
+        value="m0,$RAD$a$RAD$,$RAD$ 0 0,1 $2RAD$,0a$RAD$,$RAD$ 0 0,1 -$2RAD$,0z"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="RAD" expression="multiply(&quot;.5&quot;, svgExtract(&quot;viewportMinSize&quot;))" alwaysStopAt="true"/>
+        <variable name="2RAD" expression="multiply(&quot;2&quot;, RAD)" alwaysStopAt="false"/>
+    </template>
+    <template
+        name="circleCcw" description="Circle(radius) in SVG pathData"
+        value="m0,$RAD$a$RAD$,$RAD$ 0 0,0 $2RAD$,0a$RAD$,$RAD$ 0 0,0 -$2RAD$,0z"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="RAD" expression="multiply(&quot;.5&quot;, svgExtract(&quot;viewportMinSize&quot;))" alwaysStopAt="true"/>
+        <variable name="2RAD" expression="multiply(&quot;2&quot;, RAD)" alwaysStopAt="false"/>
+    </template>
+
+    <template
+        name="roundRect" description="RoundRect(rx, ry, width, height) in SVG pathData"
+        value="m$RX$,0h$W$a$RX$,$RY$ 0 0,1 $RX$,$RY$v$H$a$RX$,$RY$ 0 0,1 -$RX$,$RY$h-$W$a$RX$,$RY$ 0 0,1 -$RX$,-$RY$v-$H$a$RX$,$RY$ 0 0,1 $RX$,-$RY$z"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="RX" expression="multiply(&quot;.1&quot;, svgExtract(&quot;viewportMinSize&quot;))" alwaysStopAt="true" />
+        <variable name="RY" expression="multiply(&quot;.1&quot;, svgExtract(&quot;viewportMinSize&quot;))" alwaysStopAt="true" />
+        <variable name="W" expression="add(svgExtract(&quot;viewportWidth&quot;), multiply(&quot;-2&quot;, RX))" alwaysStopAt="true" />
+        <variable name="H" expression="add(svgExtract(&quot;viewportHeight&quot;), multiply(&quot;-2&quot;, RY))" alwaysStopAt="true" />
+    </template>
+    <template
+        name="roundRectCcw" description="RoundRect(rx, ry, width, height) in SVG pathData"
+        value="m0,$RY$v$H$a$RX$,$RY$ 0 0,0 $RX$,$RY$h$W$a$RX$,$RY$ 0 0,0 $RX$,-$RY$v-$H$a$RX$,$RY$ 0 0,0 -$RX$,-$RY$h-$W$a$RX$,$RY$ 0 0,0 -$RX$,$RY$z"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="RX" expression="multiply(&quot;.1&quot;, svgExtract(&quot;viewportMinSize&quot;))" alwaysStopAt="true" />
+        <variable name="RY" expression="multiply(&quot;.1&quot;, svgExtract(&quot;viewportMinSize&quot;))" alwaysStopAt="true" />
+        <variable name="W" expression="add(svgExtract(&quot;viewportWidth&quot;), multiply(&quot;-2&quot;, RX))" alwaysStopAt="true" />
+        <variable name="H" expression="add(svgExtract(&quot;viewportHeight&quot;), multiply(&quot;-2&quot;, RY))" alwaysStopAt="true" />
+    </template>
+
+    <template
+        name="squircle" description="Squircle(halfWidth, halfHeight) in SVG pathData"
+        value="m0,$HH$c0,-$HH$ 0,-$HH$ $HW$,-$HH$s$HW$,0 $HW$,$HH$s0,$HH$ -$HW$,$HH$s-$HW$,0 -$HW$,-$HH$z"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="HW" expression="multiply(&quot;.5&quot;, svgExtract(&quot;viewportWidth&quot;))" alwaysStopAt="true" />
+        <variable name="HH" expression="multiply(&quot;.5&quot;, svgExtract(&quot;viewportHeight&quot;))" alwaysStopAt="true" />
+    </template>
+    <template
+        name="squircleCcw" description="Squircle(halfWidth, halfHeight) in SVG pathData"
+        value="m0,$HH$c0,$HH$ 0,$HH$ $HW$,$HH$s$HW$,0 $HW$,-$HH$s0,-$HH$ -$HW$,-$HH$s-$HW$,0 -$HW$,$HH$z"
+        toReformat="false" toShortenFQNames="false">
+        <context><option name="text/svg+xml; context=pathData" value="true"/></context>
+        <variable name="HW" expression="multiply(&quot;.5&quot;, svgExtract(&quot;viewportWidth&quot;))" alwaysStopAt="true" />
+        <variable name="HH" expression="multiply(&quot;.5&quot;, svgExtract(&quot;viewportHeight&quot;))" alwaysStopAt="true" />
+    </template>
+
+</templateSet>

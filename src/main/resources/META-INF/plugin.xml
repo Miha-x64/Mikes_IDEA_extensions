@@ -96,14 +96,19 @@
             implementationClass="net.aquadc.mike.plugin.interfaces.UnusedImplInspection" /-->
 
         <!--TODO errorHandler implementation="" / -->
+
+        <!-- SVG pathData live templates -->
+        <liveTemplateContext implementation="net.aquadc.mike.plugin.svg.SvgPathDataContext" />
+        <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MultiplyMacro" />
+        <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MinMacro" />
+        <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.AddMacro" />
+        <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.AvdExtractMacro" />
+        <defaultLiveTemplates file="/liveTemplates/pathData.xml" />
     </extensions>
 
     <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
     <depends optional="true" config-file="withAndroid.xml">org.jetbrains.android</depends>
-
-    <actions>
-    </actions>
 
 </idea-plugin>
