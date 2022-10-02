@@ -1,3 +1,9 @@
+### 0.26
+  <ul>
+    <li>Move from Trove to fastutil, fixes crash on new IDE builds</li>
+  </ul>
+
+
 ### 0.25
 
   <ul>

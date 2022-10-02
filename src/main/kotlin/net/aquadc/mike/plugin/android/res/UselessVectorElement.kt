@@ -10,7 +10,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
-import gnu.trove.TIntHashSet
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import org.jetbrains.plugins.groovy.codeInspection.fixes.RemoveElementQuickFix
 import java.awt.geom.AffineTransform
@@ -62,7 +62,7 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) { // TODO check for broken 
     val paths = SmartList<PathTag>()
     checkVectorGroup(
         rr, tag, null, viewport, usefulPrecision,
-        paths, SmartList(), SmartList(), TIntHashSet(),
+        paths, SmartList(), SmartList(), IntOpenHashSet(),
     )
 
     // TODO also check when the path adds nothing to the image
@@ -97,7 +97,7 @@ private fun ProblemsHolder.checkVectorGroup(
     parentMatrix: AffineTransform?, parentClip: Area?,
     usefulPrecision: Int,
     paths: SmartList<PathTag>,
-    clipTags: SmartList<XmlTag>, clips: SmartList<Area>, usefulClips: TIntHashSet,
+    clipTags: SmartList<XmlTag>, clips: SmartList<Area>, usefulClips: IntOpenHashSet,
 ) {
     val isRoot = tag.name == "vector"
 
@@ -136,7 +136,7 @@ private fun ProblemsHolder.checkVectorGroup(
                     }
                 } ?: run {
                     // let's conservatively think that an invalid path marks all clips as useful
-                    if (usefulClips.size() < clips.size)
+                    if (usefulClips.size < clips.size)
                         clips.indices.forEach(usefulClips::add)
                 }
             }

@@ -1,8 +1,8 @@
 package android.graphics;
 
-import gnu.trove.TFloatArrayList;
-import gnu.trove.TIntArrayList;
+import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.floats.FloatArrays;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.awt.geom.Path2D;
 import java.util.List;
@@ -118,7 +118,7 @@ public final class PathDelegate {
     public static void parse(
             String pathData,
             List<? super Path2D.Float> paths,
-            TIntArrayList pathStarts, TIntArrayList floatRanges, TFloatArrayList endPositions,
+            IntArrayList pathStarts, IntArrayList floatRanges, FloatArrayList endPositions,
             int usefulPrecision, boolean evenOdd
     ) {
         int start = 0;
@@ -170,11 +170,11 @@ public final class PathDelegate {
         if (pathStarts != null) pathStarts.add(pdLen);
         if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
     }
-    private static void add(TFloatArrayList into, float x, float y) {
+    private static void add(FloatArrayList into, float x, float y) {
         into.add(x);
         into.add(y);
     }
-    private static void clear(List<?> paths, TIntArrayList pathStarts, TIntArrayList floatRanges, TFloatArrayList endPositions) {
+    private static void clear(List<?> paths, IntArrayList pathStarts, IntArrayList floatRanges, FloatArrayList endPositions) {
         /*if (paths != null)*/paths.clear();
         if (pathStarts != null) pathStarts.clear();
         if (floatRanges != null) floatRanges.clear();
@@ -196,7 +196,7 @@ public final class PathDelegate {
 
     private static boolean extract(
             String input, int start, int end, int[] outEndPosition,
-            TIntArrayList floatRanges, int usefulPrecision
+            IntArrayList floatRanges, int usefulPrecision
     ) {
         int currentIndex = start;
         boolean endWithNegOrDot = false;
@@ -248,7 +248,7 @@ public final class PathDelegate {
     };  // https://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
     private static int getFloats(
             String input, int start, int end, float[] results, int[] tmp,
-            TIntArrayList floatRanges, int usefulPrecision) {
+            IntArrayList floatRanges, int usefulPrecision) {
         char first = input.charAt(start++);
         if (first != 'z' && first != 'Z') {
             try {

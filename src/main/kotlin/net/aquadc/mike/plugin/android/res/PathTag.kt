@@ -20,11 +20,10 @@ import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
 import de.javagl.geom.Shapes
-import gnu.trove.TFloatArrayList
-import gnu.trove.TIntArrayList
-import gnu.trove.TIntHashSet
+import it.unimi.dsi.fastutil.floats.FloatArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
-import net.aquadc.mike.plugin.addAll
 import net.aquadc.mike.plugin.indexOfFirst
 import net.aquadc.mike.plugin.toInt
 import java.awt.Shape
@@ -42,10 +41,10 @@ import kotlin.math.pow
 internal class PathTag private constructor(
     private val pathDataAttr: XmlAttributeValue,
     private val outlines: MutableList<Path2D.Float>,
-    private val subPathRanges: List<TIntArrayList>?,
-    private val startPositions: List<TFloatArrayList>?,
-    private val endPositions: List<TFloatArrayList>?,
-    private val floatRanges: TIntArrayList,
+    private val subPathRanges: List<IntArrayList>?,
+    private val startPositions: List<FloatArrayList>?,
+    private val endPositions: List<FloatArrayList>?,
+    private val floatRanges: IntArrayList,
     private val valueShiftInText: Int,
     private val paint: PathPaintAttrs?,
 ) {
@@ -69,11 +68,11 @@ internal class PathTag private constructor(
             val rawPathData = pathAttr.value // FIXME we need value and text, extract them without copying
             val pathData = rr.resolve(rawPathData) ?: return null
 
-            val floatRanges = TIntArrayList()
+            val floatRanges = IntArrayList()
 
             // can't report on sub-paths somewhere in strings.xml or wherever
-            val pathStarts = if (rawPathData == pathData) TIntArrayList() else null
-            val endPositions = if (rawPathData == pathData) TFloatArrayList() else null
+            val pathStarts = if (rawPathData == pathData) IntArrayList() else null
+            val endPositions = if (rawPathData == pathData) FloatArrayList() else null
             val tag = pathAttr.parentOfType<XmlTag>()!!
 
             val paint = if (tag.name == "path") PathPaintAttrs(tag, holder, rr) else null
@@ -83,32 +82,32 @@ internal class PathTag private constructor(
             }
             if (paths.isEmpty())
                 return null
-            if (pathStarts != null && paths.size != pathStarts.size() - 1 &&
-                pathStarts[pathStarts.size() - 1] != rawPathData.length) {
+            if (pathStarts != null && paths.size != pathStarts.size - 1 &&
+                pathStarts.getInt(pathStarts.size - 1) != rawPathData.length) {
                 // heal ranges for a broken path, may happen when editing path by hand on the fly
                 pathStarts.add(rawPathData.length)
             }
-            check(pathStarts == null || paths.size == pathStarts.size() - 1) {
-                "${paths.size} paths but ${pathStarts!!.size()} start indices in path $pathData: $pathStarts"
+            check(pathStarts == null || paths.size == pathStarts.size - 1) {
+                "${paths.size} paths but ${pathStarts!!.size} start indices in path $pathData: $pathStarts"
             }
             val (subPathRanges, startPoss, endPoss) =
                 if (paths.size > 1 && paint?.fillOpacity != PixelFormat.TRANSPARENT) {
                     merge(paths, pathStarts, endPositions, evenOdd)
                 } else if (paths.size > 1 && pathStarts != null) {
                     val ends = endPositions?.let {
-                        List(it.size() / 2) { i ->
-                            TFloatArrayList().apply { add(it[2 * i]); add(it[2 * i + 1]) }
+                        List(it.size / 2) { i ->
+                            FloatArrayList().apply { add(it.getFloat(2 * i)); add(it.getFloat(2 * i + 1)) }
                         }
                     }
                     Triple(
                         ranges(pathStarts, paths),
-                        ends?.let { listOf(TFloatArrayList().apply { add(0f); add(0f) }) + it.dropLast(1) },
+                        ends?.let { listOf(FloatArrayList().apply { add(0f); add(0f) }) + it.dropLast(1) },
                         ends,
                     )
                 } else if (pathStarts != null) {
                     Triple(
-                        listOf(pathStarts.also { check(it.size() == 2) }),
-                        listOf(TFloatArrayList().apply { add(0f); add(0f) }),
+                        listOf(pathStarts.also { check(it.size == 2) }),
+                        listOf(FloatArrayList().apply { add(0f); add(0f) }),
                         endPositions?.let(::listOf),
                     )
                 } else {
@@ -125,23 +124,23 @@ internal class PathTag private constructor(
 
         /** Handles intersections which can lead to “donut holes” and invert the whole sub-path meaning. */
         private fun merge(
-            paths: SmartList<Path2D.Float>, pathStarts: TIntArrayList?, endPositions: TFloatArrayList?, /*TODO*/evenOdd: Boolean,
-        ): Triple<ArrayList<TIntArrayList>?, ArrayList<TFloatArrayList>?, ArrayList<TFloatArrayList>?> {
+            paths: SmartList<Path2D.Float>, pathStarts: IntArrayList?, endPositions: FloatArrayList?, /*TODO*/evenOdd: Boolean,
+        ): Triple<ArrayList<IntArrayList>?, ArrayList<FloatArrayList>?, ArrayList<FloatArrayList>?> {
             val areas = paths.mapTo(ArrayList(), ::Area)
-            val ranges: ArrayList<TIntArrayList>? = ranges(pathStarts, paths)
-            var startPoss: ArrayList<TFloatArrayList>? = null
-            var endPoss: ArrayList<TFloatArrayList>? = null
+            val ranges: ArrayList<IntArrayList>? = ranges(pathStarts, paths)
+            var startPoss: ArrayList<FloatArrayList>? = null
+            var endPoss: ArrayList<FloatArrayList>? = null
             if (endPositions != null) {
                 startPoss = ArrayList(paths.size)
                 endPoss = ArrayList(paths.size)
-                startPoss.add(TFloatArrayList().also { it.add(0f); it.add(0f) })
+                startPoss.add(FloatArrayList().also { it.add(0f); it.add(0f) })
                 repeat(paths.size - 1) { i ->
-                    val p = TFloatArrayList(2).apply { add(endPositions[2 * i]); add(endPositions[2 * i + 1]) }
+                    val p = FloatArrayList(2).apply { add(endPositions.getFloat(2 * i)); add(endPositions.getFloat(2 * i + 1)) }
                     startPoss.add(p)
-                    endPoss.add(p.clone() as TFloatArrayList)
+                    endPoss.add(p.clone())
                 }
                 val i = paths.size - 1
-                endPoss.add(TFloatArrayList(2).apply { add(endPositions[2 * i]); add(endPositions[2 * i + 1]) })
+                endPoss.add(FloatArrayList(2).apply { add(endPositions.getFloat(2 * i)); add(endPositions.getFloat(2 * i + 1)) })
             }
             var i = 0
             while (i < paths.size) {
@@ -162,21 +161,21 @@ internal class PathTag private constructor(
             return Triple(ranges, startPoss, endPoss)
         }
         private fun ranges(
-            pathStarts: TIntArrayList?,
+            pathStarts: IntArrayList?,
             paths: SmartList<Path2D.Float>
-        ): ArrayList<TIntArrayList>? {
-            var ranges: ArrayList<TIntArrayList>? = null
+        ): ArrayList<IntArrayList>? {
+            var ranges: ArrayList<IntArrayList>? = null
             if (pathStarts != null)
                 ranges = paths.indices.mapTo(ArrayList(paths.size)) { i ->
-                    TIntArrayList(2).apply { add(pathStarts[i]); add(pathStarts[i + 1]) }
+                    IntArrayList(2).apply { add(pathStarts.getInt(i)); add(pathStarts.getInt(i + 1)) }
                 }
             return ranges
         }
 
         private fun merge(
             paths: SmartList<Path2D.Float>, areas: ArrayList<Area>,
-            ranges: ArrayList<TIntArrayList>?,
-            startPositions: ArrayList<TFloatArrayList>?, endPositions: ArrayList<TFloatArrayList>?,
+            ranges: ArrayList<IntArrayList>?,
+            startPositions: ArrayList<FloatArrayList>?, endPositions: ArrayList<FloatArrayList>?,
             i: Int, j: Int,
         ) {
             paths[i].append(paths[j], false)
@@ -186,11 +185,11 @@ internal class PathTag private constructor(
             if (ranges != null) {
                 val myRanges = ranges[i]
                 val victimRanges = ranges[j]
-                if (myRanges[myRanges.size() - 1] == victimRanges[0]) {
-                    myRanges.remove(myRanges.size() - 1)
-                    victimRanges.remove(0)
-                    startPositions?.get(j)?.remove(0, 2)
-                    endPositions?.get(i)?.let { it.remove(it.size() - 2, 2) }
+                if (myRanges.getInt(myRanges.size - 1) == victimRanges.getInt(0)) {
+                    myRanges.removeInt(myRanges.size - 1)
+                    victimRanges.removeInt(0)
+                    startPositions?.get(j)?.removeElements(0, 2)
+                    endPositions?.get(i)?.let { it.removeElements(it.size - 2, it.size) }
                 }
                 myRanges.addAll(victimRanges)
                 ranges.removeAt(j)
@@ -206,24 +205,24 @@ internal class PathTag private constructor(
         }
 
         private fun ProblemsHolder.tryProposeTrimming(
-            floatRanges: TIntArrayList,
+            floatRanges: IntArrayList,
             pathData: String,
             usefulPrecision: Int,
             pathAttr: XmlAttributeValue,
             rawPathData: String,
             beginValueAt: Int
         ) {
-            val rangeNodeCount = floatRanges.size()
+            val rangeNodeCount = floatRanges.size
             var canTrimCarefully = false
-            var trimmableFloats: TIntArrayList? = null
+            var trimmableFloats: IntArrayList? = null
             for (i in 0 until rangeNodeCount step 2) {
-                val iod = pathData.indexOf('.', floatRanges[i])
-                if (iod < 0 || iod > floatRanges[i + 1]) continue
-                val precision = floatRanges[i + 1] - iod
+                val iod = pathData.indexOf('.', floatRanges.getInt(i))
+                if (iod < 0 || iod > floatRanges.getInt(i + 1)) continue
+                val precision = floatRanges.getInt(i + 1) - iod
                 if (precision > usefulPrecision + 1) {
-                    (trimmableFloats ?: TIntArrayList().also { trimmableFloats = it }).apply {
-                        add(floatRanges[i])
-                        add(floatRanges[i + 1])
+                    (trimmableFloats ?: IntArrayList().also { trimmableFloats = it }).apply {
+                        add(floatRanges.getInt(i))
+                        add(floatRanges.getInt(i + 1))
                     }
                     if (precision > usefulPrecision + 2) {
                         canTrimCarefully = true  //   ^ plus dot plus extra digit
@@ -234,10 +233,10 @@ internal class PathTag private constructor(
             trimmableFloats?.takeIf { canTrimCarefully || isOnTheFly }?.let { tfs ->
                 registerProblem(
                     pathAttr,
-                    "subpixel precision" + if (tfs.size() == 2) "" else " (${tfs.size() / 2} items)",
+                    "subpixel precision" + if (tfs.size == 2) "" else " (${tfs.size / 2} items)",
                     ProblemHighlightType.WEAK_WARNING,
                     if (pathData === rawPathData)
-                        TextRange(beginValueAt + tfs[0], beginValueAt + tfs[tfs.size() - 1])
+                        TextRange(beginValueAt + tfs.getInt(0), beginValueAt + tfs.getInt(tfs.size - 1))
                     else TextRange.from(beginValueAt, rawPathData.length),
                     if (isOnTheFly) TrimFix(tfs, "Trim aggressively", usefulPrecision, pathData) else null,
                     if (canTrimCarefully) TrimFix(tfs, "Trim carefully", usefulPrecision + 1, pathData) else null,
@@ -337,11 +336,11 @@ internal class PathTag private constructor(
         outlines.map(::Area).takeIf(List<*>::isNotEmpty)?.reduce { acc, area -> acc.add(area); acc }
 
     fun applyClip(
-        clipPath: Area?, clips: List<Area>, usefulClips: TIntHashSet,
+        clipPath: Area?, clips: List<Area>, usefulClips: IntOpenHashSet,
         usefulPrecision: Int,
     ) {
         val subAreas = subAreas ?: return
-        if (usefulClips.size() < clips.size) {
+        if (usefulClips.size < clips.size) {
             val clippedAway = Area()
             var index = 0
             while (index < clips.size) {
@@ -349,7 +348,7 @@ internal class PathTag private constructor(
                 var areaIdx = 0
                 while (index !in usefulClips && areaIdx < subAreas.size) {
                     if (!clippedAway.with(subAreas[areaIdx++]).without(clip).effectivelyEmpty(usefulPrecision) &&
-                        usefulClips.add(index) && usefulClips.size() == clips.size)
+                        usefulClips.add(index) && usefulClips.size == clips.size)
                         break
                     clippedAway.reset()
                 }
@@ -468,7 +467,7 @@ internal class PathTag private constructor(
         }
     }
     private fun splitPathFix(
-        subPathRanges: List<TIntArrayList>, startPositions: List<TFloatArrayList>,
+        subPathRanges: List<IntArrayList>, startPositions: List<FloatArrayList>,
     ) = object : NamedLocalQuickFix("Split path") {
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
             val tag = descriptor.psiElement as? XmlTag
@@ -476,10 +475,10 @@ internal class PathTag private constructor(
             val pathData = tag.getAttributeValue("pathData", ANDROID_NS) ?: return
             val splits = subPathRanges.mapIndexed { i, ranges ->
                 buildString(pathData.length / subPathRanges.size) {
-                    repeat(ranges.size() / 2) {
-                        val viLen = pathStartReplacement(pathData, floatRanges, ranges[2 * it], startPositions[i], it)
+                    repeat(ranges.size / 2) {
+                        val viLen = pathStartReplacement(pathData, floatRanges, ranges.getInt(2 * it), startPositions[i], it)
                         if (viLen < 0) return
-                        append(pathData, ranges[2 * it] + viLen, ranges[2 * it + 1])
+                        append(pathData, ranges.getInt(2 * it) + viLen, ranges.getInt(2 * it + 1))
                     }
                 }
             }
@@ -512,10 +511,10 @@ internal class PathTag private constructor(
         } else {
             val myRanges = subPathRanges[at]
             val deadRange =
-                TextRange.create(valueShiftInText + myRanges[0], valueShiftInText + myRanges[myRanges.size() - 1])
+                TextRange.create(valueShiftInText + myRanges.getInt(0), valueShiftInText + myRanges.getInt(myRanges.size - 1))
             registerProblem(
                 pathDataAttr, complaint,
-                if (myRanges.size() == 2) ProblemHighlightType.LIKE_UNUSED_SYMBOL else ProblemHighlightType.WEAK_WARNING,
+                if (myRanges.size == 2) ProblemHighlightType.LIKE_UNUSED_SYMBOL else ProblemHighlightType.WEAK_WARNING,
                 deadRange,
                 removeSubPathFix(pathDataAttr.value, at, subPathRanges, endPositions, floatRanges),
             )
@@ -537,7 +536,7 @@ internal class PathTag private constructor(
 }
 
 private class TrimFix(
-    @FileModifier.SafeFieldForPreview private val ranges: TIntArrayList,
+    @FileModifier.SafeFieldForPreview private val ranges: IntArrayList,
     name: String,
     private val targetPrecision: Int,
     private val pathData: String,
@@ -545,9 +544,9 @@ private class TrimFix(
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         val value = StringBuilder(pathData)
         val tmpFloat = StringBuilder(10)
-        for (i in (ranges.size()-2) downTo 0 step 2) {
-            val start = ranges[i]
-            val end = ranges[i + 1]
+        for (i in (ranges.size - 2) downTo 0 step 2) {
+            val start = ranges.getInt(i)
+            val end = ranges.getInt(i + 1)
             val minus = tmpFloat.replace(0, tmpFloat.length, value, start, end)[0] == '-'
             if (tmpFloat.contains('e')) {
                 val bd = BigDecimal(tmpFloat.toString())
@@ -626,14 +625,14 @@ private class TrimFix(
 private fun removeSubPathFix(
     pathData: String,
     at: Int,
-    subPathRanges: List<TIntArrayList>, endPositions: List<TFloatArrayList>?, floatRanges: TIntArrayList,
+    subPathRanges: List<IntArrayList>, endPositions: List<FloatArrayList>?, floatRanges: IntArrayList,
 ): LocalQuickFix? {
     val myRanges = subPathRanges[at]
     val myEndPositions = endPositions?.get(at)
-    val replacementRanges = myRanges.clone() as TIntArrayList
+    val replacementRanges = myRanges.clone()
     val sb = StringBuilder()
-    val replacements = List(myRanges.size() / 2) {
-        val endOffset = myRanges[2 * it + 1]
+    val replacements = List(myRanges.size / 2) {
+        val endOffset = myRanges.getInt(2 * it + 1)
         sb.clear()
         val victimLen = sb.pathStartReplacement(pathData, floatRanges, endOffset, myEndPositions, it)
         if (victimLen < 0) return null
@@ -645,10 +644,10 @@ private fun removeSubPathFix(
             val attrVal = (descriptor.psiElement as? XmlAttributeValue) ?: return
             val value = attrVal.value
             val fixed =
-                if (replacements.size == 1) value.replaceRange(replacementRanges[0], replacementRanges[1], replacements[0])
+                if (replacements.size == 1) value.replaceRange(replacementRanges.getInt(0), replacementRanges.getInt(1), replacements[0])
                 else StringBuilder(value).apply {
                     for (i in replacements.lastIndex downTo 0)
-                        replace(replacementRanges[2 * i], replacementRanges[2 * i + 1], replacements[i])
+                        replace(replacementRanges.getInt(2 * i), replacementRanges.getInt(2 * i + 1), replacements[i])
                 }.toString()
             (attrVal.parent as XmlAttribute).setValue(fixed)
         }
@@ -657,9 +656,9 @@ private fun removeSubPathFix(
 
 private fun StringBuilder.pathStartReplacement(
     pathData: String,
-    floatRanges: TIntArrayList,
+    floatRanges: IntArrayList,
     pathStartOffset: Int,
-    startPositions: TFloatArrayList?,
+    startPositions: FloatArrayList?,
     startPosAt: Int
 ): Int {
     val pathStart = if (pathStartOffset < pathData.length) pathData[pathStartOffset] else 0.toChar()
@@ -672,19 +671,19 @@ private fun StringBuilder.pathStartReplacement(
         check((cursor and 1) == 0) { // they are pairs
             "The failed failure failingly failed."
         }
-        val mx = pathData.substring(floatRanges[cursor++], floatRanges[cursor++]).toFloat()
-        val my = pathData.substring(floatRanges[cursor++], floatRanges[cursor++]).toFloat()
-        val x = startPositions[2 * startPosAt] + mx
-        val y = startPositions[2 * startPosAt + 1] + my
+        val mx = pathData.substring(floatRanges.getInt(cursor++), floatRanges.getInt(cursor++)).toFloat()
+        val my = pathData.substring(floatRanges.getInt(cursor++), floatRanges.getInt(cursor++)).toFloat()
+        val x = startPositions.getFloat(2 * startPosAt) + mx
+        val y = startPositions.getFloat(2 * startPosAt + 1) + my
         // 3. Whether we need "l"?
         var nextCmd = false
-        val lastIndex = if (floatRanges.size() > cursor) cursor else {
+        val lastIndex = if (floatRanges.size > cursor) cursor else {
             // a sub-path starts and ends with a single moveto ...M[x)[y)$
             //                                                          ^ so we stop here
             nextCmd = true // and think that a command follows, so we don't need lineto
             cursor - 1
         }
-        for (i in floatRanges[cursor - 1] until floatRanges[lastIndex])
+        for (i in floatRanges.getInt(cursor - 1) until floatRanges.getInt(lastIndex))
             if (pathData[i].isLetter()) {
                 nextCmd = true
                 break
@@ -697,7 +696,7 @@ private fun StringBuilder.pathStartReplacement(
         if (!nextCmd) append('l')
 
         // 4. eat this "m3 4 "
-        floatRanges[min(cursor - nextCmd.toInt(), lastIndex)] - pathStartOffset
+        floatRanges.getInt(min(cursor - nextCmd.toInt(), lastIndex)) - pathStartOffset
     } else -1
 }
 

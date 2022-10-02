@@ -10,8 +10,7 @@ import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.uast.UastVisitorAdapter
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
-import gnu.trove.TFloatArrayList
-import gnu.trove.TIntArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.idea.references.mainReference
@@ -391,22 +390,11 @@ fun PsiElement.getParentUntil(c1: Class<out PsiElement>, c2: Class<out PsiElemen
     }
 }
 
-inline fun TIntArrayList.indexOfFirst(predicate: (Int) -> Boolean): Int {
-    for (i in 0 until size())
-        if (predicate(get(i)))
+inline fun IntArrayList.indexOfFirst(predicate: (Int) -> Boolean): Int {
+    for (i in 0 until size)
+        if (predicate(getInt(i)))
             return i
     return -1
-}
-
-fun TIntArrayList.addAll(other: TIntArrayList) {
-    ensureCapacity(size() + other.size())
-    for (i in 0 until other.size())
-        add(other[i])
-}
-fun TFloatArrayList.addAll(other: TFloatArrayList) {
-    ensureCapacity(size() + other.size())
-    for (i in 0 until other.size())
-        add(other[i])
 }
 
 @Suppress("NOTHING_TO_INLINE")

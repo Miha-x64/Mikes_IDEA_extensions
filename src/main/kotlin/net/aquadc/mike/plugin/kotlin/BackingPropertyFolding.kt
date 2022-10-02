@@ -12,7 +12,7 @@ import com.intellij.psi.PsiWhiteSpace
 import com.intellij.refactoring.suggested.endOffset
 import com.intellij.refactoring.suggested.startOffset
 import com.intellij.util.SmartList
-import gnu.trove.TIntArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import net.aquadc.mike.plugin.not
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
@@ -95,7 +95,7 @@ class BackingPropertyFolding : FoldingBuilderEx() {
             private fun SmartList<FoldingDescriptor>.addFoldings(
                 startElement: PsiElement, endElement: PsiElement, vararg foldings: String?
             ) {
-                val lineStarts = TIntArrayList()
+                val lineStarts = IntArrayList()
                 lineStarts.add(startElement.startOffset)
                 (startElement.siblings(forward = true, withItself = true).takeWhile { it != endElement } + endElement).forEach {
                     if (it.textContains('\n')) {
@@ -112,14 +112,14 @@ class BackingPropertyFolding : FoldingBuilderEx() {
                         CodeStyle.getSettings(startElement.containingFile).getIndentSize(KotlinFileType.INSTANCE)
                 )
                 val group = FoldingGroup.newGroup("backingProperty")
-                val last = min(actualFoldings.size, lineStarts.size()) - 1
+                val last = min(actualFoldings.size, lineStarts.size) - 1
                 repeat(last + 1) { i ->
                     val hasNext = i != last
                     val text = if (hasNext) actualFoldings[i] else actualFoldings.drop(i).joinToString("; ")
-                    val lineEnd = if (hasNext) lineStarts[i + 1] - 1 else endElement.endOffset
+                    val lineEnd = if (hasNext) lineStarts.getInt(i + 1) - 1 else endElement.endOffset
                     add(FoldingDescriptor(
                         startElement,
-                        lineStarts[i], lineEnd,
+                        lineStarts.getInt(i), lineEnd,
                         group, if (i == 0) text else indent + text,
                     ))
                 }
