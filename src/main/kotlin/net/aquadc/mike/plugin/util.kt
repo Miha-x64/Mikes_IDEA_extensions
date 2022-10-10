@@ -383,7 +383,6 @@ fun PsiElement.getParentUntil(c1: Class<out PsiElement>, c2: Class<out PsiElemen
     while (true) {
         element = (element.parent ?: return null).also {
             if (c1.isInstance(it) || c2.isInstance(it)) {
-                @Suppress("UNCHECKED_CAST")
                 return element
             }
         }

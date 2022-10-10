@@ -21,7 +21,7 @@ import org.jetbrains.uast.UParenthesizedExpression
 import org.jetbrains.uast.UReferenceExpression
 import org.jetbrains.uast.UVariable
 import org.jetbrains.uast.UastCallKind
-import org.jetbrains.uast.resolveToUElement
+import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.tryResolve
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -136,11 +136,12 @@ class UnsupportedFeatureInspection : UastInspection() {
                         }
 
                     is UReferenceExpression -> {
-                        val referrent = expr.resolveToUElement()
+                        val srcRef = expr.resolve()
+                        val referrent = srcRef.toUElement()
                         (referrent as? UVariable)?.uastInitializer
                             ?: ((referrent as? UMethod)?.sourcePsi as? KtProperty)?.initializer
                                 ?.toUElementOfType<UExpression>()?.also { expr = it }
-                            ?: return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass} | $referrent"); null }
+                            ?: return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass} | $srcRef | $referrent"); null }
                     }
                     else -> {
                         return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass}"); null }
