@@ -4,6 +4,7 @@ package net.aquadc.mike.plugin.interfaces
 import com.intellij.codeInsight.hints.ChangeListener
 import com.intellij.codeInsight.hints.FactoryInlayHintsCollector
 import com.intellij.codeInsight.hints.ImmediateConfigurable
+import com.intellij.codeInsight.hints.InlayGroup
 import com.intellij.codeInsight.hints.InlayHintsCollector
 import com.intellij.codeInsight.hints.InlayHintsProvider
 import com.intellij.codeInsight.hints.InlayHintsProviderFactory
@@ -14,12 +15,13 @@ import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.java.JavaBundle
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.lang.jvm.types.JvmReferenceType
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope.allScope
-import com.intellij.ui.layout.panel
+import com.intellij.ui.dsl.builder.panel
 import net.aquadc.mike.plugin.maxByIf
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -32,6 +34,7 @@ import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UParameter
+import org.jetbrains.uast.UastErrorType
 import org.jetbrains.uast.toUElementOfType
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty0
@@ -65,7 +68,23 @@ private class InterfaceHintsP(
     override fun createSettings(): HintsSettings = HintsSettings()
 
     override val name: String get() = "Interface hints"
-    override val previewText: String? = null
+    override val group: InlayGroup
+        get() = InlayGroup.TYPES_GROUP
+    override val description: String?
+        get() = "Hints related to interfaces"
+    override val previewText: String?
+        get() = null
+    /*override*/ fun getCaseDescription(case: ImmediateConfigurable.Case): String? =
+        when (case.id) {
+            "upcast" -> "When expression is passed to function as a parameter, shows which interface it was upcast to."
+            "overr" -> "For overridden methods, shows which interface it came from."
+            else -> null
+        }?.let {
+            "<p>$it</p><br/>" +
+                    "<p><small>The feature is provided by " +
+                    "<a href=\"https://github.com/Miha-x64/Mikes_IDEA_extensions\">Mike's IDEA Extensions</a>." +
+                    "</small></p>"
+        }
 
     override fun createConfigurable(settings: HintsSettings): ImmediateConfigurable = object : ImmediateConfigurable {
         override fun createComponent(listener: ChangeListener): JComponent = panel {}
@@ -106,24 +125,28 @@ private class InterfaceHintsCollector(
             }
         }
         settings.upcast && element is KtCallExpression -> {
-            element.calleeExpression?.mainReference?.resolve()?.functionParams?.let { params ->
-                val args = element.valueArgumentList?.arguments
-                val lambdaArg = element.lambdaArguments.singleOrNull()
-                params.forEachIndexed { idx, (pName, pType) ->
-                    if (pType != null) {
-                        val arg =
-                            lambdaArg.takeIf { idx == params.lastIndex } ?:
-                                args?.let {
-                                    args.takeIf { pName != null }
-                                        ?.firstOrNull { it.getArgumentName()?.asName?.asString() == pName }
-                                        ?: args.getOrNull(idx)
+            element.calleeExpression?.mainReference?.resolve()?.functionParams?.takeIf { it.isNotEmpty() }?.let { params ->
+                element.referenceExpression()?.referencedName?.let { methodName ->
+                    element.valueArgumentList?.arguments?.forEachIndexed { idx, arg ->
+                        val argName = arg.getArgumentName()?.asName?.asString()
+                        arg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
+                            if (argName == null) {
+                                params.getOrNull(idx)?.second?.let { pType ->
+                                    visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
                                 }
-                        arg?.getArgumentExpression()?.toUElementOfType<UExpression>()
-                            ?.getExpressionType()?.let { aType ->
-                                element.referenceExpression()?.referencedName?.let { methodName ->
-                                    visitParameter(methodName, pType, aType, arg.textRange.endOffset, sink)
+                            } else {
+                                params.firstOrNull { (name, _) -> name == argName }?.second?.let { pType ->
+                                    visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
                                 }
                             }
+                        }
+                    }
+                    element.lambdaArguments.singleOrNull()?.let { arg ->
+                        arg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
+                            params.last().second?.let { pType ->
+                                visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
+                            }
+                        }
                     }
                 }
             }
@@ -175,11 +198,15 @@ private class InterfaceHintsCollector(
         if (parameterType is PsiClass) {
             if (!parameterType.isInterface) return
             val argClass = when (argumentType) {
-                PsiType.NULL -> null
+                UastErrorType -> null
                 is PsiClassType -> argumentType
                 is PsiPrimitiveType -> argumentType.getBoxedType(parameterType.manager, allScope(parameterType.getProject()))
-                else -> null
+                is PsiMethodReferenceType -> null
+                else -> Logger.getInstance(InterfaceHintsCollector::class.java)
+                    .error("arg type is ${argumentType::class.java} : $argumentType")
+                    .let { null }
             }?.resolve() ?: return
+            if (argClass.qualifiedName == "java.lang.Void") return // null as Something
             argClass.mainInterface?.let { main ->
                 if (main == parameterType || main.isInheritor(parameterType, true)) return
             }
@@ -194,7 +221,9 @@ private class InterfaceHintsCollector(
 
     private val PsiClass.mainInterface: PsiClass?
         get() =
-            mainInterfaceByName ?: mainInterfaceByImplCount ?: interfaces.takeIf { superClass == null }?.singleOrNull()
+            mainInterfaceByName
+                ?: mainInterfaceByImplCount
+                ?: interfaces.takeIf { superClass == null }?.singleOrNull { it.methods.isNotEmpty() }
 
     private val PsiClass.mainInterfaceByName: PsiClass?
         get() {
@@ -216,7 +245,18 @@ private class InterfaceHintsCollector(
             .maxByIf({ it.methods.count { it.modifierList.hasModifierProperty(PsiModifier.ABSTRACT) } }, { it > 2 })
 
     private val PsiClass.typeName: String?
-        get() = if (qualifiedName?.startsWith("kotlin.jvm.functions.Function") == true) "(…) -> …" else name
+        get() {
+            val qn = qualifiedName
+            return if (qn?.startsWith("kotlin.jvm.functions.Function") == true)
+                buildString {
+                    append('(')
+                    qn.substring("kotlin.jvm.functions.Function".length).toIntOrNull()?.let {
+                        repeat(it) { append('.') }
+                    } ?: Logger.getInstance(InterfaceHintsCollector::class.java).error("unparsable arity: $qn")
+                    append(") -> …")
+                }
+            else name
+        }
 }
 
 data class HintsSettings(var upcast: Boolean = true, var overr: Boolean = true)

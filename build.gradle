@@ -7,7 +7,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version "1.5.31"
 }
 
-def pluginVersion = '0.25'
+def pluginVersion = '0.26'
 
 group 'net.aquadc.mike'
 version pluginVersion
@@ -22,7 +22,7 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version = '2020.3'
+    version = '2021.3.3' // https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html
     plugins = ['java', 'Kotlin', 'android']
     updateSinceUntilBuild = true
 }

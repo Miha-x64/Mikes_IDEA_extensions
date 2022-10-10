@@ -1,6 +1,7 @@
 ### 0.26
   <ul>
-    <li>Move from Trove to fastutil, fixes crash on new IDE builds</li>
+    <li>Moved from Trove to fastutil, fixes crash on new IDE builds</li>
+    <li>Reworked upcast hints, fixes various bugs</li>
   </ul>
 
 
