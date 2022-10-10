@@ -221,7 +221,8 @@ private class InterfaceHintsCollector(
 
     private val PsiClass.mainInterface: PsiClass?
         get() =
-            mainInterfaceByName
+            interfaces.takeIf { this is PsiAnonymousClass }?.singleOrNull()
+                ?: mainInterfaceByName
                 ?: mainInterfaceByImplCount
                 ?: interfaces.takeIf { superClass == null }?.singleOrNull { it.methods.isNotEmpty() }
 

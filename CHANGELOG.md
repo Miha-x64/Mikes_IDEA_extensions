@@ -2,6 +2,7 @@
   <ul>
     <li>Moved from Trove to fastutil, fixes crash on new IDE builds</li>
     <li>Reworked upcast hints, fixes various bugs</li>
+    <li>Not showing override hints for single-interface anonymous classes</li>
   </ul>
 
 
