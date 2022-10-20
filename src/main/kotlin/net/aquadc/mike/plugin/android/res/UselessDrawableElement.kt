@@ -11,23 +11,25 @@ import net.aquadc.mike.plugin.NamedLocalQuickFix
 
 internal fun ProblemsHolder.checkDrawableTag(tag: XmlTag) {
     when (tag.name) {
-        "layer-list" -> checkLayerList(tag)
+        "layer-list", "transition", "ripple" -> checkLayerList(tag)
         "inset" -> checkInset(tag)
         "shape" -> checkShape(tag)
         "vector" -> checkVector(tag)
         "animated-vector" -> // TODO propose inlining vector and animator if never used elsewhere
-            tag.findAaptAttrTag("drawable")?.subTags?.singleOrNull()?.let(this::checkDrawableTag)
-        "clip", "scale" ->
-            tag.subTags.singleOrNull()?.let(this::checkDrawableTag)
-        "selector" -> checkSelector(tag)
-        "level-list", "transition" ->
-            tag.subTags.forEach { if (it.name == "item") it.subTags.singleOrNull()?.let(this::checkDrawableTag) }
+            tag.findAaptAttrTag("drawable")?.let(this::checkWrapper) // <aapt:attr name="android:drawable">
+        "clip", "scale", "rotate" -> checkWrapper(tag)
+        "selector", "animated-selector" -> checkSelector(tag)
+        "level-list", "animation-list" -> checkItems(tag)
+        "adaptive-icon" ->
+            tag.subTags.forEach {
+                if (it.name == "background" || it.name == "foreground")
+                    checkWrapper(it)
+            }
     }
 }
 
 private fun ProblemsHolder.checkLayerList(tag: XmlTag) {
-    val children = tag.subTags
-    children.singleOrNull()?.let { item ->
+    tag.subTags.singleOrNull()?.let { item ->
         // assume you know what you're doing if a layer has ID
         if (item.getAttributeValue("id", ANDROID_NS) == null &&
             undocumentedLayerProps.all { item.getAttributeValue(it, ANDROID_NS) == null }) {
@@ -86,20 +88,19 @@ private fun ProblemsHolder.checkLayerList(tag: XmlTag) {
             )
         }
     }
-    children.forEach { item ->
-        item.subTags.singleOrNull()?.let(this::checkDrawableTag)
-    }
+    checkItems(tag)
 }
+
 private fun ProblemsHolder.checkInset(tag: XmlTag) {
     if (insetInsets.all { inset -> tag.getAttribute(inset, ANDROID_NS) == null })
         report(
             tag, "The inset with no insets is useless",
-            tag.subTags.singleOrNull()?.takeIf { tag.getAttribute("drawable", ANDROID_NS) == null }?.let {
-                inlineContentsFix
-            }
+            tag.subTags.singleOrNull()
+                ?.takeIf { tag.getAttribute("drawable", ANDROID_NS) == null }?.let { inlineContentsFix }
         )
-    tag.subTags.singleOrNull()?.let(this::checkDrawableTag)
+    checkWrapper(tag)
 }
+
 private fun ProblemsHolder.checkShape(tag: XmlTag) {
     if (tag.subTags.none { it.name in necessaryShapeTags && it.attributes.isNotEmpty() })
         report(
@@ -111,6 +112,7 @@ private fun ProblemsHolder.checkShape(tag: XmlTag) {
             null
         )
 }
+
 private fun ProblemsHolder.checkSelector(tag: XmlTag) {
     tag.subTags.singleOrNull()?.let { item ->
         val onlyDrawableRef =
@@ -118,12 +120,26 @@ private fun ProblemsHolder.checkSelector(tag: XmlTag) {
                 ?.let { it.namespace == ANDROID_NS && it.localName == "drawable" } == true
         if (onlyDrawableRef || item.attributes.isEmpty())
             report(
-                tag,
-                "The selector with single stateless item is useless",
+                tag, "The selector with single stateless item is useless",
                 inlineContentsFix.takeIf { !onlyDrawableRef && item.subTags.size == 1 },
             )
     }
-    tag.subTags.forEach { if (it.name == "item") it.subTags.singleOrNull()?.let(this::checkDrawableTag) }
+
+    val animated = tag.name == "animated-selector"
+    tag.subTags.forEach {
+        if (it.name == "item" || (animated && it.name == "transition"))
+            checkWrapper(it)
+    }
+}
+
+private fun ProblemsHolder.checkItems(drawableTag: XmlTag) {
+    drawableTag.subTags.forEach {
+        if (it.name == "item")
+            checkWrapper(it)
+    }
+}
+private fun ProblemsHolder.checkWrapper(itemTag: XmlTag) {
+    itemTag.subTags.singleOrNull()?.let(this::checkDrawableTag)
 }
 
 private val undocumentedLayerProps = arrayOf("start", "end", "width", "height", "gravity")

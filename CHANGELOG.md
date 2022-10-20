@@ -1,3 +1,9 @@
+### 0.27
+  <ul>
+    <li>Inspecting mode drawable types</li>
+  </ul>
+
+
 ### 0.26
   <ul>
     <li>Moved from Trove to fastutil, fixes crash on new IDE builds</li>
