@@ -4,6 +4,8 @@ import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.psi.PsiAnonymousClass
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiPrimitiveType
@@ -11,9 +13,12 @@ import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.test
+import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtImportDirective
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UImportStatement
 import org.jetbrains.uast.UMethod
@@ -108,7 +113,6 @@ class UnsupportedFeatureInspection : UastInspection() {
                 }
             }
         }
-
         private fun UExpression.intArrayElementExpressions(): List<UExpression>? {
             var expr = this
             val log = Logger.getInstance(UnsupportedFeatureInspection::class.java)
@@ -152,6 +156,30 @@ class UnsupportedFeatureInspection : UastInspection() {
         private fun List<UExpression>.evaluateIntElements(): LongArray = LongArray(size) {
             (get(it).evaluate() as? Int)?.toLong() ?: Long.MIN_VALUE
         }
+
+        override fun visitClass(node: UClass): Boolean {
+            node.sourcePsi?.let { src ->
+                if (node.javaPsi.isDrawable() &&
+                    node.methods.none { it.name == "getConstantState" && it.uastParameters.isEmpty() }
+                ) {
+                    holder.registerProblem(
+                        (src as? PsiAnonymousClass)?.firstChild // new [Drawable]() {
+                            ?: (src as? KtObjectDeclaration)?.firstChild // [object] : Drawable() {
+                            ?: (src as? PsiClass)?.nameIdentifier // public final class [BadDrawable] {
+                            ?: (src as? KtClass)?.nameIdentifier // class [BadDrawable] {
+                            ?: src, // dafuq
+                        "A Drawable class should override getConstantState(). " +
+                                "Absent ConstantState may lead to crashes; " +
+                                "inherited ConstantState guarantees caching bugs when inflated from resources.",
+                        ProblemHighlightType.WEAK_WARNING,
+                    )
+                }
+            }
+            return super.visitClass(node)
+        }
+        private fun PsiClass.isDrawable(): Boolean =
+            superClass?.qualifiedName == "android.graphics.drawable.Drawable" ||
+                    superClass?.isDrawable() == true
     }
 
     private companion object {

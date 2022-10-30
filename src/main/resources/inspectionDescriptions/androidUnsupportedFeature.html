@@ -27,6 +27,10 @@
         return gd.onTouchEvent(ev) || super.onTouchEvent(ev) || true;
     }
 }</code></pre></li>
+    <li><code>RecyclerView.setOnClickListener</code> has no effect, too.</li>
+    <li>A Drawable class should override <code>getConstantState()</code>.
+        Null ConstantState may lead to <a href="https://issuetracker.google.com/issues/37068452">crashes</a>;
+        inherited ConstantState guarantees caching bugs when inflated from resources.</li>
 </ul>
 
 <p><small>The inspection is provided by <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Mike's IDEA Extensions</a>.</small></p>

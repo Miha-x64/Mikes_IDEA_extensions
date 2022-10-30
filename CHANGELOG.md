@@ -1,6 +1,7 @@
 ### 0.27
   <ul>
-    <li>Inspecting mode drawable types</li>
+    <li>Inspecting more drawable types</li>
+    <li>reporting Drawable classes without getConstantState()</li>
   </ul>
 
 
