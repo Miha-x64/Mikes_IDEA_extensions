@@ -1,7 +1,8 @@
 ### 0.27
   <ul>
     <li>Inspecting more drawable types</li>
-    <li>reporting Drawable classes without getConstantState()</li>
+    <li>Reporting Drawable classes without getConstantState()</li>
+    <li>Eliminated some false-positives on useless fillColor/Alpha, strokeWidth/Color/Alpha</li>
   </ul>
 
 

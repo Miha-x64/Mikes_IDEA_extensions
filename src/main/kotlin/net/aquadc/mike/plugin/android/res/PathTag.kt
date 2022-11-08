@@ -16,7 +16,6 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
-import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
 import de.javagl.geom.Shapes
@@ -305,7 +304,6 @@ internal class PathTag private constructor(
 
         if (noFill) {
             holder.reportNoFill(
-                paint.fillColorEl, fType, paint.fillAlphaEl,
                 if (filledSubPaths == null) "attribute has no effect with uncolored or transparent fill"
                 else "attribute has no effect with open path",
             )
@@ -315,15 +313,11 @@ internal class PathTag private constructor(
         }
 
         if (noStroke) {
-            holder.reportNoStroke(paint.strokeWidthEl, paint.strokeColorEl, sCap, sJoin, paint.strokeMiterEl, paint.strokeAlphaEl)
+            holder.reportNoStroke()
             strokedSubPaths = null
         } else {
             if (strokeCaps?.cardinality() == 0) holder.report(sCap!!, "attribute has no effect", removeAttrFix)
             if (strokeJoins?.cardinality() == 0) holder.report(sJoin!!, "attribute has no effect", removeAttrFix)
-        }
-
-        if (filledSubPaths == null && strokedSubPaths == null) {
-            return
         }
 
         subAreas = areas
@@ -370,23 +364,26 @@ internal class PathTag private constructor(
         }
     }
 
-    private fun ProblemsHolder.reportNoFill(col: XmlElement?, type: XmlAttribute?, a: XmlAttribute?, complaint: String) {
-        col?.let { report(it, complaint, removeAttrFix) }
-        type?.let { report(it, complaint, removeAttrFix) }
-        a?.let { report(it, complaint, removeAttrFix) }
+    private fun ProblemsHolder.reportNoFill(complaint: String) {
+        paint!!.fillColorEl?.let { report(it, complaint, removeAttrFix) }
+        paint.fillTypeEl?.let { report(it, complaint, removeAttrFix) }
+        if (paint.fillColorOpacity == PixelFormat.TRANSPARENT)
+            paint.fillAlphaEl?.let { report(it, complaint, removeAttrFix) }
+        // else fillAlpha=0 solely makes this fill useless.
+        // Removing attribute will change drawable contents making it visible.
+        // We'll revenge after removing fillColor attribute
     }
 
-    private fun ProblemsHolder.reportNoStroke(
-        width: XmlAttribute?, col: XmlElement?,
-        cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?,
-        a: XmlAttribute?
-    ) {
-        width?.let { report(it, "attribute has no effect", removeAttrFix) }
-        col?.let { report(it, "attribute has no effect", removeAttrFix) }
-        cap?.let { report(it, "attribute has no effect", removeAttrFix) }
-        join?.let { report(it, "attribute has no effect", removeAttrFix) }
-        miter?.let { report(it, "attribute has no effect", removeAttrFix) }
-        a?.let { report(it, "attribute has no effect", removeAttrFix) }
+    private fun ProblemsHolder.reportNoStroke() {
+        val za = paint!!.strokeAlpha == 0f
+        val tc = paint.strokeColorOpacity == PixelFormat.TRANSPARENT
+        val zw = paint.strokeWidth == 0f
+        if (tc || za) paint.strokeWidthEl?.let { report(it, "attribute has no effect", removeAttrFix) }
+        if (zw || za) paint.strokeColorEl?.let { report(it, "attribute has no effect", removeAttrFix) }
+        paint.strokeLineCapEl?.let { report(it, "attribute has no effect", removeAttrFix) }
+        paint.strokeLineJoinEl?.let { report(it, "attribute has no effect", removeAttrFix) }
+        paint.strokeMiterEl?.let { report(it, "attribute has no effect", removeAttrFix) }
+        if (tc || zw) paint.strokeAlphaEl?.let { report(it, "attribute has no effect", removeAttrFix) }
     }
 
     private fun checkStroke(outline: Path2D, cap: BitSet?, join: BitSet?, index: Int) {

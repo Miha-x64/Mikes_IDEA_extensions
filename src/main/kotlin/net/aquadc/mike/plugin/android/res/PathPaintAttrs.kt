@@ -18,6 +18,7 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
     val fillAlphaEl: XmlAttribute?
     val fillTypeEl: XmlAttribute?
     val fillTypeEvenOdd: Boolean
+    val fillColorOpacity: Int
     val fillOpacity: Int
 
     val strokeColorEl: XmlElement?
@@ -27,7 +28,10 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
     val strokeWidthEl: XmlAttribute?
     val strokeMiterEl: XmlAttribute?
     val stroke: BasicStroke?
+    val strokeAlpha: Float
+    val strokeColorOpacity: Int
     val strokeOpacity: Int
+    val strokeWidth: Float
 
     init {
         val (fCol, fType, fA, sCol, sWidth, sCap, sJoin, sMiter, sA) = pathAttrs.map { tag.getAttribute(it, ANDROID_NS) }
@@ -35,7 +39,10 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
         fillAlphaEl = fA
         fillTypeEl = fType
         fillTypeEvenOdd = holder.toString(rr, fType, "nonZero") == "evenOdd"
-        fillOpacity = fillColorEl.opacity(rr, holder.toFloat(rr, fA, 1f))
+        val fillColor = rr.color(fillColorEl)
+        val fillAlpha = holder.toFloat(rr, fA, 1f)
+        fillColorOpacity = opacity(fillColor)
+        fillOpacity = opacity(fillColorOpacity, fillAlpha)
 
         strokeColorEl = sCol ?: tag.findAaptAttrTag("strokeColor")
         strokeAlphaEl = sA
@@ -43,21 +50,31 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
         strokeLineJoinEl = sJoin
         strokeWidthEl = sWidth
         strokeMiterEl = sMiter
-        val (str, strOp) = holder.stroke(rr, sWidth, strokeColorEl, sCap, sJoin, sMiter, sA)
-        stroke = str
-        strokeOpacity = strOp
+        val strokeColor = rr.color(strokeColorEl)
+        strokeAlpha = holder.toFloat(rr, sA, 1f)
+        strokeColorOpacity = opacity(strokeColor)
+        strokeOpacity = opacity(strokeColorOpacity, strokeAlpha)
+        strokeWidth = holder.toFloat(rr, sWidth, 0f)
+        stroke = holder.stroke(rr, strokeWidth, sCap, sJoin, sMiter, strokeOpacity)
     }
+
+    private fun ResourceResolver?.color(el: XmlElement?) =
+        when (el) {
+            null -> "#0000"
+            is XmlAttribute -> resolve(el)?.takeIf(String::isNotBlank)
+            is XmlTag -> null //TODO resolve gradients
+            else -> throw IllegalArgumentException()
+        }
 
     /**
      * @return stroke and opacity
      */
     private fun ProblemsHolder.stroke(
         rr: ResourceResolver?,
-        width: XmlAttribute?,
-        col: XmlElement?, cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?, a: XmlAttribute?
-    ): Pair<BasicStroke?, Int> {
-        val strokeWidth = toFloat(rr, width, 0f)
-        val opacity = col.opacity(rr, toFloat(rr, a, 1f))
+        strokeWidth: Float,
+        cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?,
+        opacity: Int,
+    ): BasicStroke? {
         return if (strokeWidth != 0f && opacity != PixelFormat.TRANSPARENT) {
             val capName = toString(rr, cap, "butt")
             val joinName = toString(rr, join, "miter")
@@ -74,39 +91,36 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
                     else -> BasicStroke.JOIN_MITER
                 },
                 toFloat(rr, miter, 4f)
-            ) to opacity
+            )
         } else {
-            nullToZero
+            null
         }
     }
-    private fun XmlElement?.opacity(rr: ResourceResolver?, alpha: Float) =
-        if (alpha == 0f || this == null) PixelFormat.TRANSPARENT else when (this) {
-            is XmlAttribute -> rr.resolve(this)?.takeIf { it.isNotBlank() && !it.endsWith(".xml") }?.let {
-                when (it.length.takeIf { _ -> it.startsWith('#') }) { //              TODO ^^^^ resolve color state lists and gradients
-                    4, 7 ->
-                        if (alpha == 1f) PixelFormat.OPAQUE
-                        else PixelFormat.TRANSLUCENT
-                    5 ->
-                        if (it[1] == '0') PixelFormat.TRANSPARENT
-                        else if (it[1].equals('f', true) && alpha == 1f) PixelFormat.OPAQUE
-                        else PixelFormat.TRANSLUCENT
-                    9 ->
-                        if (it[1] == '0' && it[2] == '0') PixelFormat.TRANSPARENT
-                        else if (it[1].equals('f', true) && it[2].equals('f', true) && alpha == 1f) PixelFormat.OPAQUE
-                        else PixelFormat.TRANSLUCENT
-                    else ->
-                        null
-                }
-            } ?: PixelFormat.UNKNOWN
-            is XmlTag -> PixelFormat.UNKNOWN
-            else -> throw IllegalArgumentException()
+    private fun opacity(color: String?) =
+        if (color == null) PixelFormat.UNKNOWN
+        else when (color.length.takeIf { _ -> color.startsWith('#') }) { // TODO handle .xml <selector>s
+            4, 7 ->
+                PixelFormat.OPAQUE
+            5 ->
+                if (color[1] == '0') PixelFormat.TRANSPARENT
+                else if (color[1].equals('f', true)) PixelFormat.OPAQUE
+                else PixelFormat.TRANSLUCENT
+            9 ->
+                if (color[1] == '0' && color[2] == '0') PixelFormat.TRANSPARENT
+                else if (color[1].equals('f', true) && color[2].equals('f', true)) PixelFormat.OPAQUE
+                else PixelFormat.TRANSLUCENT
+            else ->
+                PixelFormat.UNKNOWN
         }
+    private fun opacity(colorOpacity: Int, alpha: Float) =
+        if (alpha == 0f) PixelFormat.TRANSPARENT
+        else if (colorOpacity == PixelFormat.OPAQUE && alpha != 1f) PixelFormat.TRANSLUCENT // weaken
+        else colorOpacity // UNKNOWN, TRANSPARENT, TRANSLUCENT remain the same
 
     private companion object {
         private val pathAttrs = arrayOf(
             "fillColor", "fillType", "fillAlpha",
             "strokeColor", "strokeWidth", "strokeLineCap", "strokeLineJoin", "strokeMiterLimit", "strokeAlpha",
         )
-        private val nullToZero = null to 0
     }
 }
