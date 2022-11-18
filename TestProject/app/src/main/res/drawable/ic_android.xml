@@ -22,5 +22,8 @@
         <path
             android:pathData="M17.6,11V42H42Z"
             android:fillColor="#FF0000"/>
+
+        <clip-path android:pathData="M0 0h10v10z" />
+        <path android:pathData="M0 0h10v10h-10z" android:fillColor="#00F" />
     </group>
 </vector>

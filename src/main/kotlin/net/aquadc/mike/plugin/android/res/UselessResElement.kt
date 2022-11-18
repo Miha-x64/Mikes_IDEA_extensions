@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.psi.tree.RoleFinder
 import com.intellij.psi.xml.XmlChildRole
 import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlFile
@@ -73,11 +74,12 @@ internal fun XmlTag.isAaptInlineAttr(name: String): Boolean {
 internal fun ProblemsHolder.report(
     el: XmlElement, message: String, fix: LocalQuickFix?,
     hl: ProblemHighlightType = ProblemHighlightType.LIKE_UNUSED_SYMBOL,
+    finder: RoleFinder = XmlChildRole.START_TAG_END_FINDER,
 ) {
     registerProblem(manager.createProblemDescriptor(
         // < tag-name ...attribute="value" >
         el.firstChild ?: el,
-        (el as? XmlTag)?.node?.let { XmlChildRole.START_TAG_END_FINDER.findChild(it)?.psi } ?: el.lastChild ?: el,
+        (el as? XmlTag)?.node?.let { finder.findChild(it)?.psi } ?: el.lastChild ?: el,
         message, hl, isOnTheFly, fix,
     ))
 }

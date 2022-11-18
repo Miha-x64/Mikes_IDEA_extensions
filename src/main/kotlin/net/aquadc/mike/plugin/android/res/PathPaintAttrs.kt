@@ -63,8 +63,8 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
         strokeColorOpacity = opacity(strokeColor)
         if (strokeColorOpacity == PixelFormat.TRANSPARENT && strokeColorEl != null)
             holder.report(strokeColorEl, "Attribute has default value", removeAttrFix)
-        strokeOpacity = opacity(strokeColorOpacity, strokeAlpha)
         strokeWidth = holder.toFloat(rr, sWidth, 0f)
+        strokeOpacity = if (strokeWidth == 0f) PixelFormat.TRANSPARENT else opacity(strokeColorOpacity, strokeAlpha)
         stroke = holder.stroke(rr, strokeWidth, sCap, sJoin, sMiter, strokeOpacity)
     }
 
@@ -85,7 +85,7 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
         cap: XmlAttribute?, join: XmlAttribute?, miter: XmlAttribute?,
         opacity: Int,
     ): BasicStroke? {
-        return if (strokeWidth != 0f && opacity != PixelFormat.TRANSPARENT) {
+        return if (opacity != PixelFormat.TRANSPARENT) {
             val capName = toString(rr, cap, "butt")
             val joinName = toString(rr, join, "miter")
             BasicStroke(

@@ -4,11 +4,14 @@ import com.android.ide.common.resources.ResourceResolver
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.xml.XmlAttribute
+import com.intellij.psi.xml.XmlChildRole
 import com.intellij.psi.xml.XmlTag
+import com.intellij.psi.xml.XmlText
 import com.intellij.util.SmartList
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
@@ -116,7 +119,8 @@ private fun ProblemsHolder.checkVectorGroup(
     val myPathsFrom = paths.size
     var localClip: Area? = parentClip
 
-    tag.subTags.forEach { subTag ->
+    val subTags = tag.subTags
+    subTags.forEachIndexed { index, subTag ->
         when (subTag.name) {
             "clip-path" ->
                 checkClip(subTag, isRoot, rr, matrix, usefulPrecision, localClip)?.let { clip ->
@@ -132,6 +136,31 @@ private fun ProblemsHolder.checkVectorGroup(
                 subTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
                     PathTag.parse(this, rr, pathData, matrix, usefulPrecision)?.also { pathTag ->
                         pathTag.toAreas(this, usefulPrecision)
+
+                        // Propose transferring clip-path's pathData to the only clipped path.
+                        // Do this before applying clip which mutates geometry.
+                        if (index > 0 && index == subTags.lastIndex && localClip != null &&
+                            subTags[index - 1].name == "clip-path" && pathTag.isBoundedBy(localClip!!)) {
+                            report(
+                                subTag, "pathData of the preceding clip-path can be transferred here",
+                                hl = ProblemHighlightType.WEAK_WARNING, finder = XmlChildRole.ATTRIBUTE_NAME_FINDER,
+                                fix = object : NamedLocalQuickFix("Transfer preceding clip-path's pathData here") {
+                                    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+                                        val path = descriptor.psiElement as? XmlTag ?: return
+                                        var clipPath = path.prevSibling ?: return
+                                        while (clipPath is XmlText)
+                                            clipPath = clipPath.prevSibling ?: return
+
+                                        path.setAttribute(
+                                            "pathData", ANDROID_NS,
+                                            (clipPath as? XmlTag)?.getAttributeValue("pathData", ANDROID_NS) ?: return,
+                                        )
+                                        clipPath.delete()
+                                    }
+                                }
+                            )
+                        }
+
                         pathTag.applyClip(localClip, clips, usefulClips, usefulPrecision)
                         pathTag.overdraw(paths, usefulPrecision, colorToArea)
                         paths.add(pathTag)

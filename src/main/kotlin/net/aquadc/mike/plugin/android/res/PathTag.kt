@@ -612,6 +612,12 @@ internal class PathTag private constructor(
             true
         }
 
+    fun isBoundedBy(clip: Area): Boolean {
+        if (paint!!.strokeOpacity != PixelFormat.TRANSPARENT)
+            return false // stroke geometry is different from pathData itself
+        return merged()?.also { it.intersect(clip) }?.equals(clip) == true
+    }
+
     private inline fun Area.with(a: Area?) =
         apply { a?.let(this::add) }
 
