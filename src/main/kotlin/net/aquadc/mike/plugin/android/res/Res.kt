@@ -5,37 +5,46 @@ import com.android.ide.common.rendering.api.ResourceReference
 import com.android.ide.common.resources.ResourceResolver
 import com.android.resources.ResourceType
 import com.intellij.psi.xml.XmlAttribute
-import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
-import java.util.*
-import kotlin.collections.HashMap
 
 
 private val resTypes = HashMap<String, ResourceType>().apply {
     ResourceType.values().forEach {
         if (it.hasInnerClass) {
-            put(it.name.toLowerCase(Locale.ROOT), it)
+            put(it.getName(), it)
         }
     }
 }
+private val nullToNull = null to null
 fun ResourceResolver?.resolve(tag: XmlTag, name: String, namespace: String): String? =
-    resolve(tag.getAttributeValue(name, namespace))
+    resolve(tag.getAttributeValue(name, namespace)).second
 
 fun ResourceResolver?.resolve(attr: XmlAttribute): String? =
-    resolve(attr.value)
+    resolve(attr.value).second
 
-fun ResourceResolver?.resolve(attr: XmlAttributeValue): String? =
-    resolve(attr.value)
+/**
+ * Parse android resource reference.
+ * @return Pair<canonical, resolvedValue>
+ */
+fun ResourceResolver?.resolve(raw: String?): Pair<String?, String?> {
+    if (raw.isNullOrBlank()) return raw to raw
 
-fun ResourceResolver?.resolve(raw: String?): String? {
-    if (raw.isNullOrBlank()) return raw
-
+    var canonical = raw
     // @[<package_name>:]<resource_type>/<resource_name>
     // ?[<package_name>:][<resource_type>/]<resource_name>
     val refType = raw[0]
-    if (refType != '@' && refType != '?') return raw
-
-    if (this == null) return null // can't resolve
+    if (this == null || (refType != '@' && refType != '?')) {
+        if (refType == '#' && raw.length.let { it == 4 || it == 5 || it == 7 || it == 9 }) {
+            canonical = when (raw.length) { // canonicalize color
+                4 /*#RGB*/ -> "#FF${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}"
+                5 /*#ARGB*/ -> "#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}${raw[4]}${raw[4]}"
+                7 /*#RRGGBB*/ -> "#FF${raw[1]}${raw[2]}${raw[3]}${raw[4]}${raw[5]}${raw[6]}"
+                9 /*#AARRGGBB*/ -> raw
+                else -> throw AssertionError()
+            }
+        }
+        return canonical to canonical
+    }
 
     val colon = raw.indexOf(':')
     val resNs =
@@ -45,13 +54,12 @@ fun ResourceResolver?.resolve(raw: String?): String? {
     val slash = raw.indexOf('/', colon)
     val resType = when {
         refType == '?' -> ResourceType.ATTR
-        slash < 0 -> return null // invalid
-        else -> resTypes[raw.substring(1, slash)] ?: return null // invalid
+        slash < 0 -> return nullToNull // invalid
+        else -> resTypes[raw.substring(1, slash)] ?: return nullToNull // invalid
     }
 
     val resName = raw.substring(if (slash < 0) 1 else (slash + 1))
+    canonical = "@${if (resNs === ResourceNamespace.ANDROID) "android:" else ""}${resType.getName()}/$resName"
     val resourceReference = ResourceReference(resNs, resType, resName)
-    return getResolvedResource(resourceReference)?.value
+    return canonical to getResolvedResource(resourceReference)?.value
 }
-
-

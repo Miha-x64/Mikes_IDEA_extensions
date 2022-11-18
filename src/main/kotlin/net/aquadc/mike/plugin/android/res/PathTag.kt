@@ -32,6 +32,7 @@ import java.awt.geom.Path2D
 import java.awt.geom.PathIterator
 import java.math.BigDecimal
 import java.util.*
+import kotlin.collections.HashMap
 import kotlin.math.absoluteValue
 import kotlin.math.min
 import kotlin.math.pow
@@ -48,12 +49,16 @@ internal class PathTag private constructor(
     private val paint: PathPaintAttrs?,
 ) {
     private val pathTag get() = pathDataAttr.parentOfType<XmlTag>()!!
-    private var subAreas: MutableList<Area?>? = null
+    private var fills: MutableList<Area?>? = null
+    private var strokes: MutableList<Area?>? = null
     private var opaqueArea: Area? = null
-    private var filledSubPaths: BitSet? = null
-    private var strokedSubPaths: BitSet? = null
-    private var clippedAwaySubPaths: BitSet? = null
-    private var overdrawnSubPaths: BitSet? = null
+//    private var filledSubPaths: BitSet? = null
+//    private var strokedSubPaths: BitSet? = null
+//    private var clippedAwaySubPaths: BitSet? = null
+//    private var overdrawnFills: BitSet? = null
+//    private var overdrawnStrokes: BitSet? = null
+//    private var underdrawnFills: BitSet? = null
+//    private var underdrawnStrokes: BitSet? = null
 
     companion object {
         private val T000 = Triple(null, null, null)
@@ -65,7 +70,7 @@ internal class PathTag private constructor(
             usefulPrecision: Int,
         ): PathTag? {
             val rawPathData = pathAttr.value // FIXME we need value and text, extract them without copying
-            val pathData = rr.resolve(rawPathData) ?: return null
+            val pathData = rr.resolve(rawPathData).second ?: return null
 
             val floatRanges = IntArrayList()
 
@@ -252,19 +257,24 @@ internal class PathTag private constructor(
         val sJoin = paint.strokeLineJoinEl
         val fType = paint.fillTypeEl
 
-        var filledSubPaths = if (paint.fillOpacity == PixelFormat.TRANSPARENT) null else BitSet(outlines.size)
-        var strokedSubPaths = if (stroke == null) null else BitSet(outlines.size)
-        if (filledSubPaths == null && strokedSubPaths == null) {
+        var noFill = paint.fillOpacity == PixelFormat.TRANSPARENT
+        var noStroke = stroke == null
+//        var filledSubPaths = if (noFill) null else BitSet(outlines.size)
+//        var strokedSubPaths = if (noStroke) null else BitSet(outlines.size)
+        if (noFill && noStroke) {
             return holder.report(pathTag, "Invisible path: no fill, no stroke", removeTagFix)
         }
 
-        val strokeCaps = if (stroke == null || sCap == null) null else BitSet(outlines.size)
-        val strokeJoins = if (stroke == null || sJoin == null) null else BitSet(outlines.size)
+        val strokeCaps = if (noStroke || sCap == null) null else BitSet(outlines.size)
+        val strokeJoins = if (noStroke || sJoin == null) null else BitSet(outlines.size)
 
         var reallyEvenOdd = false
 
         var opaque: Area? = null
-        val areas = outlines.mapIndexedTo(ArrayList(outlines.size)) { index, outline ->
+        var fills = if (noFill) null else ArrayList<Area?>(outlines.size)
+        var strokes = if (noStroke) null else ArrayList<Area?>(outlines.size)
+        for (index in outlines.indices) {
+            val outline = outlines[index]
             val strokeArea = stroke?.createStrokedShape(outline)
                 ?.also {
                     if (strokeCaps != null || strokeJoins != null)
@@ -272,58 +282,56 @@ internal class PathTag private constructor(
                 }
                 ?.toArea()
                 ?.takeIf { !it.effectivelyEmpty(usefulPrecision) }
-                ?.also { strokedSubPaths!!.set(index) }
+//                ?.also { strokedSubPaths!!.set(index) }
             val opaqueStrokeArea = strokeArea
                 ?.takeIf { paint.strokeOpacity == PixelFormat.OPAQUE }
                 ?.also { opaque += it }
 
-            val fillArea = outline.takeIf { filledSubPaths != null }
+            val fillArea = outline.takeIf { !noFill }
                 ?.toArea()?.without(opaqueStrokeArea) // stroke is drawn on top of fill
                 ?.takeIf { !it.effectivelyEmpty(usefulPrecision) }
                 ?.also { fillArea ->
-                    filledSubPaths!!.set(index)
+//                    filledSubPaths!!.set(index)
                     if (paint.fillOpacity == PixelFormat.OPAQUE) opaque += fillArea
                     if (paint.fillTypeEvenOdd && !reallyEvenOdd)
                         if (!outline.also { it.windingRule = Path2D.WIND_NON_ZERO }.toArea().equals(fillArea))
                             reallyEvenOdd = true
                 }
 
-            when {
-                fillArea == null && strokeArea == null -> null
-                fillArea == null -> strokeArea
-                strokeArea == null -> fillArea
-                else -> fillArea.also { it.add(strokeArea) }
-            }
+            if (fills == null) check(fillArea == null) else fills.add(fillArea)
+            if (strokes == null) check(strokeArea == null) else strokes.add(strokeArea)
         }
 
-        val noFill = filledSubPaths == null || filledSubPaths.cardinality() == 0
-        val noStroke = strokedSubPaths == null || strokedSubPaths.cardinality() == 0
+        if (fills != null && fills.all { it == null }) {
+            fills = null
+            noFill = true
+        }
+        if (strokes != null && strokes.all { it == null }) {
+            strokes = null
+            noStroke = true
+        }
         if (noFill && noStroke) {
             return holder.report(pathTag, "Invisible path: none of sub-paths are filled or stroked", removeTagFix)
         }
 
         if (noFill) {
-            holder.reportNoFill(
-                if (filledSubPaths == null) "attribute has no effect with uncolored or transparent fill"
-                else "attribute has no effect with open path",
-            )
-            filledSubPaths = null
+            holder.reportNoFill("attribute has no effect with unfilled path")
         } else if (paint.fillTypeEvenOdd && !reallyEvenOdd) {
             holder.report(fType!!, "attribute has no effect", removeAttrFix)
         }
 
         if (noStroke) {
             holder.reportNoStroke()
-            strokedSubPaths = null
         } else {
             if (strokeCaps?.cardinality() == 0) holder.report(sCap!!, "attribute has no effect", removeAttrFix)
             if (strokeJoins?.cardinality() == 0) holder.report(sJoin!!, "attribute has no effect", removeAttrFix)
         }
 
-        subAreas = areas
+        this.fills = fills
+        this.strokes = strokes
         opaqueArea = opaque
-        this.filledSubPaths = filledSubPaths
-        this.strokedSubPaths = strokedSubPaths
+//        this.filledSubPaths = filledSubPaths
+//        this.strokedSubPaths = strokedSubPaths
     }
 
     fun merged(): Area? = // TODO split clip-paths, too
@@ -333,31 +341,41 @@ internal class PathTag private constructor(
         clipPath: Area?, clips: List<Area>, usefulClips: IntOpenHashSet,
         usefulPrecision: Int,
     ) {
-        val subAreas = subAreas ?: return
+        val fills = fills
+        val strokes = strokes
+        if (fills == null && strokes == null)
+            return
+
+        val subCount = fills?.size ?: strokes!!.size
         if (usefulClips.size < clips.size) {
             val clippedAway = Area()
-            var index = 0
-            while (index < clips.size) {
+            for (index in clips.indices) {
                 val clip = clips[index]
                 var areaIdx = 0
-                while (index !in usefulClips && areaIdx < subAreas.size) {
-                    if (!clippedAway.with(subAreas[areaIdx++]).without(clip).effectivelyEmpty(usefulPrecision) &&
+                while (index !in usefulClips && areaIdx < subCount) {
+                    if ((fills != null &&
+                                !clippedAway.with(fills[areaIdx++]).without(clip).effectivelyEmpty(usefulPrecision) ||
+                                strokes != null &&
+                                !clippedAway.with(strokes[areaIdx++]).without(clip).effectivelyEmpty(usefulPrecision)
+                            ) &&
                         usefulClips.add(index) && usefulClips.size == clips.size)
                         break
                     clippedAway.reset()
                 }
-                index++
             }
         }
 
         if (clipPath != null) {
-            for (i in subAreas.indices) {
-                subAreas[i]?.let { subArea ->
-                    subArea.intersect(clipPath)
-                    if (subArea.effectivelyEmpty(usefulPrecision)) {
-                        (clippedAwaySubPaths ?: BitSet().also { clippedAwaySubPaths = it }).set(i)
-                        subAreas[i] = null
-                    }
+            for (i in 0 until subCount) {
+                val subFill = fills?.getOrNull(i)
+                val subStroke = strokes?.getOrNull(i)
+                if (subFill != null || subStroke != null) {
+                    if (subFill != null && subFill.also { it.intersect(clipPath) }.effectivelyEmpty(usefulPrecision))
+                        fills[i] = null
+                    if (subStroke != null && subStroke.also { it.intersect(clipPath) }.effectivelyEmpty(usefulPrecision))
+                        strokes[i] = null
+                    /*if (fills?.get(i) == null && strokes?.get(i) == null)
+                        (clippedAwaySubPaths ?: BitSet().also { clippedAwaySubPaths = it }).set(i)*/
                 }
             }
             opaqueArea?.intersect(clipPath)
@@ -365,13 +383,15 @@ internal class PathTag private constructor(
     }
 
     private fun ProblemsHolder.reportNoFill(complaint: String) {
-        paint!!.fillColorEl?.let { report(it, complaint, removeAttrFix) }
-        paint.fillTypeEl?.let { report(it, complaint, removeAttrFix) }
-        if (paint.fillColorOpacity == PixelFormat.TRANSPARENT)
-            paint.fillAlphaEl?.let { report(it, complaint, removeAttrFix) }
+        val za = paint!!.fillAlpha == 0f
+        val tc = paint.fillColorOpacity == PixelFormat.TRANSPARENT
+        if (za) paint.fillColorEl?.let { report(it, complaint, removeAttrFix) }
+        if (tc) paint.fillAlphaEl?.let { report(it, complaint, removeAttrFix) }
         // else fillAlpha=0 solely makes this fill useless.
         // Removing attribute will change drawable contents making it visible.
         // We'll revenge after removing fillColor attribute
+
+        paint.fillTypeEl?.let { report(it, complaint, removeAttrFix) }
     }
 
     private fun ProblemsHolder.reportNoStroke() {
@@ -405,17 +425,93 @@ internal class PathTag private constructor(
         if (joins) join?.set(index)
     }
 
-    fun overdraw(paths: List<PathTag>, usefulPrecision: Int) {
-        val opaqueArea = opaqueArea ?: return
-        paths.forEach { path ->
-            path.subAreas?.let { subAreas ->
-                for (i in subAreas.indices) {
-                    subAreas[i]?.let { subArea ->
-                        subArea.subtract(opaqueArea)
-                        if (subArea.effectivelyEmpty(usefulPrecision)) {
-                            subAreas[i] = null
-                            (path.overdrawnSubPaths ?: BitSet().also { path.overdrawnSubPaths = it }).set(i)
+    fun overdraw(paths: List<PathTag>, usefulPrecision: Int, colorToArea: HashMap<String, Area>) {
+
+        // check for underdraw first
+        if (fills != null || strokes != null) {
+            var fillVisited = false
+            var strokeVisited = false
+            val tmpArea = Area()
+            @Suppress("JavaMapForEach") // come on, original HashMap::forEach is more efficient
+            colorToArea.forEach { color, area ->
+                fills?.let { fills ->
+                    if (color == paint!!.canonicalFillColor) {
+                        fillVisited = true
+                        for (i in fills.indices) {
+                            val fill = fills[i] ?: continue
+                            if (area.equals(tmpArea.with(area).with(fill))) {
+                                fills[i] = null
+//                                filledSubPaths?.clear(i)
+//                                (underdrawnFills ?: BitSet().also { underdrawnFills = it }).set(i)
+                            } else {
+                                area.add(fill)
+                            }
+                            tmpArea.reset()
                         }
+                    } else {
+                        for (i in fills.indices) {
+                            val fill = fills[i] ?: continue
+                            area.subtract(fill)
+                        }
+                    }
+                }
+                strokes?.let { strokes ->
+                    if (color == paint!!.canonicalStrokeColor) {
+                        strokeVisited = true
+                        for (i in strokes.indices) {
+                            val stroke = strokes[i] ?: continue
+                            if (area.equals(tmpArea.with(area).with(stroke))) {
+                                strokes[i] = null
+//                                strokedSubPaths?.clear(i)
+//                                (underdrawnStrokes ?: BitSet().also { underdrawnStrokes = it }).set(i)
+                            } else {
+                                area.add(stroke)
+                            }
+                            tmpArea.reset()
+                        }
+                    } else {
+                        for (i in strokes.indices) {
+                            val stroke = strokes[i] ?: continue
+                            area.subtract(stroke)
+                        }
+                    }
+                }
+            }
+            fills?.takeIf { !fillVisited && paint!!.canonicalFillColor != null }?.let { fills ->
+                fills.forEach { tmpArea.with(it) }
+                if (!tmpArea.isEmpty)
+                    colorToArea[paint!!.canonicalFillColor!!] = tmpArea
+            }
+            strokes?.takeIf { !strokeVisited && paint!!.canonicalStrokeColor != null }?.let { strokes ->
+                val area = tmpArea.takeIf { it.isEmpty || paint!!.canonicalStrokeColor == paint.canonicalFillColor } ?: Area()
+                strokes.forEach { area.with(it) }
+                if (!area.isEmpty)
+                    colorToArea[paint!!.canonicalStrokeColor!!] = area
+            }
+        }
+
+
+        if (opaqueArea != null) {
+            for (path in paths) {
+                val fills = path.fills
+                val strokes = path.strokes
+                if (fills == null && strokes == null)
+                    continue
+
+                val count = fills?.size ?: strokes!!.size
+                for (i in 0 until count) {
+                    val fill = fills?.getOrNull(i)
+                    val stroke = strokes?.getOrNull(i)
+
+                    if (fill != null && fill.without(opaqueArea).effectivelyEmpty(usefulPrecision)) {
+                        fills[i] = null
+//                        path.filledSubPaths?.clear(i)
+//                        (path.overdrawnFills ?: BitSet().also { path.overdrawnFills = it }).set(i)
+                    }
+                    if (stroke != null && stroke.without(opaqueArea).effectivelyEmpty(usefulPrecision)) {
+                        strokes[i] = null
+//                        path.strokedSubPaths?.clear(i)
+//                        (path.overdrawnStrokes ?: BitSet().also { path.overdrawnStrokes = it }).set(i)
                     }
                 }
             }
@@ -423,32 +519,30 @@ internal class PathTag private constructor(
     }
 
     fun report(holder: ProblemsHolder) {
-        if (filledSubPaths == null && strokedSubPaths == null)
-            return // nothing to do here, the path is crippled from the very beginning
+        val subAreas = fills?.size ?: strokes?.size
+            ?: return // nothing to do here, the path is crippled from the very beginning
 
         tryProposeSplit(holder)
 
-        val subAreas = subAreas ?: return
-        when (subAreas.count { it == null }) {
+        val deadCount =
+            (0 until subAreas).count { fills?.get(it) == null && strokes?.get(it) == null }
+
+        when (deadCount) {
             0 -> return // everything is perfect
-            subAreas.size -> {
-                val what = invisiblePathDiagnosis(
+            subAreas -> {
+                /*val what = invisiblePathDiagnosis(
                     (overdrawnSubPaths?.cardinality() ?: 0) > 0,
                     (clippedAwaySubPaths?.cardinality() ?: 0) > 0,
-                )
-                return holder.report(pathTag, "The path is fully $what", removeTagFix)
+                )*/
+                return holder.report(pathTag, "The path is fully invisible"/* TODO due to under-, overdraw, clip*/, removeTagFix)
             }
         }
 
-        // some areas are empty, some others are not. Analyze!
-        for (i in subAreas.indices) {
+        // some areas are dead, some others are not. Analyze!
+        for (i in 0 until subAreas) {
             // TODO glue sibling paths together
-            if (filledSubPaths?.get(i) != true && strokedSubPaths?.get(i) != true) {
+            if (fills?.get(i) == null && strokes?.get(i) == null) {
                 if (!holder.reportSubPath(i, "invisible sub-path"))
-                    break
-            } else if (clippedAwaySubPaths?.get(i) == true || overdrawnSubPaths?.get(i) == true) {
-                val what = invisiblePathDiagnosis(clippedAwaySubPaths?.get(i) == true, overdrawnSubPaths?.get(i) == true)
-                if (!holder.reportSubPath(i, "$what sub-path"))
                     break
             }
         }
@@ -492,12 +586,12 @@ internal class PathTag private constructor(
         }
     }
 
-    private fun invisiblePathDiagnosis(overdrawn: Boolean, clippedAway: Boolean): String = when {
+    /*private fun invisiblePathDiagnosis(overdrawn: Boolean, clippedAway: Boolean): String = when {
         overdrawn && clippedAway -> "overdrawn and clipped away"
         overdrawn -> "overdrawn"
         clippedAway -> "clipped away"
         else -> logger<PathTag>().error("invalid invisiblePathMessage(false, false)").let { "" }
-    }
+    }*/
 
     private fun ProblemsHolder.reportSubPath(at: Int, complaint: String): Boolean =
         if (subPathRanges == null) {

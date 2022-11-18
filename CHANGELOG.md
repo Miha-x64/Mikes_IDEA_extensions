@@ -3,6 +3,7 @@
     <li>Inspecting more drawable types</li>
     <li>Reporting Drawable classes without getConstantState()</li>
     <li>Eliminated some false-positives on useless fillColor/Alpha, strokeWidth/Color/Alpha</li>
+    <li>Vector underdraw detection ((sub-)path adds nothing to the image)</li>
   </ul>
 
 

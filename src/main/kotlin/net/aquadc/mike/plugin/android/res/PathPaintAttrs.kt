@@ -6,6 +6,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlElement
 import com.intellij.psi.xml.XmlTag
+import com.intellij.util.text.nullize
 import net.aquadc.mike.plugin.component6
 import net.aquadc.mike.plugin.component7
 import net.aquadc.mike.plugin.component8
@@ -18,6 +19,8 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
     val fillAlphaEl: XmlAttribute?
     val fillTypeEl: XmlAttribute?
     val fillTypeEvenOdd: Boolean
+    val fillAlpha: Float
+    val canonicalFillColor: String?
     val fillColorOpacity: Int
     val fillOpacity: Int
 
@@ -29,6 +32,7 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
     val strokeMiterEl: XmlAttribute?
     val stroke: BasicStroke?
     val strokeAlpha: Float
+    val canonicalStrokeColor: String?
     val strokeColorOpacity: Int
     val strokeOpacity: Int
     val strokeWidth: Float
@@ -39,9 +43,12 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
         fillAlphaEl = fA
         fillTypeEl = fType
         fillTypeEvenOdd = holder.toString(rr, fType, "nonZero") == "evenOdd"
-        val fillColor = rr.color(fillColorEl)
-        val fillAlpha = holder.toFloat(rr, fA, 1f)
+        val (canonicalFillColor, fillColor) = rr.color(fillColorEl)
+        this.canonicalFillColor = canonicalFillColor
+        fillAlpha = holder.toFloat(rr, fA, 1f)
         fillColorOpacity = opacity(fillColor)
+        if (fillColorOpacity == PixelFormat.TRANSPARENT && fillColorEl != null)
+            holder.report(fillColorEl, "Attribute has default value", removeAttrFix)
         fillOpacity = opacity(fillColorOpacity, fillAlpha)
 
         strokeColorEl = sCol ?: tag.findAaptAttrTag("strokeColor")
@@ -50,9 +57,12 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
         strokeLineJoinEl = sJoin
         strokeWidthEl = sWidth
         strokeMiterEl = sMiter
-        val strokeColor = rr.color(strokeColorEl)
         strokeAlpha = holder.toFloat(rr, sA, 1f)
+        val (canonicalStrokeColor, strokeColor) = rr.color(strokeColorEl)
+        this.canonicalStrokeColor = canonicalStrokeColor
         strokeColorOpacity = opacity(strokeColor)
+        if (strokeColorOpacity == PixelFormat.TRANSPARENT && strokeColorEl != null)
+            holder.report(strokeColorEl, "Attribute has default value", removeAttrFix)
         strokeOpacity = opacity(strokeColorOpacity, strokeAlpha)
         strokeWidth = holder.toFloat(rr, sWidth, 0f)
         stroke = holder.stroke(rr, strokeWidth, sCap, sJoin, sMiter, strokeOpacity)
@@ -60,9 +70,9 @@ internal class PathPaintAttrs(tag: XmlTag, holder: ProblemsHolder, rr: ResourceR
 
     private fun ResourceResolver?.color(el: XmlElement?) =
         when (el) {
-            null -> "#0000"
-            is XmlAttribute -> resolve(el)?.takeIf(String::isNotBlank)
-            is XmlTag -> null //TODO resolve gradients
+            null -> null to "#0000"
+            is XmlAttribute -> resolve(el.value.nullize(true))
+            is XmlTag -> resolve(null) //TODO resolve gradients
             else -> throw IllegalArgumentException()
         }
 

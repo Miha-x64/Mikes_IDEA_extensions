@@ -63,6 +63,7 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) { // TODO check for broken 
     checkVectorGroup(
         rr, tag, null, viewport, usefulPrecision,
         paths, SmartList(), SmartList(), IntOpenHashSet(),
+        HashMap(),
     )
 
     // TODO also check when the path adds nothing to the image
@@ -98,6 +99,7 @@ private fun ProblemsHolder.checkVectorGroup(
     usefulPrecision: Int,
     paths: SmartList<PathTag>,
     clipTags: SmartList<XmlTag>, clips: SmartList<Area>, usefulClips: IntOpenHashSet,
+    colorToArea: HashMap<String, Area>,
 ) {
     val isRoot = tag.name == "vector"
 
@@ -124,14 +126,14 @@ private fun ProblemsHolder.checkVectorGroup(
                 }
             "group" ->
                 checkVectorGroup(
-                    rr, subTag, matrix, localClip, usefulPrecision, paths, clipTags, clips, usefulClips,
+                    rr, subTag, matrix, localClip, usefulPrecision, paths, clipTags, clips, usefulClips, colorToArea,
                 )
             "path" -> { // TODO propose merging pathDatas of sibling paths with same attrs
                 subTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
                     PathTag.parse(this, rr, pathData, matrix, usefulPrecision)?.also { pathTag ->
                         pathTag.toAreas(this, usefulPrecision)
                         pathTag.applyClip(localClip, clips, usefulClips, usefulPrecision)
-                        pathTag.overdraw(paths, usefulPrecision)
+                        pathTag.overdraw(paths, usefulPrecision, colorToArea)
                         paths.add(pathTag)
                     }
                 } ?: run {
