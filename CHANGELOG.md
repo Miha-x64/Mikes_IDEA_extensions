@@ -5,7 +5,8 @@
     <li>Eliminated some false-positives on useless fillColor/Alpha, strokeWidth/Color/Alpha</li>
     <li>Vector underdraw detection ((sub-)path adds nothing to the image)</li>
     <li>Suggest merging sibling vector path and clip-path pathData</li>
-    <li>Unhide interface hints from IDE settings</li>
+    <li>Unhidden interface hints from IDE settings</li>
+    <li>Added color picker</li>
   </ul>
 
 

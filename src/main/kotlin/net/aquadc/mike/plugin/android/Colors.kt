@@ -1,5 +1,7 @@
 package net.aquadc.mike.plugin.android
 
+import com.android.tools.idea.kotlin.getQualifiedName
+import com.android.tools.idea.ui.resourcechooser.ColorPicker
 import com.android.utils.SparseArray
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
@@ -19,6 +21,7 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiExpression
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiJavaFile
@@ -29,19 +32,26 @@ import com.intellij.psi.PsiType
 import com.intellij.psi.impl.source.tree.java.PsiLiteralExpressionImpl.parseStringCharacters
 import com.intellij.psi.util.PsiLiteralUtil.getStringLiteralContent
 import com.intellij.psi.util.parentOfType
+import com.intellij.ui.ColorPickerListener
 import com.intellij.util.SmartList
+import com.siyeh.ig.PsiReplacementUtil
 import it.unimi.dsi.fastutil.bytes.ByteArrays
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.idea.core.resolveType
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
+import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtConstantExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtReferenceExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UReferenceExpression
@@ -52,6 +62,7 @@ import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import java.awt.Color
 import java.awt.Component
 import java.awt.Graphics
+import java.awt.event.MouseEvent
 import java.awt.geom.RoundRectangle2D
 import java.util.*
 import javax.swing.Icon
@@ -142,9 +153,59 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
             iconCache[colorInt] ?: ColorIcon(sharedClip, colorInt.toAwtColor()).also { iconCache.put(colorInt, it) }
         }
         return LineMarkerInfo(
-            element.firstLeaf, element.textRange,
-            icon, null, null, GutterIconRenderer.Alignment.LEFT
+            element.firstLeaf, element.textRange, icon, null,
+            { e: MouseEvent, elt: PsiElement ->
+                ColorPicker.showDialog(
+                    e.component, "Edit color", colorInt.toAwtColor(), true,
+                    arrayOf<ColorPickerListener?>(object : ColorPickerListener {
+                        override fun colorChanged(color: Color) {}
+                        override fun closed(color: Color?) {
+                            if (color == null || color.rgb == colorInt) return
+                            runWriteAction {
+                                replaceColor(elt, color.rgb)
+                            }
+                        }
+                    }),
+                    true
+                )
+            },
+            GutterIconRenderer.Alignment.LEFT,
         ) { colorInt.toPaddedUpperHex(colorInt.opaque6translucent8, COLOR_PREFIX_HASH, COLOR_ACCESSIBILITY_POSTFIX) }
+    }
+
+    private fun replaceColor(elt: PsiElement, color: Int) {
+        if (elt.language == JavaLanguage.INSTANCE) {
+            var expr = elt.parentOfType<PsiExpression>() ?: return
+            while (expr.type == null) expr = expr.parentOfType<PsiExpression>() ?: return // 'Color' -> 'Color.RED'
+            if (expr.type == PsiType.INT)
+                PsiReplacementUtil.replaceExpression(
+                    expr,
+                    color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, ByteArrays.EMPTY_ARRAY),
+                )
+            else if (expr.type !is PsiPrimitiveType)
+                PsiReplacementUtil.replaceExpression(
+                    expr,
+                    color.toPaddedUpperHex(color.opaque6translucent8, "\"#".toByteArray(), "\"".toByteArray()),
+                )
+        } else if (elt.language == KotlinLanguage.INSTANCE) {
+            var expr = elt.parentOfType<KtExpression>() ?: return
+            while (expr.parent is KtDotQualifiedExpression) expr = expr.parent as KtExpression // also 'hex' -> 'hex.toInt()' as a side effect
+            if (expr.resolveType()?.unwrap()?.getQualifiedName()?.asString() == "kotlin.Int") {
+                val postfix =
+                    if ((color ushr 24) > 0x7f) TO_INT_POSTFIX else ByteArrays.EMPTY_ARRAY
+                expr.replace(
+                    KtPsiFactory(elt).createExpression(
+                        color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, postfix),
+                    )
+                )
+            } else if (expr is KtStringTemplateExpression) {
+                expr.replace(
+                    KtPsiFactory(elt).createExpression(
+                        color.toPaddedUpperHex(color.opaque6translucent8, "\"#".toByteArray(), "\"".toByteArray()),
+                    )
+                )
+            }
+        }
     }
 
     private val PsiElement.firstLeaf get(): PsiElement = firstChild?.firstLeaf ?: this
@@ -357,6 +418,7 @@ private fun PsiLiteralExpression.stringValue(): String? =
 private val uppercaseHex = "0123456789ABCDEF".toByteArray()
 private val HEX_LITERAL_PREFIX = "0x".toByteArray()
 private val COLOR_PREFIX_HASH = "#".toByteArray()
+private val TO_INT_POSTFIX = ".toInt()".toByteArray()
 private val COLOR_ACCESSIBILITY_POSTFIX = " color".toByteArray()
 private fun Int.toPaddedUpperHex(digits: Int, prefix: ByteArray, postfix: ByteArray): String {
     val preLen = prefix.size
