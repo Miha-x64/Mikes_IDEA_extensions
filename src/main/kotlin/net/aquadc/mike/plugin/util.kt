@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
-import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
 import org.jetbrains.uast.UBinaryExpression
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
@@ -141,7 +140,7 @@ fun CallMatcher.test(expr: KtExpression): Boolean {
         if (args.size < myParameters!!.size) return false
     }*/
     val method = (refExpr as? KtNameReferenceExpression)?.references
-        ?.firstNotNullResult(PsiReference::resolve) as? PsiMethod ?: return false
+        ?.firstNotNullOfOrNull(PsiReference::resolve) as? PsiMethod ?: return false
 
     return method.isCorrectArgCount(args) && methodMatches(method)
 }
