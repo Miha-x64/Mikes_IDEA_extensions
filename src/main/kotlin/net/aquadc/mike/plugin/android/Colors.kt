@@ -40,7 +40,7 @@ import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.idea.core.resolveType
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -52,6 +52,7 @@ import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtReferenceExpression
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UReferenceExpression
@@ -190,7 +191,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
         } else if (elt.language == KotlinLanguage.INSTANCE) {
             var expr = elt.parentOfType<KtExpression>() ?: return
             while (expr.parent is KtDotQualifiedExpression) expr = expr.parent as KtExpression // also 'hex' -> 'hex.toInt()' as a side effect
-            if (expr.resolveType()?.unwrap()?.getQualifiedName()?.asString() == "kotlin.Int") {
+            if (expr.analyze(BodyResolveMode.PARTIAL).getType(expr)?.unwrap()?.getQualifiedName()?.asString() == "kotlin.Int") {
                 val postfix =
                     if ((color ushr 24) > 0x7f) TO_INT_POSTFIX else ByteArrays.EMPTY_ARRAY
                 expr.replace(
