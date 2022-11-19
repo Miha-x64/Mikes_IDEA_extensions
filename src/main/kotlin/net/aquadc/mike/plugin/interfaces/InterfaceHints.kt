@@ -193,7 +193,7 @@ private class InterfaceHintsCollector(
                 UastErrorType -> null
                 is PsiClassType -> argumentType
                 is PsiPrimitiveType -> argumentType.getBoxedType(parameterType.manager, allScope(parameterType.getProject()))
-                is PsiMethodReferenceType -> null
+                is PsiMethodReferenceType, is PsiLambdaExpressionType -> null
                 else -> Logger.getInstance(InterfaceHintsCollector::class.java)
                     .error("arg type is ${argumentType::class.java} : $argumentType")
                     .let { null }
