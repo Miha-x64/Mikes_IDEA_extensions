@@ -80,7 +80,8 @@
             enabledByDefault="true" level="WARNING"
             implementationClass="net.aquadc.mike.plugin.regexp.BadCyrillicRegexp" />
 
-        <codeInsight.inlayProviderFactory implementation="net.aquadc.mike.plugin.interfaces.InterfaceHintsPF" />
+        <codeInsight.inlayProvider language="JAVA" implementationClass="net.aquadc.mike.plugin.interfaces.InterfaceHintsJava" />
+        <codeInsight.inlayProvider language="kotlin" implementationClass="net.aquadc.mike.plugin.interfaces.InterfaceHintsKotlin" />
 
         <lang.foldingBuilder
             language="kotlin" implementationClass="net.aquadc.mike.plugin.kotlin.BackingPropertyFolding" />

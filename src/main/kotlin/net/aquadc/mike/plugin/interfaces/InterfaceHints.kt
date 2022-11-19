@@ -7,24 +7,19 @@ import com.intellij.codeInsight.hints.ImmediateConfigurable
 import com.intellij.codeInsight.hints.InlayGroup
 import com.intellij.codeInsight.hints.InlayHintsCollector
 import com.intellij.codeInsight.hints.InlayHintsProvider
-import com.intellij.codeInsight.hints.InlayHintsProviderFactory
 import com.intellij.codeInsight.hints.InlayHintsSink
-import com.intellij.codeInsight.hints.ProviderInfo
 import com.intellij.codeInsight.hints.SettingsKey
 import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.java.JavaBundle
-import com.intellij.lang.java.JavaLanguage
 import com.intellij.lang.jvm.types.JvmReferenceType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbService
-import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope.allScope
 import com.intellij.ui.dsl.builder.panel
 import net.aquadc.mike.plugin.maxByIf
 import net.aquadc.mike.plugin.referencedName
-import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.j2k.getContainingClass
 import org.jetbrains.kotlin.j2k.getContainingMethod
@@ -39,24 +34,21 @@ import org.jetbrains.uast.toUElementOfType
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty0
 
+class InterfaceHintsJava : InterfaceHintsP(settingsKey) {
+    private companion object {
+        private val settingsKey = SettingsKey<HintsSettings>("net.aquadc.mike.plugin.interfaces.hints.java")
+    }
+}
+class InterfaceHintsKotlin : InterfaceHintsP(settingsKey) {
+    private companion object {
+        private val settingsKey = SettingsKey<HintsSettings>("net.aquadc.mike.plugin.interfaces.hints.kotlin")
+    }
+}
+
 /**
  * @author Mike Gorünóv
  */
-class InterfaceHintsPF : InlayHintsProviderFactory {
-
-    override fun getProvidersInfo(project: Project): List<ProviderInfo<out Any>> = listOf(
-        ProviderInfo(JavaLanguage.INSTANCE, InterfaceHintsP(jSettingsKey)),
-        ProviderInfo(KotlinLanguage.INSTANCE, InterfaceHintsP(kSettingsKey)),
-    )
-
-    private companion object {
-        private val jSettingsKey = SettingsKey<HintsSettings>("net.aquadc.mike.plugin.interfaces.hints.java")
-        private val kSettingsKey = SettingsKey<HintsSettings>("net.aquadc.mike.plugin.interfaces.hints.kotlin")
-    }
-
-}
-
-private class InterfaceHintsP(
+abstract class InterfaceHintsP(
     override val key: SettingsKey<HintsSettings>,
 ) : InlayHintsProvider<HintsSettings> {
 
