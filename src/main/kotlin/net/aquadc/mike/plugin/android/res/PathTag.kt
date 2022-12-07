@@ -10,7 +10,6 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.util.parentOfType
@@ -32,7 +31,6 @@ import java.awt.geom.Path2D
 import java.awt.geom.PathIterator
 import java.math.BigDecimal
 import java.util.*
-import kotlin.collections.HashMap
 import kotlin.math.absoluteValue
 import kotlin.math.min
 import kotlin.math.pow
@@ -435,7 +433,7 @@ internal class PathTag private constructor(
             @Suppress("JavaMapForEach") // come on, original HashMap::forEach is more efficient
             colorToArea.forEach { color, area ->
                 fills?.let { fills ->
-                    if (color == paint!!.canonicalFillColor) {
+                    if (colorsEq(color, paint!!.canonicalFillColor)) {
                         fillVisited = true
                         for (i in fills.indices) {
                             val fill = fills[i] ?: continue
@@ -443,7 +441,7 @@ internal class PathTag private constructor(
                                 fills[i] = null
 //                                filledSubPaths?.clear(i)
 //                                (underdrawnFills ?: BitSet().also { underdrawnFills = it }).set(i)
-                            } else {
+                            } else if (paint.fillOpacity == PixelFormat.OPAQUE) {
                                 area.add(fill)
                             }
                             tmpArea.reset()
@@ -456,7 +454,7 @@ internal class PathTag private constructor(
                     }
                 }
                 strokes?.let { strokes ->
-                    if (color == paint!!.canonicalStrokeColor) {
+                    if (colorsEq(color, paint!!.canonicalStrokeColor)) {
                         strokeVisited = true
                         for (i in strokes.indices) {
                             val stroke = strokes[i] ?: continue
@@ -464,7 +462,7 @@ internal class PathTag private constructor(
                                 strokes[i] = null
 //                                strokedSubPaths?.clear(i)
 //                                (underdrawnStrokes ?: BitSet().also { underdrawnStrokes = it }).set(i)
-                            } else {
+                            } else if (paint.strokeOpacity == PixelFormat.OPAQUE) {
                                 area.add(stroke)
                             }
                             tmpArea.reset()
@@ -477,12 +475,12 @@ internal class PathTag private constructor(
                     }
                 }
             }
-            fills?.takeIf { !fillVisited && paint!!.canonicalFillColor != null }?.let { fills ->
+            fills?.takeIf { !fillVisited && paint!!.canonicalFillColor != null && paint.fillOpacity == PixelFormat.OPAQUE }?.let { fills ->
                 fills.forEach { tmpArea.with(it) }
                 if (!tmpArea.isEmpty)
                     colorToArea[paint!!.canonicalFillColor!!] = tmpArea
             }
-            strokes?.takeIf { !strokeVisited && paint!!.canonicalStrokeColor != null }?.let { strokes ->
+            strokes?.takeIf { !strokeVisited && paint!!.canonicalStrokeColor != null && paint.strokeOpacity == PixelFormat.OPAQUE }?.let { strokes ->
                 val area = tmpArea.takeIf { it.isEmpty || paint!!.canonicalStrokeColor == paint.canonicalFillColor } ?: Area()
                 strokes.forEach { area.with(it) }
                 if (!area.isEmpty)
@@ -517,6 +515,9 @@ internal class PathTag private constructor(
             }
         }
     }
+    private fun colorsEq(c1: String, c2: String?): Boolean =
+        c1 == c2 || // check for #??RRGGBB equality
+                (c1.length == 9 && c2?.length == 9 && c1[0] == '#' && c2[0] == '#' && c1.regionMatches(3, c2, 3, 6))
 
     fun report(holder: ProblemsHolder) {
         val subAreas = fills?.size ?: strokes?.size

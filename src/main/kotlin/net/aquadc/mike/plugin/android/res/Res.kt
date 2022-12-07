@@ -36,10 +36,10 @@ fun ResourceResolver?.resolve(raw: String?): Pair<String?, String?> {
     if (this == null || (refType != '@' && refType != '?')) {
         if (refType == '#' && raw.length.let { it == 4 || it == 5 || it == 7 || it == 9 }) {
             canonical = when (raw.length) { // canonicalize color
-                4 /*#RGB*/ -> "#FF${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}"
-                5 /*#ARGB*/ -> "#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}${raw[4]}${raw[4]}"
-                7 /*#RRGGBB*/ -> "#FF${raw[1]}${raw[2]}${raw[3]}${raw[4]}${raw[5]}${raw[6]}"
-                9 /*#AARRGGBB*/ -> raw
+                4 /*#RGB*/ -> "#FF${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}".uppercase()
+                5 /*#ARGB*/ -> "#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}${raw[4]}${raw[4]}".uppercase()
+                7 /*#RRGGBB*/ -> "#FF${raw[1]}${raw[2]}${raw[3]}${raw[4]}${raw[5]}${raw[6]}".uppercase()
+                9 /*#AARRGGBB*/ -> raw.uppercase()
                 else -> throw AssertionError()
             }
         }
