@@ -69,6 +69,8 @@
 
         <!-- TODO lang.inferredAnnotationProvider implementation="@since" /-->
 
+        <defaultLiveTemplates file="/liveTemplates/objectAnimatorProperty.xml" />
+
     </extensions>
 
 </idea-plugin>

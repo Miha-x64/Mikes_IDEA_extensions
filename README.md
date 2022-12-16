@@ -55,6 +55,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code>, color picker for Android</li>
     <li>Backing property folding for Kotlin</li>
     <li>Live templates for SVG and Android Vector Drawable pathData</li>
+    <li>Live templates for implementing <code>Property</code> for <code>ObjectAnimator</code></li>
   </ul>
 
 <!-- end plugin.xml -->

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templateSet group="Android">
+
+    <template
+        name="property"
+        value="@JvmField val $RECEIVER_$_$SCREAM_PROP$ = object : android.util.Property&lt;$RECEIVER$, $TYPE$&gt;($TYPE$::class.java, &quot;$PROP$&quot;) {&#10;    override fun get(obj: $RECEIVER$): $TYPE$ =&#10;        obj.get$CAP_PROP$()&#10;    override fun set(obj: $RECEIVER$, value: $TYPE$) {&#10;        obj.set$CAP_PROP$(value)&#10;    }&#10;}"
+        description="Property for ObjectAnimator" toReformat="true" toShortenFQNames="true">
+        <context><option name="KOTLIN" value="true"/></context>
+        <variable name="RECEIVER" expression="" defaultValue="" alwaysStopAt="true"/>
+        <variable name="TYPE" expression="" defaultValue="" alwaysStopAt="true"/>
+        <variable name="PROP" expression="" defaultValue="" alwaysStopAt="true"/>
+        <variable name="RECEIVER_" expression="RECEIVER" defaultValue="" alwaysStopAt="false"/>
+        <variable name="SCREAM_PROP" expression="capitalizeAndUnderscore(PROP)" defaultValue="" alwaysStopAt="false"/>
+        <variable name="CAP_PROP" expression="capitalize(PROP)" defaultValue="" alwaysStopAt="false"/>
+    </template>
+
+    <template
+        name="property"
+        value="public static final android.util.Property&lt;$RECEIVER$, $TYPE$&gt; $RECEIVER$_$SCREAM_PROP$ = new android.util.Property&lt;$RECEIVER$, $TYPE$&gt;($TYPE$.class, &quot;$PROP$&quot;) {&#10;    @Override public $TYPE$ get($RECEIVER$ obj) {&#10;        return obj.get$CAP_PROP$();&#10;    }&#10;    @Override public void set($RECEIVER$ obj, $TYPE$ value) {&#10;        obj.set$CAP_PROP$(value);&#10;    }&#10;};"
+        description="Property for ObjectAnimator" toReformat="true" toShortenFQNames="true">
+        <context><option name="JAVA_DECLARATION" value="true"/></context>
+        <variable name="RECEIVER" expression="" defaultValue="" alwaysStopAt="true"/>
+        <variable name="TYPE" expression="" defaultValue="" alwaysStopAt="true"/>
+        <variable name="PROP" expression="" defaultValue="" alwaysStopAt="true"/>
+        <variable name="SCREAM_PROP" expression="capitalizeAndUnderscore(PROP)" defaultValue="" alwaysStopAt="false"/>
+        <variable name="CAP_PROP" expression="capitalize(PROP)" defaultValue="" alwaysStopAt="false"/>
+    </template>
+
+</templateSet>

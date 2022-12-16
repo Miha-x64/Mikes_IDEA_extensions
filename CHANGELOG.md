@@ -1,3 +1,8 @@
+### 0.28
+  <ul>
+    <li>Added live templates for implementing <code>Property</code> for <code>ObjectAnimator</code></li>
+  </ul>
+
 ### 0.27
   <ul>
     <li>Inspecting more drawable types</li>
