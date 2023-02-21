@@ -49,7 +49,7 @@ internal abstract class FoldNumMacro(
 }
 
 /** A data extraction function for live templates required for vector shape completion.*/
-internal class AvdExtractMacro : MacroBase("svgExtract", "avdExtract(what)") {
+internal class SvgExtractMacro : MacroBase("svgExtract", "svgExtract(what)") {
 
     override fun calculateResult(params: Array<out Expression>, context: ExpressionContext?, quick: Boolean): Result? {
         val rootTag = (context?.psiElementAtStartOffset?.containingFile as? XmlFile)?.rootTag

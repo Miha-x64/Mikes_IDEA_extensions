@@ -103,7 +103,7 @@
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MultiplyMacro" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MinMacro" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.AddMacro" />
-        <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.AvdExtractMacro" />
+        <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.SvgExtractMacro" />
         <defaultLiveTemplates file="/liveTemplates/pathData.xml" />
     </extensions>
 
