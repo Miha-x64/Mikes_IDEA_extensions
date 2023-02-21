@@ -1,16 +1,21 @@
 package net.aquadc.mike.plugin.android
 
 import com.android.tools.idea.util.androidFacet
+import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.project.Project
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnonymousClass
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiPrimitiveType
+import com.intellij.psi.search.ProjectScope
 import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.FunctionCallVisitor
+import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.test
 import org.jetbrains.kotlin.psi.KtClass
@@ -19,6 +24,7 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UImportStatement
 import org.jetbrains.uast.UMethod
@@ -26,6 +32,7 @@ import org.jetbrains.uast.UParenthesizedExpression
 import org.jetbrains.uast.UReferenceExpression
 import org.jetbrains.uast.UVariable
 import org.jetbrains.uast.UastCallKind
+import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.tryResolve
@@ -38,6 +45,34 @@ class UnsupportedFeatureInspection : UastInspection() {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
+
+        override fun visitDeclaration(node: UDeclaration): Boolean {
+            // detect android.app.Activity#onCreate(android.os.Bundle, android.os.PersistableBundle)
+            if (node is UMethod && node.name == "onCreate" && node.uastParameters.size == 2) {
+                node.sourcePsi?.project?.let { proj ->
+                    val fac = JavaPsiFacade.getInstance(proj)
+                    val aaa = fac.findClass("android.app.Activity", ProjectScope.getLibrariesScope(proj))
+                    if (aaa != null && node.getContainingUClass()?.isInheritor(aaa, true) == true &&
+                        node.uastParameters[0].typeReference?.getQualifiedName() == "android.os.Bundle" &&
+                        node.uastParameters[1].typeReference?.getQualifiedName() == "android.os.PersistableBundle") {
+                        // TODO check for persistableMode=persistAcrossReboots in the manifest
+                        node.uastParameters[1].sourcePsi?.let { pbpSrc ->
+                            holder.registerProblem(
+                                pbpSrc,
+                                "Method onCreate(Bundle, PersistableBundle) will only be called if persistableMode=persistAcrossReboots in the Manifest.",
+                                ProblemHighlightType.WEAK_WARNING,
+                                object : NamedLocalQuickFix("Remove parameter") {
+                                    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+                                        descriptor.psiElement?.delete()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            return true
+        }
 
         override fun visitImportStatement(node: UImportStatement): Boolean {
             val psi = (node.sourcePsi as? KtImportDirective)

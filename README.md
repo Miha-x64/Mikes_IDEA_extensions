@@ -44,8 +44,10 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
       </ul>
     </li>
     <li>Android utility methods should be replaced with Kotlin extensions</li>
-    <li><code>setOnClickListener</code> doesn't work in <code>VideoView</code> until SDK26, in <code>RecyclerView</code>; Kotlin Android Extensions are deprecated</li>
+    <li><code>setOnClickListener</code> doesn't work in <code>VideoView</code> until SDK26, in <code>RecyclerView</code></li>
+    <li>Kotlin Android Extensions are deprecated</li>
     <li>Drawable subclass should override <code>getConstantState()</code></li>
+    <li><code>Activity#onCreate(, PersistableBundle)</code> will highly likely not be called</li>
   </ul>
 
   <h3>Editor tweaks</h3>

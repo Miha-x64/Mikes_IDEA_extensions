@@ -1,6 +1,7 @@
 ### 0.28
   <ul>
     <li>Added live templates for implementing <code>Property</code> for <code>ObjectAnimator</code></li>
+    <li>Reporting that <code>Activity#onCreate(, PersistableBundle)</code> will highly likely not be called</li>
   </ul>
 
 ### 0.27
