@@ -136,7 +136,7 @@ private class InterfaceHintsCollector(
                     element.lambdaArguments.singleOrNull()?.let { arg ->
                         arg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
                             params.last().second?.let { pType ->
-                                visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
+                                visitParameter(methodName, pType, argType, arg.textRange.startOffset, sink, prefix = "")
                             }
                         }
                     }
@@ -185,7 +185,8 @@ private class InterfaceHintsCollector(
                 }
 
     private fun visitParameter(
-        methodName: String, parameterType: PsiElement, argumentType: PsiType, offset: Int, sink: InlayHintsSink
+        methodName: String, parameterType: PsiElement, argumentType: PsiType, offset: Int, sink: InlayHintsSink,
+        prefix: String = "as ",
     ) {
         if (parameterType is PsiClass) {
             if (!parameterType.isInterface) return
@@ -203,7 +204,7 @@ private class InterfaceHintsCollector(
                 if (main == parameterType || main.isInheritor(parameterType, true)) return
             }
             parameterType.typeName?.takeIf { !methodName.contains(it, ignoreCase = true) }?.let { typeName ->
-                sink.addInlineElement(offset, false, hint("as $typeName"), false)
+                sink.addInlineElement(offset, false, hint(prefix + typeName), false)
             }
         }
     }
