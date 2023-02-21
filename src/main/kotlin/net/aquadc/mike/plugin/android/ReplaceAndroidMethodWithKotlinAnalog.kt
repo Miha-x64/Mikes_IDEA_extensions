@@ -73,7 +73,9 @@ class ReplaceAndroidMethodWithKotlinAnalog : LocalInspectionTool(), CleanupLocal
                 KotlinBundle.message("should.be.replaced.with.kotlin.function"),
                 object : LocalQuickFix {
                     override fun getName() =
-                        KotlinBundle.message("replace.with.kotlin.analog.function.text", shortNames[which])
+                     // KotlinBundle.message("replace.with.kotlin.analog.function.text", shortNames[which])
+                     // was showing "Replace with '[Ljava.lang.Object@blahblahblah' function"
+                        "Replace with '${shortNames[which]}' function"
 
                     override fun getFamilyName() =
                         KotlinBundle.message("replace.with.kotlin.analog.function.family.name")
