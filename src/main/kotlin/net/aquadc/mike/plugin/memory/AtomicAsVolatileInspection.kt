@@ -56,9 +56,8 @@ class AtomicAsVolatileInspection : UastInspection() {
     private fun isAtomicAbused(src: PsiElement): Boolean {
         var volatile = false
         val complete = ReferencesSearch.search(src).forEach(Processor { usage: PsiReference ->
-            val name = usage.outerMethodName
-            when (name) {
-                null -> true // continue
+            when (usage.outerMethodName) {
+                null -> false // unknown, fail conservatively
                 in volatileActions -> {
                     volatile = true
                     true
