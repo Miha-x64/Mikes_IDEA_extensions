@@ -28,7 +28,6 @@ import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiReferenceExpression
-import com.intellij.psi.PsiType
 import com.intellij.psi.impl.source.tree.java.PsiLiteralExpressionImpl.parseStringCharacters
 import com.intellij.psi.util.PsiLiteralUtil.getStringLiteralContent
 import com.intellij.psi.util.parentOfType
@@ -38,6 +37,7 @@ import com.siyeh.ig.PsiReplacementUtil
 import it.unimi.dsi.fastutil.bytes.ByteArrays
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
+import net.aquadc.mike.plugin.PsiType_INT
 import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
@@ -178,7 +178,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
         if (elt.language == JavaLanguage.INSTANCE) {
             var expr = elt.parentOfType<PsiExpression>() ?: return
             while (expr.type == null) expr = expr.parentOfType<PsiExpression>() ?: return // 'Color' -> 'Color.RED'
-            if (expr.type == PsiType.INT)
+            if (expr.type == PsiType_INT)
                 PsiReplacementUtil.replaceExpression(
                     expr,
                     color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, ByteArrays.EMPTY_ARRAY),
@@ -249,7 +249,7 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
         when (root) {
             is PsiJavaFile -> root.accept(object : JavaRecursiveElementWalkingVisitor() {
                 override fun visitLiteralExpression(expression: PsiLiteralExpression) {
-                    if (expression.type == PsiType.INT) expression.tryFoldTo(regions)
+                    if (expression.type == PsiType_INT) expression.tryFoldTo(regions)
                 }
             })
             is KtFile -> root.accept(object : KotlinRecursiveElementWalkingVisitor() {
@@ -372,7 +372,7 @@ private val Int.isOpaque get() = (this ushr 24) == 0xFF
 private fun PsiElement.toColorInt(): Int = when {
     textLength !in 3..17 -> 2 // red..0xF_F_F_F_F_F_F_F
     this is PsiLiteralExpression -> when (type) {
-        PsiType.INT -> text.toHexIntLiteralValue("0x", 8, '_')
+        PsiType_INT -> text.toHexIntLiteralValue("0x", 8, '_')
         !is PsiPrimitiveType -> stringValue().parseColorString()
         else -> 2
     }

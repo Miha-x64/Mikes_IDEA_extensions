@@ -398,3 +398,12 @@ inline fun IntArrayList.indexOfFirst(predicate: (Int) -> Boolean): Int {
 @Suppress("NOTHING_TO_INLINE")
 inline fun Boolean.toInt(): Int =
     if (this) 1 else 0
+
+internal val PsiType_INT: PsiPrimitiveType by lazy {
+    try {
+        // still unavailable in 2022.1.4 (last AS release)
+        Class.forName("com.intellij.psi.PsiTypes").getMethod("intType").invoke(null) as PsiPrimitiveType
+    } catch (e: ReflectiveOperationException) {
+        PsiType.INT // deprecated for removal since IU-231.6471.13
+    }
+}
