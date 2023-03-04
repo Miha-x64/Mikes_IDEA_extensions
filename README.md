@@ -48,6 +48,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Kotlin Android Extensions are deprecated</li>
     <li>Drawable subclass should override <code>getConstantState()</code></li>
     <li><code>Activity#onCreate(, PersistableBundle)</code> will highly likely not be called</li>
+    <li><code>&lt;AnyScrollableView></code> should have an ID to save its scroll position</li>
   </ul>
 
   <h3>Editor tweaks</h3>

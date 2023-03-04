@@ -57,6 +57,11 @@
             level="WARNING" displayName="Shape attribute application order"
             implementationClass="net.aquadc.mike.plugin.android.ShapeAttrApplicationOrder" />
 
+        <localInspection
+            shortName="missingAttr" groupName="Android" language="XML" enabledByDefault="true"
+            level="WARNING" displayName="Missing attribute"
+            implementationClass="net.aquadc.mike.plugin.android.res.MissingAttrInspection" />
+
         <codeInsight.lineMarkerProvider
                 language="JAVA" implementationClass="net.aquadc.mike.plugin.android.GutterColorPreview"/>
         <codeInsight.lineMarkerProvider
