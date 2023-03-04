@@ -126,6 +126,7 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
 /**
  * @author Mike Gorünóv
  */
+@Suppress("UseJBColor")
 class GutterColorPreview : LineMarkerProviderDescriptor() {
     override fun getName(): String =
         "Color preview"
@@ -157,7 +158,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
             element.firstLeaf, element.textRange, icon, null,
             { e: MouseEvent, elt: PsiElement ->
                 ColorPicker.showDialog(
-                    e.component, "Edit color", colorInt.toAwtColor(), true,
+                    e.component, "Edit Color", colorInt.toAwtColor(), true,
                     arrayOf<ColorPickerListener?>(object : ColorPickerListener {
                         override fun colorChanged(color: Color) {}
                         override fun closed(color: Color?) {
@@ -304,7 +305,7 @@ class CopyPasteColor : CopyPastePreProcessor {
             StringBuilder().append(data, 0, separatorIndex).also { sb ->
                 var iof: Int
                 while (sb.indexOf('-').also { iof = it } >= 0)
-                    sb.deleteCharAt(iof).setCharAt(iof, sb[iof].toUpperCase())
+                    sb.deleteCharAt(iof).setCharAt(iof, sb[iof].uppercaseChar())
 
                 data.delete(0, separatorIndex + 1)
                 while (data.isNotEmpty() && data.first().isWhitespace()) data.deleteCharAt(0)
@@ -460,5 +461,5 @@ private fun CharSequence?.parseColorString(): Int = // android.graphics.Color#pa
             else -> 1
         }
     else
-        colorNames.indexOf(toString().toLowerCase(Locale.ROOT))
+        colorNames.indexOf(toString().lowercase(Locale.ROOT))
             .let { index -> if (index < 0) 1 else colorValues[index] }

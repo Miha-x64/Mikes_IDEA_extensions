@@ -43,7 +43,7 @@ class BoxArray : LocalInspectionTool() {
                 ProblemHighlightType.WEAK_WARNING,
                 NamedReplacementFix(
                     "Replace with array of primitives",
-                    if (of) "${elTypeName.toLowerCase(Locale.ROOT)}ArrayOf" else "${elTypeName}Array"
+                    if (of) "${elTypeName.lowercase(Locale.ROOT)}ArrayOf" else "${elTypeName}Array"
                 ),
             )
         }

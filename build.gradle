@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 import java.nio.file.Files
 import java.util.stream.Collectors
 import java.util.stream.Stream
@@ -30,7 +32,7 @@ compileJava {
     targetCompatibility = '11'
     sourceCompatibility = '11'
 }
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+tasks.withType(KotlinCompile).all {
     kotlinOptions {
         jvmTarget = "11"
         languageVersion = "1.5"

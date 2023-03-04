@@ -68,7 +68,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
 
             val replacements = if (isStandardViewProperty(args) && argIndices.all { i -> args[i].sourcePsi != null })
                 argIndices.mapNullize { argIndex ->
-                    args[argIndex].evaluateString()?.let { VIEW_PROPERTY_FIXES[it.decapitalize()] }
+                    args[argIndex].evaluateString()?.let { VIEW_PROPERTY_FIXES[it.replaceFirstChar(Char::lowercase)] }
                 } else null
 
 
