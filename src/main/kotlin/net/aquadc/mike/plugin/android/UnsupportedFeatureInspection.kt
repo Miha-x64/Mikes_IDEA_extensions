@@ -11,11 +11,11 @@ import com.intellij.psi.PsiAnonymousClass
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.search.ProjectScope
 import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedLocalQuickFix
+import net.aquadc.mike.plugin.PsiType_INT
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.test
 import org.jetbrains.kotlin.psi.KtClass
@@ -222,6 +222,6 @@ class UnsupportedFeatureInspection : UastInspection() {
             CallMatcher.instanceCall("android.view.View", "setOnClickListener")
                 .parameterTypes("android.view.View.OnClickListener")
 
-        private val INT_ARRAY = PsiPrimitiveType.INT.createArrayType()
+        private val INT_ARRAY = PsiType_INT.createArrayType()
     }
 }
