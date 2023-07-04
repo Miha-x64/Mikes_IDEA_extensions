@@ -6,8 +6,6 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.awt.geom.Path2D;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 // I can see Path_Delegate and PathParser_Delegate, but they are not stable,
 // so I've borrowed these to avoid NoClassDefFoundError,
@@ -108,8 +106,6 @@ public final class PathDelegate {
     ///////////////////////////////////////////////////////////////////////////
     /////////////////////////////// PathParser ////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
-
-    private static final Logger LOGGER = Logger.getLogger("PathParser");
 
     /**
      * Parses {@param pathData} SVG path data sub-paths
@@ -480,9 +476,10 @@ public final class PathDelegate {
         return true;
     }
 
-    private static void drawArc(PathDelegate p, float x0, float y0, float x1, float y1, float a, float b, float theta, boolean isMoreThanHalf, boolean isPositiveArc) {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.log(Level.FINE, "(" + x0 + "," + y0 + ")-(" + x1 + "," + y1 + ") {" + a + " " + b + "}");
+    private static void drawArc(
+            PathDelegate p,
+            float x0, float y0, float x1, float y1, float a, float b, float theta,
+            boolean isMoreThanHalf, boolean isPositiveArc) {
         double thetaD = Math.toRadians(theta);
         double cosTheta = Math.cos(thetaD);
         double sinTheta = Math.sin(thetaD);
@@ -490,64 +487,53 @@ public final class PathDelegate {
         double y0p = ((double)(-x0) * sinTheta + (double)y0 * cosTheta) / (double)b;
         double x1p = ((double)x1 * cosTheta + (double)y1 * sinTheta) / (double)a;
         double y1p = ((double)(-x1) * sinTheta + (double)y1 * cosTheta) / (double)b;
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.log(Level.FINE, "unit space (" + x0p + "," + y0p + ")-(" + x1p + "," + y1p + ")");
         double dx = x0p - x1p;
         double dy = y0p - y1p;
         double xm = (x0p + x1p) / 2.0D;
         double ym = (y0p + y1p) / 2.0D;
         double dsq = dx * dx + dy * dy;
-        if (dsq == 0.0D) {
-            LOGGER.log(Level.FINE, " Points are coincident");
+        if (dsq == 0.0D) // Points are coincident
+            return;
+
+        double disc = 1.0D / dsq - 0.25D;
+        if (disc < 0.0D) {
+            float adjust = (float)(Math.sqrt(dsq) / 1.99999D);
+            drawArc(p, x0, y0, x1, y1, a * adjust, b * adjust, theta, isMoreThanHalf, isPositiveArc);
         } else {
-            double disc = 1.0D / dsq - 0.25D;
-            if (disc < 0.0D) {
-                if (LOGGER.isLoggable(Level.FINE))
-                    LOGGER.log(Level.FINE, "Points are too far apart " + dsq);
-                float adjust = (float)(Math.sqrt(dsq) / 1.99999D);
-                drawArc(p, x0, y0, x1, y1, a * adjust, b * adjust, theta, isMoreThanHalf, isPositiveArc);
+            double s = Math.sqrt(disc);
+            double sdx = s * dx;
+            double sdy = s * dy;
+            double cx;
+            double cy;
+            if (isMoreThanHalf == isPositiveArc) {
+                cx = xm - sdy;
+                cy = ym + sdx;
             } else {
-                double s = Math.sqrt(disc);
-                double sdx = s * dx;
-                double sdy = s * dy;
-                double cx;
-                double cy;
-                if (isMoreThanHalf == isPositiveArc) {
-                    cx = xm - sdy;
-                    cy = ym + sdx;
-                } else {
-                    cx = xm + sdy;
-                    cy = ym - sdx;
-                }
-
-                double eta0 = Math.atan2(y0p - cy, x0p - cx);
-                if (LOGGER.isLoggable(Level.FINE))
-                    LOGGER.log(Level.FINE, "eta0 = Math.atan2( " + (y0p - cy) + " , " + (x0p - cx) + ") = " + Math.toDegrees(eta0));
-                double eta1 = Math.atan2(y1p - cy, x1p - cx);
-                if (LOGGER.isLoggable(Level.FINE))
-                    LOGGER.log(Level.FINE, "eta1 = Math.atan2( " + (y1p - cy) + " , " + (x1p - cx) + ") = " + Math.toDegrees(eta1));
-                double sweep = eta1 - eta0;
-                if (isPositiveArc != sweep >= 0.0D) {
-                    if (sweep > 0.0D) {
-                        sweep -= 6.283185307179586D;
-                    } else {
-                        sweep += 6.283185307179586D;
-                    }
-                }
-
-                cx *= a;
-                cy *= b;
-                double tcx = cx;
-                cx = cx * cosTheta - cy * sinTheta;
-                cy = tcx * sinTheta + cy * cosTheta;
-                if (LOGGER.isLoggable(Level.FINE))
-                    LOGGER.log(Level.FINE, "cx, cy, a, b, x0, y0, thetaD, eta0, sweep = " + cx + " , " + cy + " , " + a + " , " + b + " , " + x0 + " , " + y0 + " , " + Math.toDegrees(thetaD) + " , " + Math.toDegrees(eta0) + " , " + Math.toDegrees(sweep));
-                arcToBezier(p, cx, cy, a, b, x0, y0, thetaD, eta0, sweep);
+                cx = xm + sdy;
+                cy = ym - sdx;
             }
+
+            double eta0 = Math.atan2(y0p - cy, x0p - cx);
+            double eta1 = Math.atan2(y1p - cy, x1p - cx);
+            double sweep = eta1 - eta0;
+            if (isPositiveArc != sweep >= 0.0D) {
+                if (sweep > 0.0D) sweep -= 6.283185307179586D;
+                else sweep += 6.283185307179586D;
+            }
+
+            cx *= a;
+            cy *= b;
+            double tcx = cx;
+            cx = cx * cosTheta - cy * sinTheta;
+            cy = tcx * sinTheta + cy * cosTheta;
+            arcToBezier(p, cx, cy, a, b, x0, y0, thetaD, eta0, sweep);
         }
     }
 
-    private static void arcToBezier(PathDelegate p, double cx, double cy, double a, double b, double e1x, double e1y, double theta, double start, double sweep) {
+    private static void arcToBezier(
+            PathDelegate p,
+            double cx, double cy, double a, double b, double e1x, double e1y, double theta, double start, double sweep
+    ) {
         int numSegments = (int)Math.ceil(Math.abs(sweep * 4.0D / 3.141592653589793D));
         double eta1 = start;
         double cosTheta = Math.cos(theta);

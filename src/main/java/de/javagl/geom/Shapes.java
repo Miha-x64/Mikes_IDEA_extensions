@@ -87,7 +87,7 @@ public class Shapes
     /**
      * Computes the (signed) area enclosed by the given point list.
      * The area will be positive if the points are ordered 
-     * counterclockwise, and and negative if the points are ordered 
+     * counterclockwise, and negative if the points are ordered
      * clockwise.
      *
      * @param points The points
@@ -156,7 +156,7 @@ public class Shapes
      * @return The sub-shapes
      */
     public static List<Shape> computeSubShapes(Shape shape) {
-        List<Shape> result = new ArrayList<Shape>();
+        List<Shape> result = new ArrayList<>();
         PathIterator pi = shape.getPathIterator(null);
         float[] coords = new float[6];
         float[] previous = new float[2];

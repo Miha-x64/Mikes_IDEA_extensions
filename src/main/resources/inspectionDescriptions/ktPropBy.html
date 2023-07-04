@@ -5,7 +5,7 @@
     Property delegation to noinline function(s) causes (reflective) <code>KProperty</code> creation
     which slows down initialization and should be avoided in applications which should start up fast.
 </p>
-
+<!-- tooltip end -->
 <p>
     The fix is either to delegate to inline functions (optimized since Kotlin 1.3.60)
     or to delegate manually.

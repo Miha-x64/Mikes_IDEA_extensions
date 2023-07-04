@@ -70,7 +70,6 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) { // TODO check for broken 
         HashMap(),
     )
 
-    // TODO also check when the path adds nothing to the image
     for (i in paths.indices) {
         paths[i].report(this)
     }

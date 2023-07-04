@@ -4,14 +4,14 @@
 <p>
     Reports allocations which should be cached e. g. Enum.values(), new Gson().
 </p>
-
+<!-- tooltip end -->
 <p>
     Gson instances are heavyweight and expensive to create. It's recommended to use a single instance.
 </p>
 
 <p>
     <code>Enum.values()</code> is internally implemented as <code>return $VALUES.clone();</code>.
-    It's recommended co call <code>values()</code> only once and use this array instance further.
+    It's recommended to call <code>values()</code> only once and use this array instance further.
     Sample:
 </p>
 <pre>
