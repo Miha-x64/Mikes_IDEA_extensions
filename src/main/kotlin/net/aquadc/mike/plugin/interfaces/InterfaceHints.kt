@@ -66,7 +66,7 @@ abstract class InterfaceHintsP(
         get() = "Hints related to interfaces"
     override val previewText: String?
         get() = null
-    /*override*/ fun getCaseDescription(case: ImmediateConfigurable.Case): String? =
+    override fun getCaseDescription(case: ImmediateConfigurable.Case): String? =
         when (case.id) {
             "upcast" -> "When expression is passed to function as a parameter, shows which interface it was upcast to."
             "overr" -> "For overridden methods, shows which interface it came from."
