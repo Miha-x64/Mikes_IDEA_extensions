@@ -12,8 +12,8 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
   <ul>
     <li>Atomic can be replaced with volatile</li>
     <li>Allocation should be cached (Enum.values(), new Gson(), ...)</li>
-    <li>BigDecimal instantiation can be replaced with constant <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
-    <li>BigDecimal.compareTo(ZERO) can be replaced with signum() <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
+    <li><code>BigDecimal|BigInteger</code> instantiation can be replaced with constant <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
+    <li><code>(BigDecimal|BigInteger).compareTo(ZERO)</code> can be replaced with <code>signum()</code> <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
   </ul>
 
   <h3>Kotlin inspections</h3>

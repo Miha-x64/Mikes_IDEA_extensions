@@ -6,8 +6,11 @@ import java.math.BigInteger
 fun bigInts() {
     println(BigDecimal.valueOf(0))
     println(BigInteger.valueOf(0))
+    println(BigInteger.valueOf(2))
     println(BigDecimal("1"))
+    println(BigDecimal("2"))
     println(BigInteger("1"))
+    println(BigInteger("2"))
     println(BigDecimal.ONE.compareTo(BigDecimal.ZERO))
     println(BigInteger.ONE.compareTo(BigInteger.ZERO))
     println(BigDecimal.ONE > BigDecimal.ZERO)
