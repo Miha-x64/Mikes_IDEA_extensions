@@ -42,13 +42,13 @@ class UncachedAllocInspection : UastInspection() {
 
             val ref = when (expr) {
                 is PsiMethodCallExpression ->
-                    if (expr.looksLikeEnumValues || expr.looksLikeGsonBuild) expr.methodExpression.reference else null
+                    if (expr.looksLikeGsonBuild) expr.methodExpression.reference else null
                 is PsiNewExpression ->
                     if (expr.looksLikeNewGson) expr.resolveConstructor() else null
                 is KtCallExpression ->
                     if (expr.typeArguments.isEmpty() && expr.valueArguments.isEmpty() && expr.lambdaArguments.isEmpty())
                         expr.referenceExpression()?.takeIf { rex ->
-                            rex.referencedName.let { it == "values" || it == "Gson" || it == "create" }
+                            rex.referencedName.let { it == "Gson" || it == "create" }
                         }?.mainReference
                     else null
                 else ->
@@ -64,13 +64,12 @@ class UncachedAllocInspection : UastInspection() {
 
             // resolve (b): resolve call expression reference
             val method = ref as? PsiMethod ?: (ref as PsiReference).resolve() ?: return
-            val isEnumVals = method.isJavaEnumValuesMethod || method.isKotlinEnumValuesMethod
-            if (isEnumVals || (method as? PsiMethod)?.let { it.isNewGson || it.isGsonBuild } == true) {
+            if ((method as? PsiMethod)?.let { it.isNewGson || it.isGsonBuild } == true) {
                 holder.registerProblem(holder.manager.createProblemDescriptor(
                     expr, // remember the whole expression (for quickfix) but highlight only the relevant part
                     (expr as? PsiMethodCallExpression)?.methodExpression?.referenceNameElement?.textRangeIn(expr),
                     "This allocation should be cached",
-                    if (isEnumVals) WEAK_WARNING else GENERIC_ERROR_OR_WARNING,
+                    GENERIC_ERROR_OR_WARNING,
                     isOnTheFly,
                     LanguageRefactoringSupport.INSTANCE.forContext(expr)?.introduceConstantHandler?.let {
                         object : IntroduceConstantFix() {
@@ -81,8 +80,6 @@ class UncachedAllocInspection : UastInspection() {
             }
         }
 
-        private val PsiMethodCallExpression.looksLikeEnumValues: Boolean
-            get() = methodExpression.referenceName == "values" && typeArguments.isEmpty() && argumentList.isEmpty
         private val PsiMethodCallExpression.looksLikeGsonBuild: Boolean
             get() = methodExpression.referenceName == "create" && typeArguments.isEmpty() && argumentList.isEmpty
         private val PsiNewExpression.looksLikeNewGson: Boolean
@@ -97,13 +94,6 @@ class UncachedAllocInspection : UastInspection() {
             get() = this is KtProperty &&
                     valOrVarKeyword.let { it is TreeElement && it.elementType == KtTokens.VAL_KEYWORD } &&
                     parent.let { it is KtFile || it is KtClassBody && it.parent is KtObjectDeclaration }
-
-
-        private val PsiElement.isJavaEnumValuesMethod: Boolean
-            get() = this is PsiMethod && containingClass?.isEnum == true && hasModifierProperty(PsiModifier.STATIC)
-
-        private val PsiElement.isKotlinEnumValuesMethod: Boolean
-            get() = /* wtf?! */ this is KtClass && isEnum()
 
         private val PsiMethod.isNewGson: Boolean
             get() = isConstructor &&
