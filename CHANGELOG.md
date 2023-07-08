@@ -3,6 +3,7 @@
     <li><code>BigDecimal|BigInteger</code> constant inspection: full number parsing (e.g. "0" = "0000.0000" = "0e10") and Java 9's <code>BigInteger.TWO</code> constant support</li>
     <li>Removed “Nullable argument to string concatenation” because of false-positives</li>
     <li>Stopped reporting <code>AnyEnum.values()</code> calls in non-static context, leave this to Kotlin team and their new <code>AnyEnum.entries</code> feature</li>
+    <li>Reporting <code>new OkHttpClient()</code> in “Allocation should be cached” inspection (and not reporting <code>Gson.Builder()</code>, it could be configured somehow)</li>
   </ul>
 
 ### 0.28

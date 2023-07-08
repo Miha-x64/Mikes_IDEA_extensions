@@ -1,22 +1,33 @@
 package net.aquadc.mike.plugin.memory
 
-import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR_OR_WARNING
-import com.intellij.codeInspection.ProblemHighlightType.WEAK_WARNING
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.LanguageRefactoringSupport
-import com.intellij.psi.*
+import com.intellij.psi.PsiClassInitializer
+import com.intellij.psi.PsiConstructorCall
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiModifier
+import com.intellij.psi.PsiNewExpression
+import com.intellij.psi.PsiReference
 import com.intellij.psi.impl.source.tree.TreeElement
 import com.intellij.refactoring.RefactoringActionHandler
 import com.siyeh.ig.fixes.IntroduceConstantFix
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
-import org.jetbrains.kotlin.idea.util.textRangeIn
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClassBody
+import org.jetbrains.kotlin.psi.KtClassInitializer
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.getContainingUClass
+import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 /**
@@ -35,22 +46,21 @@ class UncachedAllocInspection : UastInspection() {
 
         private fun checkExpression(expr: PsiElement) {
             // skip static/object/file field/property declarations
-            if (expr.getParentOfType<PsiField>(true)?.isStaticFinalField == true ||
+            if (expr.getParentOfType<PsiField>(true)?.isStaticFinal == true ||
                 expr.getParentOfType<KtProperty>(true)?.isFileOrObjVal == true) {
                 return
             }
 
             val ref = when (expr) {
-                is PsiMethodCallExpression ->
-                    if (expr.looksLikeGsonBuild) expr.methodExpression.reference else null
                 is PsiNewExpression ->
-                    if (expr.looksLikeNewGson) expr.resolveConstructor() else null
+                    expr.takeIf {
+                        it.noTypeOrValueArguments &&
+                            it.classReference?.referenceName in unqualifiedNoArgConstructors
+                    }
                 is KtCallExpression ->
-                    if (expr.typeArguments.isEmpty() && expr.valueArguments.isEmpty() && expr.lambdaArguments.isEmpty())
-                        expr.referenceExpression()?.takeIf { rex ->
-                            rex.referencedName.let { it == "Gson" || it == "create" }
-                        }?.mainReference
-                    else null
+                    expr.takeIf { it.noTypeOrValueArguments }?.referenceExpression()
+                        ?.takeIf { rex -> rex.referencedName in unqualifiedNoArgConstructors }
+                        ?.mainReference
                 else ->
                     null
             } ?: return
@@ -63,48 +73,51 @@ class UncachedAllocInspection : UastInspection() {
             ) return
 
             // resolve (b): resolve call expression reference
-            val method = ref as? PsiMethod ?: (ref as PsiReference).resolve() ?: return
-            if ((method as? PsiMethod)?.let { it.isNewGson || it.isGsonBuild } == true) {
-                holder.registerProblem(holder.manager.createProblemDescriptor(
+            val method = when (ref) {
+                is PsiConstructorCall -> ref.resolveConstructor()
+                is PsiReference -> ref.resolve()
+                else -> throw AssertionError("unexpected $ref | ${ref.javaClass}")
+            } ?: return
+
+            if (method.toUElementOfType<UMethod>()?.let {
+                it.isConstructorWithoutTypeOrValueParameters &&
+                    it.getContainingUClass()?.qualifiedName in noArgConstructors
+            } == true) {
+                holder.registerProblem(
                     expr, // remember the whole expression (for quickfix) but highlight only the relevant part
-                    (expr as? PsiMethodCallExpression)?.methodExpression?.referenceNameElement?.textRangeIn(expr),
                     "This allocation should be cached",
-                    GENERIC_ERROR_OR_WARNING,
-                    isOnTheFly,
                     LanguageRefactoringSupport.INSTANCE.forContext(expr)?.introduceConstantHandler?.let {
                         object : IntroduceConstantFix() {
                             override fun getHandler(): RefactoringActionHandler = it
                         }
                     }
-                ))
+                )
             }
         }
 
-        private val PsiMethodCallExpression.looksLikeGsonBuild: Boolean
-            get() = methodExpression.referenceName == "create" && typeArguments.isEmpty() && argumentList.isEmpty
-        private val PsiNewExpression.looksLikeNewGson: Boolean
-            get() = typeArguments.isEmpty() && argumentList.let { it == null || it.isEmpty } &&
-                    classReference.let { it != null && it.referenceName == "Gson" }
+        private val PsiField.isStaticFinal: Boolean
+            get() = hasModifierProperty(PsiModifier.STATIC) && hasModifierProperty(PsiModifier.FINAL)
+
+        private val KtProperty.isFileOrObjVal: Boolean
+            get() = valOrVarKeyword.let { it is TreeElement && it.elementType == KtTokens.VAL_KEYWORD } &&
+                parent.let { it is KtFile || it is KtClassBody && it.parent is KtObjectDeclaration }
 
 
-        private val PsiElement.isStaticFinalField: Boolean
-            get() = this is PsiField && hasModifierProperty(PsiModifier.STATIC) && hasModifierProperty(PsiModifier.FINAL)
+        private val PsiNewExpression.noTypeOrValueArguments: Boolean
+            get() = typeArguments.isEmpty() && argumentList?.isEmpty != false
 
-        private val PsiElement.isFileOrObjVal: Boolean
-            get() = this is KtProperty &&
-                    valOrVarKeyword.let { it is TreeElement && it.elementType == KtTokens.VAL_KEYWORD } &&
-                    parent.let { it is KtFile || it is KtClassBody && it.parent is KtObjectDeclaration }
+        private val KtCallExpression.noTypeOrValueArguments: Boolean
+            get() = typeArguments.isEmpty() && valueArguments.isEmpty() && lambdaArguments.isEmpty()
 
-        private val PsiMethod.isNewGson: Boolean
-            get() = isConstructor &&
-                    containingClass?.qualifiedName == "com.google.gson.Gson" &&
-                    typeParameters.isEmpty() && parameterList.isEmpty
-        private val PsiMethod.isGsonBuild: Boolean
-            get() = !hasModifierProperty(PsiModifier.STATIC) &&
-                    containingClass?.qualifiedName == "com.google.gson.GsonBuilder" &&
-                    name == "create" &&
-                    typeParameters.isEmpty() && parameterList.isEmpty
 
+        private val UMethod.isConstructorWithoutTypeOrValueParameters: Boolean
+            get() = isConstructor && uastParameters.isEmpty() && !hasTypeParameters()
+
+    }
+
+    companion object {
+        private val noArgConstructors = listOf("com.google.gson.Gson", "okhttp3.OkHttpClient")
+        private val unqualifiedNoArgConstructors = noArgConstructors.map { it.substring(it.lastIndexOf('.') + 1) }
     }
 
 }
