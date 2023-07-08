@@ -1,6 +1,7 @@
 ### 0.29
   <ul>
     <li><code>BigDecimal|BigInteger</code> constant inspection: full number parsing (e.g. "0" = "0000.0000" = "0e10") and Java 9's <code>BigInteger.TWO</code> constant support</li>
+    <li>Removed “Nullable argument to string concatenation” because of false-positives</li>
   </ul>
 
 ### 0.28

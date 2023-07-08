@@ -23,7 +23,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Inline function leaks anonymous declaration which will be inlined to the call-site if called from another module</li>
     <li>Anonymous function won't be inlined;
       function cannot be inlined if it is a receiver of an extension function</li>
-    <li>Nullable argument to string concatenation</li>
+    <li><del>Nullable argument to string concatenation</del> <i>should be re-implemented in more reliable way</i></li>
     <li>Boxed primitive array allocation</li>
   </ul>
 

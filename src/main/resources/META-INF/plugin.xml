@@ -47,13 +47,6 @@
 
         <localInspection
             language="kotlin"
-            shortName="ktConcatNullable" displayName="Nullable argument to string concatenation"
-            groupPath="Kotlin" groupName="Probable bugs"
-            enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.kotlin.ConcatNullable" />
-
-        <localInspection
-            language="kotlin"
             shortName="ktInlineFunctionLeaksAnonymous" displayName="Inline function leaks anonymous declaration"
             groupPath="Kotlin" groupName="Performance"
             enabledByDefault="true" level="WARNING"
