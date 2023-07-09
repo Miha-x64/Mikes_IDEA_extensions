@@ -2,38 +2,14 @@
 <body>
 
 <p>
-    Reports allocations which should be cached e. g. Enum.values(), new Gson().
+    Reports allocations which should be cached because all such instances are equal,
+    like <code>new Gson()</code>, <code>new OkHttpClient()</code>.
 </p>
 <!-- tooltip end -->
 <p>
-    Gson instances are heavyweight and expensive to create. It's recommended to use a single instance.
+    These instances are heavyweight and expensive to create.
+    It's recommended to use a single instance.
 </p>
-
-<p>
-    <code>Enum.values()</code> is internally implemented as <code>return $VALUES.clone();</code>.
-    It's recommended to call <code>values()</code> only once and use this array instance further.
-    Sample:
-</p>
-<pre>
-    private static final ThisEnum[] VALS = values();
-
-    /**
-     * Number of available enum constants.
-     * @see #valueAt
-     */
-    public static final int THIS_ENUM_COUNT = VALS.length;
-
-    /**
-     * Returns enum constant at the given index.
-     * @param index must be in [0; THIS_ENUM_COUNT)
-     * @return enum constant at the given index
-     * @throws ArrayIndexOutOfBoundsException for wrong indices
-     * @see #THIS_ENUM_COUNT
-     */
-    public static ThisEnum valueAt(int index) {
-        return VALS[index];
-    }
-</pre>
 
 <p><small>The inspection is provided by <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Mike's IDEA Extensions</a>.</small></p>
 
