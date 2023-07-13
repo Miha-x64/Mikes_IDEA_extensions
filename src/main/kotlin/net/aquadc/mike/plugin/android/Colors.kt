@@ -211,7 +211,12 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
     }
 
     private val PsiElement.firstLeaf get(): PsiElement = firstChild?.firstLeaf ?: this
-    private inline val Int.worthPreviewing get() = (this ushr 24) > 0x27 || this == 0
+
+    /**
+     * Avoids previewing too transparent colors. The threshold is typical Ripple alpha, around 0x19..0x20.
+     * TRANSPARENT (0x00000000) is always previewed.
+     */
+    private inline val Int.worthPreviewing get() = (this ushr 24) >= 0x19 || this == 0
 
     private class ColorIcon(
         private val sharedBounds: RoundRectangle2D.Float,

@@ -4,6 +4,7 @@
     <li>Removed “Nullable argument to string concatenation” because of false-positives</li>
     <li>Stopped reporting <code>AnyEnum.values()</code> calls in non-static context, leave this to Kotlin team and their new <code>AnyEnum.entries</code> feature</li>
     <li>Reporting <code>new OkHttpClient()</code> in “Allocation should be cached” inspection (and not reporting <code>Gson.Builder()</code>, it could be configured somehow)</li>
+    <li>Previewing even less opaque colors, >= 0x19 instead of > 0x27, useful for Ripple</li>
   </ul>
 
 ### 0.28
