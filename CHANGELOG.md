@@ -7,6 +7,7 @@
     <li>Previewing even less opaque colors, >= 0x19 instead of > 0x27, useful for Ripple</li>
     <li>Don't showing useless interface hints for anonymous classes</li>
     <li>Reporting heavyweight property delegation for <code>var</code>s, not only <code>val</code>s</li>
+    <li>Stop logging errors on <code>R.styleable</code> when trying to find un-sorted styled attributes</li>
   </ul>
 
 ### 0.28

@@ -18,6 +18,7 @@ import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.PsiType_INT
 import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.test
+import org.jetbrains.android.augment.ResourceLightField
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
@@ -116,7 +117,7 @@ class UnsupportedFeatureInspection : UastInspection() {
             if (declaringClassFqn == "android.content.Context" && method == "obtainStyledAttributes") {
                 val attrs = (args.singleOrNull() ?: args.getOrNull(1) ?: return)
                 attrs.intArrayElementExpressions()?.takeIf { it.size > 1 }?.let { attrExprs ->
-                    val attrValues = attrExprs.evaluateIntElements()
+                    val attrValues = attrExprs.evaluateIntElements() //^ 0..1-sized arrays are always sorted
                     var prev = attrValues.first()
                     if (prev != Long.MIN_VALUE) {
                         for (i in 1 until attrValues.size) {
@@ -175,7 +176,8 @@ class UnsupportedFeatureInspection : UastInspection() {
                         }
 
                     is UReferenceExpression -> {
-                        val srcRef = expr.resolve()
+                        val srcRef = expr.resolve() ?: return null // IDK WTF is this
+                        if (srcRef is ResourceLightField) return null // trust R.styleable order
                         val referrent = srcRef.toUElement()
                         (referrent as? UVariable)?.uastInitializer
                             ?: ((referrent as? UMethod)?.sourcePsi as? KtProperty)?.initializer

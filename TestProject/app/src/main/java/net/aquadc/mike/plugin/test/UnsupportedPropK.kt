@@ -20,8 +20,9 @@ fun test(context: Context?) {
     context.obtainStyledAttributes(var2).recycle()
     context.obtainStyledAttributes(UnsupportedPropJ.ATTRS).recycle()
     context.obtainStyledAttributes(ATTRS).recycle()
+    context.obtainStyledAttributes(R.styleable.ActionBar).recycle()
 }
-val ATTRS = intArrayOf(android.R.attr.content)
+val ATTRS = intArrayOf(android.R.attr.content, 0)
 @JvmField val ATTRS2 = intArrayOf(android.R.attr.content, 0)
 
 private class SuperVideoView(context: Context?) : VideoView(context)
