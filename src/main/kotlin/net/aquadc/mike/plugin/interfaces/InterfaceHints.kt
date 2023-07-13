@@ -200,7 +200,7 @@ private class InterfaceHintsCollector(
                     .let { null }
             }?.resolve() ?: return
             if (argClass.qualifiedName == "java.lang.Void") return // null as Something
-            argClass.mainInterface?.let { main ->
+            (argClass.mainInterface ?: argClass.takeIf { it.name == null }?.superClass)?.let { main ->
                 if (main == parameterType || main.isInheritor(parameterType, true)) return
             }
             parameterType.typeName?.takeIf { !methodName.contains(it, ignoreCase = true) }?.let { typeName ->

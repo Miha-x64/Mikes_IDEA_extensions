@@ -1,5 +1,10 @@
 @file:Suppress("ktNoinlineFunc", "UNUSED_PARAMETER")
+import android.annotation.SuppressLint
+import android.text.Editable
+import android.text.TextWatcher
+import android.widget.TextView
 import android.widget.Toast
+import com.google.android.material.internal.TextWatcherAdapter
 import java.io.Serializable
 
 
@@ -26,6 +31,9 @@ class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
             lst = emptyList(),
         )
         Toast.makeText(null, null, Toast.LENGTH_LONG).show()
+        TextView(null).addTextChangedListener(
+            @SuppressLint("RestrictedApi") object : TextWatcherAdapter() {}
+        )
     }
 
     override val size: Int
