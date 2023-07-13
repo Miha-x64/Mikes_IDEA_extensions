@@ -3,12 +3,16 @@ package net.aquadc.mike.plugin.test
 
 import kotlin.properties.Delegates
 import kotlin.properties.ReadOnlyProperty
+import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 val a by lazy { "whatever" } // ok
 val b by mapOf("y" to "lulz") // ok
 val c by 1.toByte()
 val d by Delegates.notNull<String>()
+var e by getRWP()
+
+fun getRWP(): ReadWriteProperty<Any?, Unit> = TODO()
 
 operator fun Byte.provideDelegate(thisRef: Any?, prop: KProperty<*>): ReadOnlyProperty<Any?, Byte> {
     TODO()

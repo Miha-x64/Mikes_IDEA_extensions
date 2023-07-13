@@ -4,7 +4,11 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElementVisitor
+import org.jetbrains.kotlin.descriptors.FunctionDescriptor
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.quickfix.AddModifierFix
+import org.jetbrains.kotlin.idea.references.KtDescriptorsBasedReference
+import org.jetbrains.kotlin.idea.search.isPotentiallyOperator
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
@@ -21,7 +25,11 @@ class KtPropByInspection : LocalInspectionTool() {
     ): PsiElementVisitor = object : KtVisitorVoid() {
         override fun visitProperty(property: KtProperty) {
             property.delegate?.let { delegate ->
-                if (delegate.references.any { (it.resolve() as? KtNamedFunction)?.hasModifier(KtTokens.INLINE_KEYWORD) == false }) {
+                if (delegate.references.any {
+                    (it as? KtDescriptorsBasedReference)?.getTargetDescriptors(property.analyze())?.any {
+                        (it as? FunctionDescriptor)?.isInline == false
+                    } == true
+                }) {
                     holder.registerProblem(delegate, TextRange.from(0, 2), "Heavyweight property delegation")
                 }
             }
@@ -37,7 +45,7 @@ class KtPropByInspection : LocalInspectionTool() {
         }
 
         private val KtNamedFunction.isDelegationFunction: Boolean
-            get() = hasModifier(KtTokens.OPERATOR_KEYWORD) && name?.let {
+            get() = isPotentiallyOperator() && name?.let {
                 it == OperatorNameConventions.PROVIDE_DELEGATE.asString() ||
                         it == OperatorNameConventions.GET_VALUE.asString() ||
                         it == OperatorNameConventions.SET_VALUE.asString()
