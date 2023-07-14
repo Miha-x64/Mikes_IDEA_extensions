@@ -8,6 +8,7 @@
     <li>Don't showing useless interface hints for anonymous classes</li>
     <li>Reporting heavyweight property delegation for <code>var</code>s, not only <code>val</code>s</li>
     <li>Stop logging errors on <code>R.styleable</code> when trying to find un-sorted styled attributes</li>
+    <li>Stop reporting empty layer-list on LayerList subclasses like Ripple</li>
   </ul>
 
 ### 0.28

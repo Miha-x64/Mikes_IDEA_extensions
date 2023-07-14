@@ -11,7 +11,8 @@ import net.aquadc.mike.plugin.NamedLocalQuickFix
 
 internal fun ProblemsHolder.checkDrawableTag(tag: XmlTag) {
     when (tag.name) {
-        "layer-list", "transition", "ripple" -> checkLayerList(tag)
+        "layer-list" -> checkLayerList(tag)
+        "transition", "ripple", "level-list", "animation-list" -> checkItems(tag)
         "inset" -> checkInset(tag)
         "shape" -> checkShape(tag)
         "vector" -> checkVector(tag)
@@ -19,7 +20,6 @@ internal fun ProblemsHolder.checkDrawableTag(tag: XmlTag) {
             tag.findAaptAttrTag("drawable")?.let(this::checkWrapper) // <aapt:attr name="android:drawable">
         "clip", "scale", "rotate" -> checkWrapper(tag)
         "selector", "animated-selector" -> checkSelector(tag)
-        "level-list", "animation-list" -> checkItems(tag)
         "adaptive-icon" ->
             tag.subTags.forEach {
                 if (it.name == "background" || it.name == "foreground")
