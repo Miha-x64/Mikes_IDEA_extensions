@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/Miha-x64/Mikes_IDEA_extensions">
 
     <id>net.aquadc.mike.plugin</id>
-    <name>Mike's IDEA Extensions</name>
+    <name>Mike's IDE Extensions</name>
     <category>Inspection</category>
     <category>Editor</category>
     <category>Android</category>
