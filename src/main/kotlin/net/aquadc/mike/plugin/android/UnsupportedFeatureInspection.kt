@@ -11,6 +11,7 @@ import com.intellij.psi.PsiAnonymousClass
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiTypeParameter
 import com.intellij.psi.search.ProjectScope
 import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.FunctionCallVisitor
@@ -196,7 +197,8 @@ class UnsupportedFeatureInspection : UastInspection() {
 
         override fun visitClass(node: UClass): Boolean {
             node.sourcePsi?.let { src ->
-                if (node.javaPsi.isDrawable() &&
+                if (src !is PsiTypeParameter && // <T extends Drawable> void lol() {}
+                    node.javaPsi.isDrawable() &&
                     node.methods.none { it.name == "getConstantState" && it.uastParameters.isEmpty() }
                 ) {
                     holder.registerProblem(

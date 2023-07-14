@@ -1,3 +1,4 @@
+@file:Suppress("unused", "OVERRIDE_DEPRECATION")
 package net.aquadc.mike.plugin.test
 
 import android.graphics.Canvas
@@ -23,4 +24,6 @@ class DrwblK : Drawable() {
     private val anon = object : ColorDrawable() {
         
     }
+
+    fun <T : Drawable> neverGetsTriggered() {}
 }

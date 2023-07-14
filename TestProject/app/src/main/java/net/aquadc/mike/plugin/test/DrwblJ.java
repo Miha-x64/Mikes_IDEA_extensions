@@ -2,6 +2,7 @@ package net.aquadc.mike.plugin.test;
 
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
+import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import androidx.annotation.NonNull;
@@ -27,7 +28,9 @@ public class DrwblJ extends ColorDrawable {
 
         @Override
         public int getOpacity() {
-            return 0;
+            return PixelFormat.UNKNOWN;
         }
     };
+
+    <T extends Drawable> void pleaseDontTrigger() {}
 }

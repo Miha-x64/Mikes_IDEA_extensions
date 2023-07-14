@@ -9,6 +9,7 @@
     <li>Reporting heavyweight property delegation for <code>var</code>s, not only <code>val</code>s</li>
     <li>Stop logging errors on <code>R.styleable</code> when trying to find un-sorted styled attributes</li>
     <li>Stop reporting empty layer-list on LayerList subclasses like Ripple</li>
+    <li>Stop reporting absent <code>getConstantState()</code> for Java type variables</li>
   </ul>
 
 ### 0.28
