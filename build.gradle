@@ -6,7 +6,7 @@ import java.util.stream.Stream
 
 plugins {
     id 'org.jetbrains.intellij' version '1.14.2'
-    id 'org.jetbrains.kotlin.jvm' version "1.8.22"
+    id 'org.jetbrains.kotlin.jvm' version "1.9.0"
 }
 
 def pluginVersion = '0.30'
@@ -19,7 +19,6 @@ repositories {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
@@ -29,13 +28,13 @@ intellij {
     updateSinceUntilBuild = true
 }
 compileJava {
-    targetCompatibility = '11'
-    sourceCompatibility = '11'
+    targetCompatibility = '17'
+    sourceCompatibility = '17'
 }
 tasks.withType(KotlinCompile).all {
     kotlinOptions {
-        jvmTarget = "11"
-        languageVersion = "1.5"
+        jvmTarget = "17"
+        languageVersion = "1.6"
         freeCompilerArgs += '-Xjvm-default=all'
     }
 }

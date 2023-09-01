@@ -54,7 +54,7 @@ class BadCyrillicRegexp : LocalInspectionTool() {
                 .also { when (upper) {
                     true -> it.append("&&").append("\\p{IsUppercase}")
                     false -> it.append("&&").append("\\p{IsLowercase}")
-                    // null -> do nothing
+                    null -> { /* do nothing */ }
                 } }
                 .append(badRegexp, end, badRegexp.length)
                 .toString()
