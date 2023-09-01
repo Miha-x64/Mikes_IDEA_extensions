@@ -1,6 +1,7 @@
 
 ### 0.30
   <ul>
+    <li>Fix <code>Color.parseColor("cyan")</code> mistakenly rendered yellow (copy-paste error, he-he)</li>
   </ul>
 
 ### 0.29
