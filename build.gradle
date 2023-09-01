@@ -9,7 +9,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version "1.8.22"
 }
 
-def pluginVersion = '0.29'
+def pluginVersion = '0.30'
 
 group 'net.aquadc.mike'
 version pluginVersion
