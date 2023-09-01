@@ -79,19 +79,19 @@ internal object MarginsPaddings {
                 MARGINS, LEFT, TOP, RIGHT, BOTTOM, START, END, HORIZONTAL, VERTICAL,
             )
         else {
-            val badH = maHor != null && maybeReport(
+            val badHr = maHor != null && maybeReport(
                 holder, isOnTheFly, tmp, " is overridden by '${MARGINS[HORIZONTAL]}'", LIKE_UNUSED_SYMBOL,
                 MARGINS, LEFT, RIGHT, START, END,
             )
-            val badV = maVer != null && maybeReport(
+            val badVe = maVer != null && maybeReport(
                 holder, isOnTheFly, tmp, " is overridden by '${MARGINS[VERTICAL]}'", LIKE_UNUSED_SYMBOL,
                 MARGINS, TOP, BOTTOM,
             )
-            if (badH || badV || !maybeMerge(holder, tmp, MARGINS, minSdk, HORIZONTAL, VERTICAL, ALL)) {
-                badH || maybeMerge(holder, tmp, MARGINS, minSdk, START, END, HORIZONTAL) ||
+            if (badHr || badVe || !maybeMerge(holder, tmp, MARGINS, minSdk, HORIZONTAL, VERTICAL, ALL)) {
+                badHr || maybeMerge(holder, tmp, MARGINS, minSdk, START, END, HORIZONTAL) ||
                         maybeMerge(holder, tmp, MARGINS, minSdk, LEFT, RIGHT, HORIZONTAL)
 
-                badV || maybeMerge(holder, tmp, MARGINS, minSdk, TOP, BOTTOM, VERTICAL)
+                badVe || maybeMerge(holder, tmp, MARGINS, minSdk, TOP, BOTTOM, VERTICAL)
             }
         }
 

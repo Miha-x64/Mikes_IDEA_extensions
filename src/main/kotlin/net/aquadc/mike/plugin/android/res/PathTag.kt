@@ -126,7 +126,7 @@ internal class PathTag private constructor(
 
         /** Handles intersections which can lead to “donut holes” and invert the whole sub-path meaning. */
         private fun merge(
-            paths: SmartList<Path2D.Float>, pathStarts: IntArrayList?, endPositions: FloatArrayList?, /*TODO*/evenOdd: Boolean,
+            paths: SmartList<Path2D.Float>, pathStarts: IntArrayList?, endPositions: FloatArrayList?, /*TODO*/ @Suppress("UNUSED_PARAMETER") evenOdd: Boolean,
         ): Triple<ArrayList<IntArrayList>?, ArrayList<FloatArrayList>?, ArrayList<FloatArrayList>?> {
             val areas = paths.mapTo(ArrayList(), ::Area)
             val ranges: ArrayList<IntArrayList>? = ranges(pathStarts, paths)

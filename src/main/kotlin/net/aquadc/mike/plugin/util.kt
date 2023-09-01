@@ -331,11 +331,11 @@ inline fun <T> Array<out T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     if (iof < 0) return emptyList()
     var i = iof + 1
     while (i < size) {
-        val el = this[i++]
+        var el = this[i++]
         if (predicate(el)) {
             val out = alOf(iof, i-1)
             while (i < size) {
-                val el = this[i++]
+                el = this[i++]
                 if (predicate(el)) out.add(el)
             }
             return out
@@ -353,11 +353,11 @@ inline fun <T> List<T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     if (iof < 0) return emptyList()
     var i = iof + 1
     while (i < size) {
-        val el = this[i++]
+        var el = this[i++]
         if (predicate(el)) {
             val out = alOf(iof, i-1)
             while (i < size) {
-                val el = this[i++]
+                el = this[i++]
                 if (predicate(el)) out.add(el)
             }
             return out
