@@ -2,6 +2,7 @@
 ### 0.30
   <ul>
     <li>Fix <code>Color.parseColor("cyan")</code> mistakenly rendered yellow (copy-paste error, he-he)</li>
+    <li>Report that <code>&lt;layer-list>&lt;item android:gravity></code> requires API 23</li>
   </ul>
 
 ### 0.29

@@ -31,6 +31,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
   <ul>
     <li><code>&lt;include layout="?themeAttribute"&gt;</code> requires Marshmallow</li>
     <li><code>&lt;drawable android:tint&gt;</code> requires Lollipop</li>
+    <li><code>&lt;layer-list>&lt;item android:gravity&gt;</code> requires Marshmallow</li>
     <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
     <li>Use of reflective <code>ObjectAnimator</code>/<code>PropertyValuesHolder</code></li>
     <li>Use of attributes like <code>android.R.attr.enabled</code> in context where state attributes expected, like <code>android.R.attr.state_enabled</code></li>
