@@ -14,6 +14,7 @@ import com.intellij.lang.ASTNode
 import com.intellij.lang.folding.FoldingBuilderEx
 import com.intellij.lang.folding.FoldingDescriptor
 import com.intellij.lang.java.JavaLanguage
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.RawText
@@ -42,7 +43,6 @@ import net.aquadc.mike.plugin.UastInspection
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
-import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtConstantExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
@@ -108,20 +108,17 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
             }
         }
     }
-
-    private companion object {
-        private val colorConstantNames = arrayOf(
-            "BLACK", "DKGRAY", "GRAY", "LTGRAY",
-            "WHITE", "RED", "GREEN", "BLUE",
-            "YELLOW", "CYAN", "MAGENTA", "TRANSPARENT",
-        )
-        private val colorConstantValues = intArrayOf(
-            0xFF000000.toInt(), 0xFF444444.toInt(), 0xFF888888.toInt(), 0xFFCCCCCC.toInt(),
-            0xFFFFFFFF.toInt(), 0xFFFF0000.toInt(), 0xFF00FF00.toInt(), 0xFF0000FF.toInt(),
-            0xFFFFFF00.toInt(), 0xFF00FFFF.toInt(), 0xFFFF00FF.toInt(), 0x00000000,
-        )
-    }
 }
+private val colorConstantNames = arrayOf(
+    "BLACK", "DKGRAY", "GRAY", "LTGRAY",
+    "WHITE", "RED", "GREEN", "BLUE",
+    "YELLOW", "CYAN", "MAGENTA", "TRANSPARENT",
+)
+private val colorConstantValues = intArrayOf(
+    0xFF000000.toInt(), 0xFF444444.toInt(), 0xFF888888.toInt(), 0xFFCCCCCC.toInt(),
+    0xFFFFFFFF.toInt(), 0xFFFF0000.toInt(), 0xFF00FF00.toInt(), 0xFF0000FF.toInt(),
+    0xFFFFFF00.toInt(), 0xFF00FFFF.toInt(), 0xFFFF00FF.toInt(), 0x00000000,
+)
 
 /**
  * @author Mike Gorünóv
@@ -196,13 +193,13 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
                 val postfix =
                     if ((color ushr 24) > 0x7f) TO_INT_POSTFIX else ByteArrays.EMPTY_ARRAY
                 expr.replace(
-                    KtPsiFactory(elt).createExpression(
+                    KtPsiFactory(elt.project).createExpression(
                         color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, postfix),
                     )
                 )
             } else if (expr is KtStringTemplateExpression) {
                 expr.replace(
-                    KtPsiFactory(elt).createExpression(
+                    KtPsiFactory(elt.project).createExpression(
                         color.toPaddedUpperHex(color.opaque6translucent8, "\"#".toByteArray(), "\"".toByteArray()),
                     )
                 )
@@ -210,6 +207,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
         }
     }
 
+    @Suppress("RecursivePropertyAccessor") // as designed
     private val PsiElement.firstLeaf get(): PsiElement = firstChild?.firstLeaf ?: this
 
     /**

@@ -101,7 +101,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                         ) else if (lang == Kotlin) CodeStyleManager.getInstance(call.project).reformat(
                             ShortenRefs.process(
                                 (call.parent as? KtDotQualifiedExpression ?: call).replace(
-                                    KtPsiFactory(call).createExpression(TView + '.' + replacements.single())
+                                    KtPsiFactory(call.project).createExpression(TView + '.' + replacements.single())
                                 ) as KtElement
                             )
                         )
@@ -114,7 +114,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                                 }
                             }
                         } else if (lang == Kotlin) {
-                            val kt = KtPsiFactory(call as KtElement)
+                            val kt = KtPsiFactory((call as KtElement).project)
                             argIndices.forEachIndexed { i, argIdx ->
                                 val replacement = replacements[i]
                                 wrapULiteral(args[argIdx]).sourcePsi?.replace(
@@ -132,7 +132,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                                 )
                             } else if (lang == Kotlin) {
                                 (call as KtCallExpression).calleeExpression
-                                    ?.replace(KtPsiFactory(call).createExpression(replaceMethodWith))
+                                    ?.replace(KtPsiFactory(call.project).createExpression(replaceMethodWith))
                             }
                         }
                     }

@@ -5,7 +5,7 @@ import java.util.stream.Collectors
 import java.util.stream.Stream
 
 plugins {
-    id 'org.jetbrains.intellij' version '1.14.2'
+    id 'org.jetbrains.intellij' version '1.15.0'
     id 'org.jetbrains.kotlin.jvm' version "1.9.0"
 }
 
@@ -23,7 +23,7 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version = '2022.2.4' // https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html
+    version = '2022.3.1' // https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html
     plugins = ['java', 'Kotlin', 'android']
     updateSinceUntilBuild = true
 }
@@ -34,7 +34,7 @@ compileJava {
 tasks.withType(KotlinCompile).all {
     kotlinOptions {
         jvmTarget = "17"
-        languageVersion = "1.6"
+        languageVersion = "1.7"
         freeCompilerArgs += '-Xjvm-default=all'
     }
 }

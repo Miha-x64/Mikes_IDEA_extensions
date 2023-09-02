@@ -15,9 +15,9 @@ import com.intellij.util.SmartList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import net.aquadc.mike.plugin.not
 import org.jetbrains.kotlin.idea.KotlinFileType
+import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.nj2k.postProcessing.resolve
 import org.jetbrains.kotlin.psi.psiUtil.siblings
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtProperty
@@ -37,7 +37,7 @@ class BackingPropertyFolding : FoldingBuilderEx() {
             override fun visitProperty(property: KtProperty) {
                 val propName = property.takeIf { !it.isLocal && it.isPublic && it.initializer == null }?.name ?: return
                 val backing =
-                    ((property.getter?.bodyExpression as? KtReferenceExpression)?.resolve() as? KtProperty)
+                    ((property.getter?.bodyExpression as? KtReferenceExpression)?.mainReference?.resolve() as? KtProperty)
                         ?.takeIf { it.hasModifier(KtTokens.PRIVATE_KEYWORD) && it.parent == property.parent }
                         ?: return
                 val backingName = backing.name?.takeIf { it.contains(propName, ignoreCase = true) } ?: return

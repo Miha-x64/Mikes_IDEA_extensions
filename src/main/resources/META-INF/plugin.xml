@@ -92,7 +92,7 @@
         <!--TODO errorHandler implementation="" / -->
 
         <!-- SVG pathData live templates -->
-        <liveTemplateContext implementation="net.aquadc.mike.plugin.svg.SvgPathDataContext" />
+        <liveTemplateContext implementation="net.aquadc.mike.plugin.svg.SvgPathDataContext" contextId="text/svg+xml; context=pathData" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MultiplyMacro" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MinMacro" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.AddMacro" />

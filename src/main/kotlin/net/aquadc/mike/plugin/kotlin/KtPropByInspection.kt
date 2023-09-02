@@ -68,7 +68,7 @@ class KtPropByInspection : LocalInspectionTool() {
         // org.jetbrains.kotlin.idea.search.isPotentiallyOperator
         val PsiElement?.isPotentiallyOperator: Boolean
             get() {
-                val namedFunction = safeAs<KtNamedFunction>() ?: return false
+                val namedFunction = this as? KtNamedFunction ?: return false
                 if (namedFunction.hasModifier(KtTokens.OPERATOR_KEYWORD)) return true
                 // operator modifier could be omitted for overriding function
                 if (!namedFunction.hasModifier(KtTokens.OVERRIDE_KEYWORD)) return false

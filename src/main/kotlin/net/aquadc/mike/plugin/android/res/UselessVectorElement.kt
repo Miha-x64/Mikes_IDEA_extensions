@@ -2,7 +2,6 @@ package net.aquadc.mike.plugin.android.res
 
 import com.android.ide.common.resources.ResourceResolver
 import com.android.tools.idea.configurations.ConfigurationManager
-import com.android.tools.idea.util.androidFacet
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
@@ -15,7 +14,7 @@ import com.intellij.psi.xml.XmlText
 import com.intellij.util.SmartList
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
-import org.jetbrains.kotlin.idea.util.module
+import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.plugins.groovy.codeInspection.fixes.RemoveElementQuickFix
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area

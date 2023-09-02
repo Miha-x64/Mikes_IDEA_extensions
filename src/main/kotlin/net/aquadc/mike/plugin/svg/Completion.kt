@@ -74,7 +74,7 @@ internal class SvgExtractMacro : MacroBase("svgExtract", "svgExtract(what)") {
     }
 }
 
-internal class SvgPathDataContext : TemplateContextType("text/svg+xml; context=pathData", "SVG pathData attribute value") {
+internal class SvgPathDataContext : TemplateContextType("SVG pathData attribute value") {
     override fun isInContext(templateActionContext: TemplateActionContext): Boolean =
         !templateActionContext.isSurrounding && (templateActionContext.file as? XmlFile)?.let { file ->
             // TODO detect SVG inside HTML?

@@ -37,10 +37,7 @@ class UnsupportedAttrInspection : LocalInspectionTool() {
                     val attr = attribute.localName
                     attribute.parent.parentTag
                     Crap.shitBunch.firstOrNull { it.test(minSdk, resType, parentTag, tag, attr, attribute) }?.let {
-                        val sdkIdx = Crap.knownSdks.indexOf(it.requiredSdk)
-                        val cries =
-                            /*if (sdkIdx < 0) "support is not implemented"
-                            else*/ "support requires API level ${it.requiredSdk} (current min is $minSdk)"
+                        val cries = "support requires API level ${it.requiredSdk} (current min is $minSdk)"
                         holder.registerProblem(attribute.originalElement, MessageFormat.format(it.message, attr, cries))
                     }
                 }

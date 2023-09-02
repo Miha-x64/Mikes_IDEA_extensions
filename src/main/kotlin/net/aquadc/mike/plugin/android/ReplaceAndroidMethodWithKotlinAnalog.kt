@@ -13,7 +13,7 @@ import com.intellij.psi.util.parentOfType
 import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.register
 import net.aquadc.mike.plugin.test
-import org.jetbrains.kotlin.idea.KotlinBundle
+import org.jetbrains.kotlin.idea.base.resources.KotlinBundle
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -84,7 +84,7 @@ class ReplaceAndroidMethodWithKotlinAnalog : LocalInspectionTool(), CleanupLocal
                         val psi = descriptor.psiElement.parentOfType<KtCallExpression>(withSelf = true)!!
                             .let { it.parent as? KtDotQualifiedExpression ?: it }
                         val expr = CodeStyleManager.getInstance(project).reformat(ShortenReferences.DEFAULT.process(
-                            psi.replace(KtPsiFactory(psi).createExpression(replacement)) as KtExpression
+                            psi.replace(KtPsiFactory((psi as KtExpression).project).createExpression(replacement)) as KtExpression
                         ))
                         (expr.firstChild as? KtParenthesizedExpression)?.let {
                             if (KtPsiUtil.areParenthesesUseless(it))

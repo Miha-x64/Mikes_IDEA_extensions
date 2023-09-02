@@ -27,13 +27,10 @@ class TargetApiInspection : UastInspection(), CleanupLocalInspectionTool {
                 .firstOrNull { it.qualifiedName == "android.annotation.TargetApi" }
                 ?.sourcePsi
                 ?: return
-            holder.registerProblem(
-                psi,
-                "@TargetApi should be replaced with @RequiresApi",
-                psi.annotationText()?.let {
-                    NamedReplacementFix("Replace with @RequiresApi", "@androidx.annotation.RequiresApi($it)")
-                }
-            )
+            val fix = psi.annotationText()?.let {
+                NamedReplacementFix("Replace with @RequiresApi", "@androidx.annotation.RequiresApi($it)")
+            }
+            holder.registerProblem(psi, "@TargetApi should be replaced with @RequiresApi", fix)
         }
 
         private fun PsiElement.annotationText() = when (this) {
