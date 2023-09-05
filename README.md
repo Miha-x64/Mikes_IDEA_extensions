@@ -45,7 +45,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
       </ul>
     </li>
     <li>Android utility methods should be replaced with Kotlin extensions</li>
-    <li><code>setOnClickListener</code> doesn't work in <code>VideoView</code> until SDK26, in <code>RecyclerView</code></li>
+    <li><code>setOnClickListener</code> doesn't work on <code>RecyclerView</code>, on <code>VideoView</code> before API 26</li>
     <li>Kotlin Android Extensions are deprecated</li>
     <li>Drawable subclass should override <code>getConstantState()</code></li>
     <li><code>Activity#onCreate(, PersistableBundle)</code> will highly likely not be called</li>
@@ -56,7 +56,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
   <ul>
     <li>Inlay hints when upcasting to interface, e. g.<br/>putExtra(list<code>as Serializable</code>)</li>
     <li>Inlay hints when overriding an interface method, e. g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
-    <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code>, color picker for Android</li>
+    <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code>, color picker for Android, pasting CSS colors as int literals</li>
     <li>Backing property folding for Kotlin</li>
     <li>Live templates for SVG and Android Vector Drawable pathData</li>
     <li>Live templates for implementing <code>Property</code> for <code>ObjectAnimator</code></li>
