@@ -14,6 +14,7 @@ import com.intellij.psi.xml.XmlText
 import com.intellij.util.SmartList
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
+import net.aquadc.mike.plugin.android.resourceResolver
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.plugins.groovy.codeInspection.fixes.RemoveElementQuickFix
 import java.awt.geom.AffineTransform
@@ -39,7 +40,7 @@ private val inlineGroupFix = object : NamedLocalQuickFix("Inline contents") {
 
 internal fun ProblemsHolder.checkVector(tag: XmlTag) { // TODO check for broken isStateful
     val rr = tag.module?.let {
-        ConfigurationManager.getOrCreateInstance(it).getConfiguration(file.virtualFile).resourceResolver
+        ConfigurationManager.getOrCreateInstance(it).resourceResolver(file.virtualFile)
     }
 
     val maxIntrinsicWidthPx = rr.resolve(tag, "width", ANDROID_NS).toPixels()

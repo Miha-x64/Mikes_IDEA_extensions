@@ -28,7 +28,7 @@ class UnsupportedAttrInspection : LocalInspectionTool() {
         override fun visitFile(file: PsiFile) {
             if (file !is XmlFile) return
             val af = file.androidFacet ?: return
-            val minSdk = af.androidMinSdk()?.apiLevel ?: return
+            val minSdk = af.androidMinSdk?.apiLevel ?: return
             val resType = af.resTypeOf(file)?.takeIf(Crap.resTypes::contains) ?: return
             file.accept(object : XmlRecursiveElementVisitor() {
                 override fun visitXmlAttribute(attribute: XmlAttribute) {

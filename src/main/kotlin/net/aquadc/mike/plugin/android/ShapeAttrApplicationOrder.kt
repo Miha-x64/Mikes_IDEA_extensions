@@ -43,7 +43,7 @@ class ShapeAttrApplicationOrder : UastInspection() {
             declaringClassFqn: String, receiver: UExpression?, methodName: String,
         ) {
             val af = src.containingFile?.androidFacet ?: return
-            if ((af.androidMinSdk()?.apiLevel ?: Int.MAX_VALUE) >= 28) return
+            if ((af.androidMinSdk?.apiLevel ?: Int.MAX_VALUE) >= 28) return
 
             if (kind == UastCallKind.METHOD_CALL &&
                 methodName.let { it == "setCornerRadius" || it == "setCornerRadii" } &&

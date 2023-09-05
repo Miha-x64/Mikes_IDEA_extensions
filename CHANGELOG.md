@@ -3,6 +3,7 @@
   <ul>
     <li>Fix <code>Color.parseColor("cyan")</code> mistakenly rendered yellow (copy-paste error, he-he)</li>
     <li>Report that <code>&lt;layer-list>&lt;item android:gravity></code> requires API 23</li>
+    <li>Android Studio Hedgehog and Iguana compatibility (someone please tell Google that I'm tired with their zoo)</li>
   </ul>
 
 ### 0.29

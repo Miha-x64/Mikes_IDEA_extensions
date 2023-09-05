@@ -97,7 +97,7 @@ class UnsupportedFeatureInspection : UastInspection() {
             return true
         }
         private fun checkListenerSupport(node: UCallExpression, src: PsiElement) {
-            src.containingFile?.androidFacet?.androidMinSdk()?.apiLevel?.takeIf { it < 26 } ?: return
+            src.containingFile?.androidFacet?.androidMinSdk?.apiLevel?.takeIf { it < 26 } ?: return
             val className = (node.receiverType as? PsiClassType)?.resolve()?.qualifiedName ?: return
             if (className == "android.widget.VideoView" && View_setOnClickListener.test(src))
                 holder.registerProblem(
