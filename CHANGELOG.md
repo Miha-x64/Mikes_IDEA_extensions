@@ -1,4 +1,10 @@
 
+### 0.31
+  <ul>
+    <li>Use IntelliJ <code>ColorPicker</code> instead of Android one, resolves <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions/issues/57">#57</a></li>
+    <li>Skip KDoc/comments when folding backing property</li>
+  </ul>
+
 ### 0.30
   <ul>
     <li>Fix <code>Color.parseColor("cyan")</code> mistakenly rendered yellow (copy-paste error, he-he)</li>
