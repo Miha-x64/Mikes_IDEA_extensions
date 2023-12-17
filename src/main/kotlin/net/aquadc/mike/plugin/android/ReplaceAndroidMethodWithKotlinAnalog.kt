@@ -11,7 +11,6 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.util.parentOfType
 import com.siyeh.ig.callMatcher.CallMatcher
-import net.aquadc.mike.plugin.register
 import net.aquadc.mike.plugin.test
 import org.jetbrains.kotlin.idea.base.resources.KotlinBundle
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
@@ -68,7 +67,7 @@ class ReplaceAndroidMethodWithKotlinAnalog : LocalInspectionTool(), CleanupLocal
             }
             else -> null
         }?.let { replacement ->
-            holder.register(
+            holder.registerProblem(
                 call.calleeExpression ?: call,
                 KotlinBundle.message("should.be.replaced.with.kotlin.function"),
                 object : LocalQuickFix {

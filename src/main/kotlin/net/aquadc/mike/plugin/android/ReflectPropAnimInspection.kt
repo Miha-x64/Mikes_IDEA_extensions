@@ -80,7 +80,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                 "Reflective property animation",
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                 holder.isOnTheFly,
-                replacements?.let(::fix)
+                *fixes(replacements?.let { fix(it) })
             ))
 
             return true

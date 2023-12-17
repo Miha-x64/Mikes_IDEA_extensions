@@ -22,6 +22,7 @@ import it.unimi.dsi.fastutil.floats.FloatArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
+import net.aquadc.mike.plugin.fixes
 import net.aquadc.mike.plugin.indexOfFirst
 import net.aquadc.mike.plugin.toInt
 import java.awt.Shape
@@ -240,8 +241,10 @@ internal class PathTag private constructor(
                     if (pathData === rawPathData)
                         TextRange(beginValueAt + tfs.getInt(0), beginValueAt + tfs.getInt(tfs.size - 1))
                     else TextRange.from(beginValueAt, rawPathData.length),
-                    if (isOnTheFly) TrimFix(tfs, "Trim aggressively", usefulPrecision, pathData) else null,
-                    if (canTrimCarefully) TrimFix(tfs, "Trim carefully", usefulPrecision + 1, pathData) else null,
+                    *fixes(
+                        if (isOnTheFly) TrimFix(tfs, "Trim aggressively", usefulPrecision, pathData) else null,
+                        if (canTrimCarefully) TrimFix(tfs, "Trim carefully", usefulPrecision + 1, pathData) else null,
+                    )
                 )
             }
         }
@@ -608,7 +611,7 @@ internal class PathTag private constructor(
                 pathDataAttr, complaint,
                 if (myRanges.size == 2) ProblemHighlightType.LIKE_UNUSED_SYMBOL else ProblemHighlightType.WEAK_WARNING,
                 deadRange,
-                removeSubPathFix(pathDataAttr.value, at, subPathRanges, endPositions, floatRanges),
+                *fixes(removeSubPathFix(pathDataAttr.value, at, subPathRanges, endPositions, floatRanges)),
             )
             true
         }

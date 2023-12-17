@@ -12,6 +12,7 @@ import net.aquadc.mike.plugin.component6
 import net.aquadc.mike.plugin.component7
 import net.aquadc.mike.plugin.component8
 import net.aquadc.mike.plugin.component9
+import net.aquadc.mike.plugin.fixes
 import net.aquadc.mike.plugin.miserlyMap as map
 
 internal object MarginsPaddings {
@@ -151,14 +152,15 @@ internal object MarginsPaddings {
         which1: Int, which2: Int, which3: Int = -1, which4: Int = -1,
         which5: Int = -1, which6: Int = -1, which7: Int = -1, which8: Int = -1,
     ): Boolean = removeAttrFix.takeIf { isOnTheFly || highlight == LIKE_UNUSED_SYMBOL }.let { fix ->
-        (tmp[which1]?.let { holder.registerProblem(it, names[which1] + msg, highlight, fix) } != null) or
-            (tmp[which2]?.let { holder.registerProblem(it, names[which2] + msg, highlight, fix) } != null) or
-            (tmp.getOrNull(which3)?.let { holder.registerProblem(it, names[which3] + msg, highlight, fix) } != null) or
-            (tmp.getOrNull(which4)?.let { holder.registerProblem(it, names[which4] + msg, highlight, fix) } != null) or
-            (tmp.getOrNull(which5)?.let { holder.registerProblem(it, names[which5] + msg, highlight, fix) } != null) or
-            (tmp.getOrNull(which6)?.let { holder.registerProblem(it, names[which6] + msg, highlight, fix) } != null) or
-            (tmp.getOrNull(which7)?.let { holder.registerProblem(it, names[which7] + msg, highlight, fix) } != null) or
-            (tmp.getOrNull(which8)?.let { holder.registerProblem(it, names[which8] + msg, highlight, fix) } != null)
+        val fixes = fixes(fix)
+        (tmp[which1]?.let { holder.registerProblem(it, names[which1] + msg, highlight, *fixes) } != null) or
+            (tmp[which2]?.let { holder.registerProblem(it, names[which2] + msg, highlight, *fixes) } != null) or
+            (tmp.getOrNull(which3)?.let { holder.registerProblem(it, names[which3] + msg, highlight, *fixes) } != null) or
+            (tmp.getOrNull(which4)?.let { holder.registerProblem(it, names[which4] + msg, highlight, *fixes) } != null) or
+            (tmp.getOrNull(which5)?.let { holder.registerProblem(it, names[which5] + msg, highlight, *fixes) } != null) or
+            (tmp.getOrNull(which6)?.let { holder.registerProblem(it, names[which6] + msg, highlight, *fixes) } != null) or
+            (tmp.getOrNull(which7)?.let { holder.registerProblem(it, names[which7] + msg, highlight, *fixes) } != null) or
+            (tmp.getOrNull(which8)?.let { holder.registerProblem(it, names[which8] + msg, highlight, *fixes) } != null)
     }
     private fun maybeMerge(
         holder: ProblemsHolder, tmp: Array<XmlAttribute?>,

@@ -15,8 +15,9 @@ import com.intellij.util.SmartList
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.android.resourceResolver
+import net.aquadc.mike.plugin.fixes
+import org.jetbrains.backported.RemoveElementQuickFix
 import org.jetbrains.kotlin.idea.base.util.module
-import org.jetbrains.plugins.groovy.codeInspection.fixes.RemoveElementQuickFix
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area
 import java.awt.geom.Rectangle2D
@@ -256,7 +257,7 @@ private fun ProblemsHolder.checkClip(
         registerProblem(
             clipTag,
             "The clip-path without pathData makes the whole $parent invisible",
-            removeParentGroupFix, removeTagFix,
+            *fixes(removeParentGroupFix, removeTagFix),
         )
         null
     } else {
@@ -266,7 +267,7 @@ private fun ProblemsHolder.checkClip(
         } else if (clipArea.effectivelyEmpty(usefulPrecision)) {
             registerProblem(
                 clipTag, "The clip-path is empty making the whole $parent invisible",
-                removeParentGroupFix, removeTagFix,
+                *fixes(removeParentGroupFix, removeTagFix),
             )
             null
         } else if (parentClip == null) {
@@ -275,7 +276,7 @@ private fun ProblemsHolder.checkClip(
             registerProblem(
                 clipTag,
                 "The clip-path has empty intersection with inherited clip-path or viewport making the whole $parent invisible",
-                removeParentGroupFix, removeTagFix,
+                *fixes(removeParentGroupFix, removeTagFix),
             )
             null
         } else if (Area(parentClip).also { it.subtract(clipArea) }.effectivelyEmpty(usefulPrecision)) {

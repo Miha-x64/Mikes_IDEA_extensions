@@ -5,7 +5,7 @@ import com.intellij.psi.PsiElement
 import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
-import net.aquadc.mike.plugin.register
+import net.aquadc.mike.plugin.fixes
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UastCallKind
@@ -51,13 +51,13 @@ class WrongStateAttr : UastInspection() {
                         if (absVal !in STATES) {
                             val name = NAMES.getOrNull(COLLISIONS.indexOf(absVal))
                             val subj = name?.let { "android.R.attr.$name" } ?: "0x${absVal.toString(16)}"
-                            holder.register(src, "$subj is not a state", name?.let {
+                            holder.registerProblem(src, "$subj is not a state", *fixes(name?.let {
                                 NamedReplacementFix(
                                     "Replace with a state attribute",
                                     "${if (value < 0) "-" else ""}android.R.attr.state_$name",
                                     shorten = false,
                                 )
-                            })
+                            }))
                         }
                     }
                 }

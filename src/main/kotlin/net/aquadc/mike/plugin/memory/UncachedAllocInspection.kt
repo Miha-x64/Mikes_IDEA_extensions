@@ -13,6 +13,7 @@ import com.intellij.psi.impl.source.tree.TreeElement
 import com.intellij.refactoring.RefactoringActionHandler
 import com.siyeh.ig.fixes.IntroduceConstantFix
 import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.fixes
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -86,11 +87,13 @@ class UncachedAllocInspection : UastInspection() {
                 holder.registerProblem(
                     expr, // remember the whole expression (for quickfix) but highlight only the relevant part
                     "This allocation should be cached",
-                    LanguageRefactoringSupport.INSTANCE.forContext(expr)?.introduceConstantHandler?.let {
-                        object : IntroduceConstantFix() {
-                            override fun getHandler(): RefactoringActionHandler = it
+                    *fixes(
+                        LanguageRefactoringSupport.INSTANCE.forContext(expr)?.introduceConstantHandler?.let {
+                            object : IntroduceConstantFix() {
+                                override fun getHandler(): RefactoringActionHandler = it
+                            }
                         }
-                    }
+                    )
                 )
             }
         }

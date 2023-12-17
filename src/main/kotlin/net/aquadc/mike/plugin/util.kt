@@ -200,9 +200,6 @@ abstract class NamedLocalQuickFix(
     final override fun getFamilyName(): String = _name
 }
 
-fun ProblemsHolder.register(srcPsi: PsiElement, text: String, fix: LocalQuickFix? = null): Unit =
-    if (fix == null) registerProblem(srcPsi, text) else registerProblem(srcPsi, text, fix)
-
 class NamedReplacementFix(
     name: String,
     private val expression: String,
@@ -378,6 +375,27 @@ inline fun <T> Array<out T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     }
     return listOf(this[iof])
 }
+
+fun fixes(f: LocalQuickFix?): Array<LocalQuickFix> =
+    if (f == null) LocalQuickFix.EMPTY_ARRAY else arrayOf(f)
+fun fixes(f1: LocalQuickFix?, f2: LocalQuickFix?): Array<LocalQuickFix> = when {
+    f1 == null && f2 == null -> LocalQuickFix.EMPTY_ARRAY
+    f1 == null -> arrayOf(f2!!)
+    f2 == null -> arrayOf(f1)
+    else -> arrayOf(f1, f2)
+}
+fun fixes(vararg f: LocalQuickFix?): Array<LocalQuickFix> =
+    f.nonNull()
+fun Array<out LocalQuickFix?>.nonNull(): Array<LocalQuickFix> {
+    val count = count { it != null }
+    if (count == 0) return LocalQuickFix.EMPTY_ARRAY
+    val out = arrayOfNulls<LocalQuickFix>(count)
+    var idx = 0
+    forEach { if (it != null) out[idx++] = it }
+    @Suppress("UNCHECKED_CAST")
+    return out as Array<LocalQuickFix>
+}
+
 @PublishedApi internal fun <T> Array<out T>.alOf(first: Int, second: Int): ArrayList<T> =
     ArrayList<T>(min(1 + size - second /* found + left */, 10)).also {
         it.add(this[first])

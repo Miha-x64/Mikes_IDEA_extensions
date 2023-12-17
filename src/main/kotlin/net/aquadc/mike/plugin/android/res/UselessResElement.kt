@@ -20,6 +20,7 @@ import com.intellij.psi.xml.XmlTag
 import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.android.androidMinSdk
 import net.aquadc.mike.plugin.android.resTypeOf
+import net.aquadc.mike.plugin.fixes
 
 /**
  * @author Mike Gorünóv
@@ -80,7 +81,7 @@ internal fun ProblemsHolder.report(
         // < tag-name ...attribute="value" >
         el.firstChild ?: el,
         (el as? XmlTag)?.node?.let { finder.findChild(it)?.psi } ?: el.lastChild ?: el,
-        message, hl, isOnTheFly, fix,
+        message, hl, isOnTheFly, *fixes(fix),
     ))
 }
 

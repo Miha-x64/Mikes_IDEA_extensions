@@ -6,6 +6,7 @@ import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiElement
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.fixes
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -30,7 +31,7 @@ class TargetApiInspection : UastInspection(), CleanupLocalInspectionTool {
             val fix = psi.annotationText()?.let {
                 NamedReplacementFix("Replace with @RequiresApi", "@androidx.annotation.RequiresApi($it)")
             }
-            holder.registerProblem(psi, "@TargetApi should be replaced with @RequiresApi", fix)
+            holder.registerProblem(psi, "@TargetApi should be replaced with @RequiresApi", *fixes(fix))
         }
 
         private fun PsiElement.annotationText() = when (this) {

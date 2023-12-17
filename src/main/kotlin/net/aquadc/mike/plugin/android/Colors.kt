@@ -40,6 +40,7 @@ import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.PsiType_INT
 import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.fixes
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
@@ -100,10 +101,12 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
                 holder.registerProblem(
                     argSrc,
                     "parseColor($literal) should be replaced with $replacement",
-                    const?.let {
-                        NamedReplacementFix("Replace with Color constant", "android.graphics.Color.$it", psi = call)
-                    },
-                    NamedReplacementFix("Replace with int literal", hex, "$hex.toInt()", call),
+                    *fixes(
+                        const?.let {
+                            NamedReplacementFix("Replace with Color constant", "android.graphics.Color.$it", psi = call)
+                        },
+                        NamedReplacementFix("Replace with int literal", hex, "$hex.toInt()", call),
+                    )
                 )
             }
         }
