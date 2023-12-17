@@ -1,7 +1,6 @@
 package net.aquadc.mike.plugin.android
 
 import com.android.tools.idea.kotlin.getQualifiedName
-import com.android.tools.idea.ui.resourcechooser.ColorPicker
 import com.android.utils.SparseArray
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
@@ -32,6 +31,7 @@ import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.impl.source.tree.java.PsiLiteralExpressionImpl.parseStringCharacters
 import com.intellij.psi.util.PsiLiteralUtil.getStringLiteralContent
 import com.intellij.psi.util.parentOfType
+import com.intellij.ui.ColorPicker
 import com.intellij.ui.ColorPickerListener
 import com.intellij.util.SmartList
 import com.siyeh.ig.PsiReplacementUtil
@@ -159,7 +159,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
             { e: MouseEvent, elt: PsiElement ->
                 ColorPicker.showDialog(
                     e.component, "Edit Color", colorInt.toAwtColor(), true,
-                    arrayOf<ColorPickerListener?>(object : ColorPickerListener {
+                    listOf<ColorPickerListener>(object : ColorPickerListener {
                         override fun colorChanged(color: Color) {}
                         override fun closed(color: Color?) {
                             if (color == null || color.rgb == colorInt) return
