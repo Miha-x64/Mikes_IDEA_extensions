@@ -158,7 +158,6 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
         private val MATCHERS_TO_FIXES = arrayOf(
             MatcherToFix(
                 CallMatcher.anyOf(
-                    // TODO detect `propertyName = expression`, too
                     CallMatcher.exactInstanceCall(TObjectAnimator, "setPropertyName").parameterTypes(TString),
                     CallMatcher.exactInstanceCall(TPropValsHolder, "setPropertyName").parameterTypes(TString),
                 ), dontMindArgs, intArrayOf(0) /* raw type, nothing to check */, "setProperty"
