@@ -8,6 +8,9 @@ class Backing {
     private var _yyy = ArrayList<String>()
     val yyy: List<String> get() = _yyy
 
+    /**
+     * Cool property.
+     */
     private var privZzz = ArrayList<String>()
         get() = ArrayList(field)
         set(al) { field = al.filterTo(ArrayList(), String::isNotBlank) }

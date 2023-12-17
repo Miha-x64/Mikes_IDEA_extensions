@@ -50,8 +50,9 @@ class BackingPropertyFolding : FoldingBuilderEx() {
                     ?.text?.let { ": $it" }
                     ?: ""
                 val propSetterVisibility = property.setter?.visibilityModifier()?.text?.plus(' ') ?: ""
+                val propertyStart = (preceding ?: property).children.dropWhile(IS_SPACE).firstOrNull() ?: return // skip KDoc
                 regions.addFoldings(
-                    preceding ?: property,
+                    propertyStart,
                     following ?: property,
                     buildString {
                         append(property.valOrVarKeyword.text).append(' ').append(propName).append(colonPrivateType)
