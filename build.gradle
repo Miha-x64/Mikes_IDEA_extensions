@@ -5,11 +5,11 @@ import java.util.stream.Collectors
 import java.util.stream.Stream
 
 plugins {
-    id 'org.jetbrains.intellij' version '1.15.0'
+    id 'org.jetbrains.intellij' version '1.16.1'
     id 'org.jetbrains.kotlin.jvm' version "1.9.0"
 }
 
-def pluginVersion = '0.30'
+def pluginVersion = '0.31'
 
 group 'net.aquadc.mike'
 version pluginVersion
@@ -24,7 +24,7 @@ dependencies {
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
     version = '2022.3.1' // https://plugins.jetbrains.com/docs/intellij/android-studio-releases-list.html
-    plugins = ['java', 'Kotlin', 'android']
+    plugins = ['com.intellij.java', 'org.jetbrains.kotlin', 'org.jetbrains.android']
     updateSinceUntilBuild = true
 }
 compileJava {
