@@ -1,4 +1,9 @@
 
+### 0.32
+  <ul>
+    <li>IDEA 2024.1 compatibility</li>
+  </ul>
+
 ### 0.31
   <ul>
     <li>Use IntelliJ <code>ColorPicker</code> instead of Android one, resolves <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions/issues/57">#57</a></li>

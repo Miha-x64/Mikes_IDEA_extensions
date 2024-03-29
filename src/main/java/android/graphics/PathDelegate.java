@@ -1,7 +1,6 @@
 package android.graphics;
 
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
-import it.unimi.dsi.fastutil.floats.FloatArrays;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.awt.geom.Path2D;
@@ -14,6 +13,7 @@ import java.util.List;
 // Spec: https://www.w3.org/TR/SVG/paths.html
 
 public final class PathDelegate {
+    private static final float[] EMPTY_FLOAT_ARRAY = new float[0];
     private final List<? super Path2D.Float> paths;
     private final int windingRule;
     private Path2D.Float currentPath;
@@ -126,7 +126,7 @@ public final class PathDelegate {
         Path2D.Float prevPath = delegate.currentPath;
 
         int[] tmp = new int[1];
-        float[] buf = FloatArrays.EMPTY_ARRAY;
+        float[] buf = EMPTY_FLOAT_ARRAY;
         int pdLen = pathData.length();
         for (; end < pdLen; start = end++) {
             end = nextStart(pathData, end);
@@ -158,7 +158,7 @@ public final class PathDelegate {
         }
 
         if (end - start == 1 && start < pdLen) { // 'z' case, one last command
-            if (!addCommand(delegate, current, previousCommand, pathData.charAt(start), FloatArrays.EMPTY_ARRAY, 0)) {
+            if (!addCommand(delegate, current, previousCommand, pathData.charAt(start), EMPTY_FLOAT_ARRAY, 0)) {
                 clear(paths, pathStarts, floatRanges, endPositions);
                 return;
             }
