@@ -1,4 +1,8 @@
 
+### 0.33
+  <ul>
+  </ul>
+
 ### 0.32
   <ul>
     <li>IDEA 2024.1 compatibility</li>
