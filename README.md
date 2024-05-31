@@ -56,6 +56,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
   <ul>
     <li>Inlay hints when upcasting to interface, e. g.<br/>putExtra(list<code>as Serializable</code>)</li>
     <li>Inlay hints when overriding an interface method, e. g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
+    <li>Inlay hints for vararg array allocation: <br/>String.format("%d", <code>new[]{</code>1<code>}</code>);<br/>maxOf(1, <code>*[</code>2, 3, 4<code>]</code>)</li>
     <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code>, color picker for Android, pasting CSS colors as int literals</li>
     <li>Backing property folding for Kotlin</li>
     <li>Live templates for SVG and Android Vector Drawable pathData</li>

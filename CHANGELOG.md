@@ -1,6 +1,7 @@
 
 ### 0.33
   <ul>
+    <li>Inlay hints for vararg array allocation</li>
   </ul>
 
 ### 0.32

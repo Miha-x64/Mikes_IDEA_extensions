@@ -1,7 +1,6 @@
 @file:Suppress("UnstableApiUsage")
 package net.aquadc.mike.plugin.interfaces
 
-import com.intellij.codeInsight.hints.ChangeListener
 import com.intellij.codeInsight.hints.FactoryInlayHintsCollector
 import com.intellij.codeInsight.hints.ImmediateConfigurable
 import com.intellij.codeInsight.hints.InlayGroup
@@ -9,15 +8,14 @@ import com.intellij.codeInsight.hints.InlayHintsCollector
 import com.intellij.codeInsight.hints.InlayHintsProvider
 import com.intellij.codeInsight.hints.InlayHintsSink
 import com.intellij.codeInsight.hints.SettingsKey
-import com.intellij.codeInsight.hints.presentation.InlayPresentation
-import com.intellij.java.JavaBundle
 import com.intellij.lang.jvm.types.JvmReferenceType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbService
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope.allScope
-import com.intellij.ui.dsl.builder.panel
+import net.aquadc.mike.plugin.DumbHintsConfigurable
+import net.aquadc.mike.plugin.hint
 import net.aquadc.mike.plugin.maxByIf
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
@@ -31,8 +29,6 @@ import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UParameter
 import org.jetbrains.uast.UastErrorType
 import org.jetbrains.uast.toUElementOfType
-import javax.swing.JComponent
-import kotlin.reflect.KMutableProperty0
 
 class InterfaceHintsJava : InterfaceHintsP(settingsKey) {
     private companion object {
@@ -78,16 +74,11 @@ abstract class InterfaceHintsP(
                     "</small></p>"
         }
 
-    override fun createConfigurable(settings: HintsSettings): ImmediateConfigurable = object : ImmediateConfigurable {
-        override fun createComponent(listener: ChangeListener): JComponent = panel {}
-        override val mainCheckboxText: String
-            get() = JavaBundle.message("settings.inlay.java.show.hints.for") // “Show hints for:”
+    override fun createConfigurable(settings: HintsSettings): ImmediateConfigurable = object : DumbHintsConfigurable() {
         override val cases: List<ImmediateConfigurable.Case> get() = listOf(
             Case("Upcast to interface", settings::upcast),
             Case("Interface method override", settings::overr),
         )
-        private fun Case(name: String, property: KMutableProperty0<Boolean>) =
-            ImmediateConfigurable.Case(name, property.name, property)
     }
 }
 
@@ -173,7 +164,7 @@ private class InterfaceHintsCollector(
             if (main == declaringType || main.isInheritor(declaringType, true)) return
         }
         val className = declaringType.typeName ?: return
-        sink.addInlineElement(offset, false, hint(if (java) "from $className" else "$className."), false)
+        sink.addInlineElement(offset, false, factory.hint(if (java) "from $className" else "$className."), false)
     }
 
     private val PsiElement.functionParams
@@ -204,13 +195,10 @@ private class InterfaceHintsCollector(
                 if (main == parameterType || main.isInheritor(parameterType, true)) return
             }
             parameterType.typeName?.takeIf { !methodName.contains(it, ignoreCase = true) }?.let { typeName ->
-                sink.addInlineElement(offset, false, hint(prefix + typeName), false)
+                sink.addInlineElement(offset, false, factory.hint(prefix + typeName), false)
             }
         }
     }
-
-    private fun hint(text: String): InlayPresentation =
-        factory.roundWithBackgroundAndSmallInset(factory.smallText(text))
 
     private val PsiClass.mainInterface: PsiClass?
         get() =

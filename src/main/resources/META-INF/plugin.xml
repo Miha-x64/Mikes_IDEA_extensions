@@ -76,6 +76,9 @@
         <codeInsight.inlayProvider language="JAVA" implementationClass="net.aquadc.mike.plugin.interfaces.InterfaceHintsJava" />
         <codeInsight.inlayProvider language="kotlin" implementationClass="net.aquadc.mike.plugin.interfaces.InterfaceHintsKotlin" />
 
+        <codeInsight.inlayProvider language="JAVA" implementationClass="net.aquadc.mike.plugin.memory.VarargAllocHintsJava" />
+        <codeInsight.inlayProvider language="kotlin" implementationClass="net.aquadc.mike.plugin.memory.VarargAllocHintsKotlin" />
+
         <lang.foldingBuilder
             language="kotlin" implementationClass="net.aquadc.mike.plugin.kotlin.BackingPropertyFolding" />
 

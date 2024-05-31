@@ -1,10 +1,15 @@
 package net.aquadc.mike.plugin
 
 import com.intellij.codeInsight.FileModificationService
+import com.intellij.codeInsight.hints.ChangeListener
+import com.intellij.codeInsight.hints.ImmediateConfigurable
+import com.intellij.codeInsight.hints.presentation.InlayPresentation
+import com.intellij.codeInsight.hints.presentation.PresentationFactory
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.java.JavaBundle
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
@@ -24,6 +29,7 @@ import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.uast.UastVisitorAdapter
+import com.intellij.ui.dsl.builder.panel
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -61,7 +67,9 @@ import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.USimpleNameReferenceExpression
 import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
+import javax.swing.JComponent
 import kotlin.math.min
+import kotlin.reflect.KMutableProperty0
 
 
 abstract class UastInspection : LocalInspectionTool() {
@@ -460,3 +468,14 @@ internal val PsiType_INT: PsiPrimitiveType by lazy {
         PsiType.INT // deprecated for removal since IU-231.6471.13
     }
 }
+
+abstract class DumbHintsConfigurable : ImmediateConfigurable {
+    override fun createComponent(listener: ChangeListener): JComponent = panel {}
+    override val mainCheckboxText: String
+        get() = JavaBundle.message("settings.inlay.java.show.hints.for") // “Show hints for:”
+    protected fun Case(name: String, property: KMutableProperty0<Boolean>) =
+        ImmediateConfigurable.Case(name, property.name, property)
+}
+
+fun PresentationFactory.hint(text: String): InlayPresentation =
+    roundWithBackgroundAndSmallInset(text(text))
