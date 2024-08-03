@@ -1,10 +1,16 @@
 package android.graphics;
 
+import com.intellij.openapi.util.TextRange;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import net.aquadc.mike.plugin.android.res.Cmd;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.geom.Path2D;
+import java.util.Arrays;
 import java.util.List;
+
+import static net.aquadc.mike.plugin.android.res.PathParseUtilKt.*;
 
 // I can see Path_Delegate and PathParser_Delegate, but they are not stable,
 // so I've borrowed these to avoid NoClassDefFoundError,
@@ -108,47 +114,40 @@ public final class PathDelegate {
     ///////////////////////////////////////////////////////////////////////////
 
     /**
-     * Parses {@param pathData} SVG path data sub-paths
-     * into {@param paths} if not null, or {@return full path} otherwise
+     * Parses {@param pathData} SVG path data sub-paths into {@param paths}
      */
     public static void parse(
             String pathData,
             List<? super Path2D.Float> paths,
-            IntArrayList pathStarts, IntArrayList floatRanges, FloatArrayList endPositions,
-            int usefulPrecision, boolean evenOdd
-    ) {
-        int start = 0;
-        int end = 1;
-
+            List<Cmd> cmds,
+            @Nullable IntArrayList pathStarts, IntArrayList floatRanges, @Nullable FloatArrayList endPositions,
+            boolean evenOdd
+    ) throws PathError {
         PathDelegate delegate = new PathDelegate(paths, evenOdd ? Path2D.WIND_EVEN_ODD : Path2D.WIND_NON_ZERO);
-        float[] current = new float[6];
-        char previousCommand = 'm';
-        Path2D.Float prevPath = delegate.currentPath;
+        float[] state = new float[6];
+        char prevCmd = 'm';
+        Path2D.Float prevPath = null;
 
         int[] tmp = new int[1];
-        float[] buf = EMPTY_FLOAT_ARRAY;
-        int pdLen = pathData.length();
-        for (; end < pdLen; start = end++) {
-            end = nextStart(pathData, end);
+        float[] results = EMPTY_FLOAT_ARRAY;
+        int start, end, pdLen;
+        for (start = 0, end = 1, pdLen = pathData.length(); end < pdLen; start = end++) {
+            end = nextCmd(pathData, end);
             while (start < pdLen && pathData.charAt(start) <= ' ') start++;
             int endTrimmed = end;
             while (endTrimmed >= start && pathData.charAt(endTrimmed - 1) <= ' ') endTrimmed--;
-            if (endTrimmed - start > 0) {
-                int len = endTrimmed - start;
-                float[] results = buf.length < len ? (buf = new float[len]) : buf;
-                int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges, usefulPrecision);
-                if (count < 0) {
-                    clear(paths, pathStarts, floatRanges, endPositions);
-                    return;
-                }
+
+            int len = endTrimmed - start;
+            if (len > 0) {
+                if (results.length < len) results = new float[len / 2 + 1/*bad estimation but it sort of works*/];
+                int rangesOffset = floatRanges.size();
+                int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges);
                 char next = pathData.charAt(start);
                 float lastX = delegate.mLastX, lastY = delegate.mLastY;
-                if ((previousCommand == 'z' || previousCommand == 'Z') && (next != 'm' && next != 'M'))
-                    delegate.moveTo(current[0], current[1]);
-                if (!addCommand(delegate, current, previousCommand, previousCommand = next, results, count)) {
-                    clear(paths, pathStarts, floatRanges, endPositions);
-                    return;
-                }
+                if ((prevCmd == 'z' || prevCmd == 'Z') && (next != 'm' && next != 'M'))
+                    delegate.moveTo(state[0], state[1]);
+                addCommand(delegate, state, prevCmd, start, results, count, pathData, cmds, floatRanges, rangesOffset);
+                prevCmd = next;
                 if (delegate.currentPath != null && prevPath != delegate.currentPath) {
                     if (pathStarts != null) pathStarts.add(start);
                     if (endPositions != null && delegate.paths.size() > 1) add(endPositions, lastX, lastY);
@@ -158,10 +157,7 @@ public final class PathDelegate {
         }
 
         if (end - start == 1 && start < pdLen) { // 'z' case, one last command
-            if (!addCommand(delegate, current, previousCommand, pathData.charAt(start), EMPTY_FLOAT_ARRAY, 0)) {
-                clear(paths, pathStarts, floatRanges, endPositions);
-                return;
-            }
+            addCommand(delegate, state, prevCmd, start, EMPTY_FLOAT_ARRAY, 0, pathData, cmds, floatRanges, -1);
         }
         if (pathStarts != null) pathStarts.add(pdLen);
         if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
@@ -170,30 +166,19 @@ public final class PathDelegate {
         into.add(x);
         into.add(y);
     }
-    private static void clear(List<?> paths, IntArrayList pathStarts, IntArrayList floatRanges, FloatArrayList endPositions) {
-        /*if (paths != null)*/paths.clear();
-        if (pathStarts != null) pathStarts.clear();
-        if (floatRanges != null) floatRanges.clear();
-        if (endPositions != null) endPositions.clear();
-    }
 
-    private static int nextStart(String s, int end) {
-        while (end < s.length()) {
+    private static int nextCmd(String s, int end) {
+        for (int len = s.length(); end < len; end++) {
             char c = s.charAt(end);
-            if (((c - 'A') * (c - 'Z') <= 0 || (c - 'a') * (c - 'z') <= 0) && c != 'e' && c != 'E') {
+            if (isCommand(c)) {
                 return end;
             }
-
-            ++end;
         }
 
         return end;
     }
 
-    private static boolean extract(
-            String input, int start, int end, int[] outEndPosition,
-            IntArrayList floatRanges, int usefulPrecision
-    ) {
+    private static boolean extract(String input, int start, int end, int[] outEndPosition) {
         int currentIndex = start;
         boolean endWithNegOrDot = false;
         int dotAt = -1;
@@ -228,92 +213,72 @@ public final class PathDelegate {
             }
         }
 
-        floatRanges.add(start);
-        floatRanges.add(currentIndex);
-
         outEndPosition[0] = currentIndex;
         return endWithNegOrDot;
     }
 
-    private static final byte POS = 0;
-    private static final byte FLAG = 1;
-    private static final byte DEG = 2;
-    private static final byte[] ARC = {
-            POS, POS, DEG, FLAG, FLAG, POS, POS
-        // (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
-    };  // https://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
     private static int getFloats(
             String input, int start, int end, float[] results, int[] tmp,
-            IntArrayList floatRanges, int usefulPrecision) {
-        char first = input.charAt(start++);
-        if (first != 'z' && first != 'Z') {
-            try {
-                int count = 0;
-                boolean arc = first == 'a' || first == 'A';
-                while (start < end) {
-                    boolean endWithNegOrDot = extract(
-                            input, start, end, tmp,
-                            floatRanges, arc && ARC[count%ARC.length] != POS ? -1 : usefulPrecision
-                    ); // arcs contain degrees and flags, ignore them
-                    int endPosition = tmp[0];
-                    if (start < endPosition) {
-                        results[count++] = Float.parseFloat(input.substring(start, endPosition));
-                    }
-
-                    start = endPosition + (endWithNegOrDot ? 0 : 1);
+            IntArrayList floatRanges
+    ) throws PathError {
+        start++; // skip cmd
+        try {
+            int count = 0;
+            while (start < end) {
+                boolean endWithNegOrDot = extract(input, start, end, tmp);
+                int endPosition = tmp[0];
+                if (start < endPosition) {
+                    results[count++] = Float.parseFloat(input.substring(start, endPosition));
+                    floatRanges.add(start);
+                    floatRanges.add(endPosition);
                 }
-
-                return count;
-            } catch (NumberFormatException e) {
-                return -1;
+                start = endPosition + (endWithNegOrDot ? 0 : 1);
             }
+            return count;
+        } catch (NumberFormatException e) {
+            throw new PathError("Can't parseFloat", new TextRange(start, end));
         }
-        return 0;
     }
 
-    private static boolean addCommand(PathDelegate path, float[] current, char previousCmd, char cmd, float[] val, int count) {
-        int incr = 2;
+    private static void addCommand(
+            PathDelegate path, float[] current, char previousCmd, int position, float[] val, int count,
+            String pathData, List<Cmd> cmds, IntArrayList floatRanges, int rangesOffset
+    ) throws PathError {
+        char cmd = pathData.charAt(position);
+        Cmd.Param[] params = Cmd.paramsOf(cmd);
+        if (params == null) {
+            throw new PathError("Unsupported command '" + cmd + "'", TextRange.from(position, 1));
+        }
         float currentX = current[0];
         float currentY = current[1];
         float ctrlPointX = current[2];
         float ctrlPointY = current[3];
         float currentSegmentStartX = current[4];
         float currentSegmentStartY = current[5];
-        switch(cmd) {
-            case 'A':
-            case 'a':
-                incr = 7;
-                break;
-            case 'C':
-            case 'c':
-                incr = 6;
-                break;
-            case 'H':
-            case 'V':
-            case 'h':
-            case 'v':
-                incr = 1;
-                break;
-         // case 'L', 'M', 'T', 'l', 'm', 't': incr = 2; break;
-            case 'Q':
-            case 'S':
-            case 'q':
-            case 's':
-                incr = 4;
-                break;
-            case 'Z':
-            case 'z':
-                path.close();
-                currentX = currentSegmentStartX;
-                currentY = currentSegmentStartY;
-                ctrlPointX = currentSegmentStartX;
-                ctrlPointY = currentSegmentStartY;
-                path.mLastX = currentSegmentStartX;
-                path.mLastY = currentSegmentStartY;
+        int incr = params.length;
+        if (incr == 0) { // Zz
+            path.close();
+            currentX = currentSegmentStartX;
+            currentY = currentSegmentStartY;
+            ctrlPointX = currentSegmentStartX;
+            ctrlPointY = currentSegmentStartY;
+            path.mLastX = currentSegmentStartX;
+            path.mLastY = currentSegmentStartY;
+            cmds.add(new Cmd(currentX, currentY, cmd, pathData, floatRanges, -1));
+            count = 0; // guard against passing arguments to Zz: skip the following loop
         }
 
         for (int k = 0; k < count; k += incr) {
-            if (k + incr > val.length) return false;
+            if (k + incr >= val.length) {
+                throw new PathError(
+                    String.format(
+                        "Missing arguments for '%s': provided %d, required %d %s",
+                        cmd, count % params.length, params.length, Arrays.toString(params)
+                    ),
+                    new TextRange(rangesOffset + 2 * k, floatRanges.getInt(rangesOffset + 2 * count - 1))
+                );
+            }
+            cmds.add(new Cmd(currentX, currentY, cmd, pathData, floatRanges, rangesOffset + 2 * k));
             float reflectiveCtrlPointX;
             float reflectiveCtrlPointY;
             switch(cmd) {
@@ -343,13 +308,10 @@ public final class PathDelegate {
                 case 'M':
                     currentX = val[k];
                     currentY = val[k + 1];
-                    if (k > 0) {
-                        path.lineTo(val[k], val[k + 1]);
-                    } else {
-                        path.moveTo(val[k], val[k + 1]);
-                        currentSegmentStartX = currentX;
-                        currentSegmentStartY = currentY;
-                    }
+                    path.moveTo(val[k], val[k + 1]);
+                    currentSegmentStartX = currentX;
+                    currentSegmentStartY = currentY;
+                    cmd = 'L';
                     break;
                 case 'Q':
                     path.quadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
@@ -416,13 +378,10 @@ public final class PathDelegate {
                 case 'm':
                     currentX += val[k];
                     currentY += val[k + 1];
-                    if (k > 0) {
-                        path.rLineTo(val[k], val[k + 1]);
-                    } else {
-                        path.rMoveTo(val[k], val[k + 1]);
-                        currentSegmentStartX = currentX;
-                        currentSegmentStartY = currentY;
-                    }
+                    path.rMoveTo(val[k], val[k + 1]);
+                    currentSegmentStartX = currentX;
+                    currentSegmentStartY = currentY;
+                    cmd = 'l';
                     break;
                 case 'q':
                     path.rQuadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
@@ -473,7 +432,6 @@ public final class PathDelegate {
         current[3] = ctrlPointY;
         current[4] = currentSegmentStartX;
         current[5] = currentSegmentStartY;
-        return true;
     }
 
     private static void drawArc(
@@ -517,8 +475,8 @@ public final class PathDelegate {
             double eta1 = Math.atan2(y1p - cy, x1p - cx);
             double sweep = eta1 - eta0;
             if (isPositiveArc != sweep >= 0.0D) {
-                if (sweep > 0.0D) sweep -= 6.283185307179586D;
-                else sweep += 6.283185307179586D;
+                if (sweep > 0.0D) sweep -= 2 * Math.PI;
+                else sweep += 2 * Math.PI;
             }
 
             cx *= a;
@@ -534,7 +492,7 @@ public final class PathDelegate {
             PathDelegate p,
             double cx, double cy, double a, double b, double e1x, double e1y, double theta, double start, double sweep
     ) {
-        int numSegments = (int)Math.ceil(Math.abs(sweep * 4.0D / 3.141592653589793D));
+        int numSegments = (int)Math.ceil(Math.abs(sweep * 4.0D / Math.PI));
         double eta1 = start;
         double cosTheta = Math.cos(theta);
         double sinTheta = Math.sin(theta);
@@ -565,6 +523,13 @@ public final class PathDelegate {
             ep1x = ep2x;
             ep1y = ep2y;
         }
+    }
 
+    public static final class PathError extends Exception {
+        public final TextRange at;
+        PathError(String message, TextRange at) {
+            super(message);
+            this.at = at;
+        }
     }
 }

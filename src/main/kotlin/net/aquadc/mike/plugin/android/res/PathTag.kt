@@ -30,9 +30,9 @@ import java.awt.geom.AffineTransform
 import java.awt.geom.Area
 import java.awt.geom.Path2D
 import java.awt.geom.PathIterator
-import java.math.BigDecimal
 import java.util.*
 import kotlin.math.absoluteValue
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -80,8 +80,17 @@ internal class PathTag private constructor(
 
             val paint = if (tag.name == "path") PathPaintAttrs(tag, holder, rr) else null
             val evenOdd = paint?.fillTypeEvenOdd == true
-            val paths = SmartList<Path2D.Float>().also {
-                PathDelegate.parse(pathData, it, pathStarts, floatRanges, endPositions, usefulPrecision, evenOdd)
+            val paths = SmartList<Path2D.Float>()
+            val cmds = ArrayList<Cmd>()
+            val beginValueAt = pathAttr.text.indexOf(rawPathData)
+            try {
+                PathDelegate.parse(pathData, paths, cmds, pathStarts, floatRanges, endPositions, evenOdd)
+            } catch (e: PathDelegate.PathError) {
+                holder.registerProblem(
+                    pathAttr, "Invalid path. ${e.message}", ProblemHighlightType.ERROR,
+                    if (pathData === rawPathData) e.at.shiftRight(beginValueAt) else null
+                )
+                return null
             }
             if (paths.isEmpty())
                 return null
@@ -117,9 +126,7 @@ internal class PathTag private constructor(
                     T000
                 }
 
-            val beginValueAt = pathAttr.text.indexOf(rawPathData)
-
-            holder.tryProposeTrimming(floatRanges, pathData, usefulPrecision, pathAttr, rawPathData, beginValueAt)
+            holder.tryProposeShortening(cmds, pathData, usefulPrecision, pathAttr, rawPathData, beginValueAt)
 
             if (matrix != null) paths.forEach { it.transform(matrix) }
             return PathTag(pathAttr, paths, subPathRanges, startPoss, endPoss, floatRanges, beginValueAt, paint)
@@ -207,43 +214,44 @@ internal class PathTag private constructor(
             }
         }
 
-        private fun ProblemsHolder.tryProposeTrimming(
-            floatRanges: IntArrayList,
+        private fun ProblemsHolder.tryProposeShortening(
+            cmds: List<Cmd>,
             pathData: String,
             usefulPrecision: Int,
             pathAttr: XmlAttributeValue,
             rawPathData: String,
             beginValueAt: Int
         ) {
-            val rangeNodeCount = floatRanges.size
-            var canTrimCarefully = false
-            var trimmableFloats: IntArrayList? = null
-            for (i in 0 until rangeNodeCount step 2) {
-                val iod = pathData.indexOf('.', floatRanges.getInt(i))
-                if (iod < 0 || iod > floatRanges.getInt(i + 1)) continue
-                val precision = floatRanges.getInt(i + 1) - iod
-                if (precision > usefulPrecision + 1) {
-                    (trimmableFloats ?: IntArrayList().also { trimmableFloats = it }).apply {
-                        add(floatRanges.getInt(i))
-                        add(floatRanges.getInt(i + 1))
-                    }
-                    if (precision > usefulPrecision + 2) {
-                        canTrimCarefully = true  //   ^ plus dot plus extra digit
-                    }
-                }
-            }
+            val maxPrecision = cmds.maxPrecision()
+            val canTrimCarefully = maxPrecision > usefulPrecision
+            val canTrimAggressively = maxPrecision > usefulPrecision + 1
+            val shortened = cmds.shorten()
+            val rewritten = StringBuilder().also { shortened.appendTo(it, Int.MAX_VALUE) } // we will re-invoke this in "Compact path" fix but there's not much work to do
+            val rewriteStart = pathData.indices.firstOrNull { pathData[it] != rewritten.getOrNull(it) } ?: -1
+            val rewriteEnd = pathData.indices
+                .firstOrNull { pathData[pathData.length - it - 1] != rewritten.getOrNull(rewritten.length - it - 1) }
+                ?.let { pathData.length - it }
+                ?: -1
 
-            trimmableFloats?.takeIf { canTrimCarefully || isOnTheFly }?.let { tfs ->
+            if (canTrimAggressively || rewriteStart >= 0) {
+                val andMaybeShorten = if (rewriteStart >= 0) " & shorten path" else ""
                 registerProblem(
                     pathAttr,
-                    "subpixel precision" + if (tfs.size == 2) "" else " (${tfs.size / 2} items)",
+                    if (canTrimAggressively) "Subpixel precision" else "Excessive pathData",
                     ProblemHighlightType.WEAK_WARNING,
-                    if (pathData === rawPathData)
-                        TextRange(beginValueAt + tfs.getInt(0), beginValueAt + tfs.getInt(tfs.size - 1))
-                    else TextRange.from(beginValueAt, rawPathData.length),
+                    if (pathData === rawPathData) {
+                        val highlightStart =
+                            min(cmds.firstOrNull { it.maxPrecision() > usefulPrecision }?.firstFloatStart(usefulPrecision) ?: Int.MAX_VALUE, rewriteStart.takeIf { it >= 0 } ?: Int.MAX_VALUE)
+                        assert(highlightStart != Int.MAX_VALUE) { "at least one of min() should be valid, got maxPrecision=$maxPrecision, canTrim=$canTrimCarefully || $canTrimAggressively" }
+                        val highlightEnd = max(cmds.lastOrNull { it.maxPrecision() > usefulPrecision }?.lastFloatEnd(usefulPrecision) ?: -1, rewriteEnd)
+                        assert(highlightEnd != -1) { "at least one of max() should be valid, got maxPrecision=$maxPrecision, canTrim=$canTrimCarefully || $canTrimAggressively" }
+                        TextRange(beginValueAt + highlightStart, beginValueAt + highlightEnd)
+                    } else TextRange.from(beginValueAt, rawPathData.length),
                     *fixes(
-                        if (isOnTheFly) TrimFix(tfs, "Trim aggressively", usefulPrecision, pathData) else null,
-                        if (canTrimCarefully) TrimFix(tfs, "Trim carefully", usefulPrecision + 1, pathData) else null,
+                        // quickfixes are sorted alphabetically by IntelliJ, mind names so order is preserved
+                        if (isOnTheFly && canTrimAggressively) OptimizePathFix(shortened, "Reduce precision aggressively$andMaybeShorten", usefulPrecision) else null,
+                        if (canTrimCarefully) OptimizePathFix(shortened, "Reduce precision carefully$andMaybeShorten", usefulPrecision + 1) else null,
+                        if (rewriteStart >= 0) OptimizePathFix(shortened, "Shorten path", Int.MAX_VALUE) else null,
                     )
                 )
             }
@@ -636,92 +644,83 @@ internal class PathTag private constructor(
 
 }
 
-private class TrimFix(
-    @FileModifier.SafeFieldForPreview private val ranges: IntArrayList,
+private class OptimizePathFix(
+    @FileModifier.SafeFieldForPreview private val cmds: List<Cmd>,
     name: String,
     private val targetPrecision: Int,
-    private val pathData: String,
 ) : NamedLocalQuickFix(name) {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val value = StringBuilder(pathData)
-        val tmpFloat = StringBuilder(10)
-        for (i in (ranges.size - 2) downTo 0 step 2) {
-            val start = ranges.getInt(i)
-            val end = ranges.getInt(i + 1)
-            val minus = tmpFloat.replace(0, tmpFloat.length, value, start, end)[0] == '-'
-            if (tmpFloat.contains('e')) {
-                val bd = BigDecimal(tmpFloat.toString())
-                tmpFloat.clear()
-                tmpFloat.append(bd.toPlainString())
-            }
-            if (tmpFloat.trimToPrecision()[0] != '-' && minus && value[start - 1].isDigit())
-                tmpFloat.insert(0, ' ')
-            value.replace(start, end, tmpFloat)
-        }
-        (descriptor.psiElement.parent as XmlAttribute).setValue(value.toString())
+        (descriptor.psiElement.parent as XmlAttribute)
+            .setValue(StringBuilder().also { cmds.appendTo(it, targetPrecision) }.toString())
     }
-
-    private fun StringBuilder.trimToPrecision(): StringBuilder {
-        var carry = false
-        run { // lower precision
-            val precision = length - 1 - indexOf('.')
-            if (precision > targetPrecision) {
-                val trim = precision - targetPrecision
-                val iol = lastIndex
-                repeat(trim) { i ->
-                    carry = this[iol - i] - '0' + carry.asInt > 4
-                }
-                delete(length - trim, length)
-            }
-        }
-        run<Unit> { // clean up and carry
-            var fractional = true
-            while (isNotEmpty()) {
-                val iol = lastIndex
-                val ch = this[iol]
-                if (ch == '.') {
-                    fractional = false
-                } else if (fractional && (carry && ch == '9' || !carry && ch == '0')) {
-                    // carry over to the previous digit
-                } else if (fractional && carry && ch in '0'..'8') {
-                    this[iol]++
-                    carry = false
-                    break
-                } else break
-                deleteCharAt(iol)
-            }
-
-            var iol = lastIndex
-            if (!fractional) { // carry whole part
-                while (iol >= 0 && carry) {
-                    val ch = this[iol]
-                    if (ch == '9') {
-                        this[iol--] = '0'
-                    } else if (ch in '0'..'8') {
-                        this[iol] = ch + 1
-                        carry = false
-                    } else {
-                        check(ch == '-')
-                        break
-                    }
-                }
-            }
-
-            if (carry)
-                insert(kotlin.math.max(iol, 0), '1')
-            else if (isEmpty() || (length == 1 && this[0] == '-')) {
-                append('0')
-            }
-        }
-
-        if (length == 2 && this[0] == '-' && this[1] == '0')
-            deleteCharAt(0)
-
-        return this
-    }
-
-    private inline val Boolean.asInt get() = if (this) 1 else 0
 }
+
+internal fun StringBuilder.trimToPrecision(targetPrecision: Int): StringBuilder {
+    var carry = false
+    run { // lower precision
+        val precision = length - 1 - indexOf('.')
+        if (precision > targetPrecision) {
+            val trim = precision - targetPrecision
+            val iol = lastIndex
+            repeat(trim) { i ->
+                carry = this[iol - i] - '0' + carry.asInt > 4
+            }
+            delete(length - trim, length)
+        }
+    }
+    run<Unit> { // clean up and carry fractional part
+        var fractional = true
+        while (isNotEmpty()) {
+            val iol = lastIndex
+            val ch = this[iol]
+            if (ch == '.') {
+                fractional = false
+            } else if (fractional && (carry && ch == '9' || !carry && ch == '0')) {
+                // carry over to the previous digit
+            } else if (fractional && carry && ch in '0'..'8') {
+                this[iol]++
+                carry = false
+                break
+            } else break
+            deleteCharAt(iol)
+        }
+
+        var iol = lastIndex
+        if (!fractional) { // carry whole part
+            while (iol >= 0 && carry) {
+                val ch = this[iol]
+                if (ch == '9') {
+                    this[iol--] = '0'
+                } else if (ch in '0'..'8') {
+                    this[iol] = ch + 1
+                    carry = false
+                } else {
+                    check(ch == '-')
+                    break
+                }
+            }
+        }
+
+        if (carry) insert(max(iol, 0), '1')
+        else if (isEmpty()) append('0')
+        else if (length == 1 && this[0] == '-') setCharAt(0, '0') // -0 -> 0
+    }
+
+    // drop leading zeroes
+    val start = if (this[0] == '-') 1 else 0
+    while (length > start + 2 &&
+        this[start] == '0' &&
+        this[start+1] == '0' /*this[start+1].let { it == '0' || it == '.' }*/)
+        deleteCharAt(start) // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- this term would allow `.fractional` form.
+    // Save one leading zero instead, “to avoid crashes on some pre-Marshmallow devices” Ⓒ InvalidVectorPath lint rule
+
+    if (length == 2 && this[0] == '-' && this[1] == '0')
+        deleteCharAt(0)
+
+    return this
+}
+
+private inline val Boolean.asInt get() = if (this) 1 else 0
 
 private fun removeSubPathFix(
     pathData: String,

@@ -39,7 +39,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Useless resource element
       <ul>
         <li>Drawables: single-item layer-lists, single stateless item selectors, insetless insets, empty shapes</li>
-        <li>Vector drawables: empty paths and clip-paths, invisible paths, useless clip-paths and groups, attributes with no effect</li>
+        <li>Vector drawables: empty paths and clip-paths, invisible paths, suboptimal paths, useless clip-paths and groups, attributes with no effect</li>
         <li>Animations and animators: empty and single-element sets</li>
         <li>Layouts: overridden attributes in (layout_margin|padding)(Left|Top|Right|Bottom|Start|End|Horizontal|Vertical|*)</li>
       </ul>

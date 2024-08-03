@@ -1,7 +1,8 @@
 
 ### 0.33
   <ul>
-    <li>Inlay hints for vararg array allocation</li>
+    <li>Added inlay hints for vararg array allocation</li>
+    <li>Shortening pathData when rewriting</li>
   </ul>
 
 ### 0.32
