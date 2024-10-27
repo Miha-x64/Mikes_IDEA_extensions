@@ -90,7 +90,7 @@ private fun String?.toPixels() = when {
     endsWith("pt") -> scaled(2, MAX_DPI * MAX_SCALE * PT)
     endsWith("in") -> scaled(2, MAX_DPI * MAX_SCALE)
     endsWith("mm") -> scaled(2, MAX_DPI * MAX_SCALE * MM)
-    endsWith("px") -> substring(0, 2).toFloatOrNull() ?: Float.NaN
+    endsWith("px") -> scaled(2, 1f)
     else -> Float.NaN
 }
 private fun String.scaled(skip: Int, factor: Float) =
