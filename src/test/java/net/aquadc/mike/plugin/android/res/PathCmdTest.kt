@@ -48,8 +48,8 @@ class PathCmdTest {
 
         assert(cmds1.size == cmds2.size)
         cmds1.zip(cmds2).forEachIndexed { cmdIdx, (old, new) ->
-            val oa = old.args()
-            val na = new.args()
+            val oa = old.argsF()
+            val na = new.argsF()
             assert(oa.size == na.size)
             oa.zip(na).forEachIndexed { fIdx, (of, nf) ->
                 assert((of - nf).absoluteValue < .05) {

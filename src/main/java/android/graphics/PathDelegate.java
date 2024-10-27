@@ -7,9 +7,11 @@ import net.aquadc.mike.plugin.android.res.Cmd;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.geom.Path2D;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
+import static java.math.BigDecimal.ZERO;
 import static net.aquadc.mike.plugin.android.res.PathParseUtilKt.*;
 
 // I can see Path_Delegate and PathParser_Delegate, but they are not stable,
@@ -19,7 +21,8 @@ import static net.aquadc.mike.plugin.android.res.PathParseUtilKt.*;
 // Spec: https://www.w3.org/TR/SVG/paths.html
 
 public final class PathDelegate {
-    private static final float[] EMPTY_FLOAT_ARRAY = new float[0];
+    private static final BigDecimal[] EMPTY = new BigDecimal[0];
+    private static final BigDecimal TWO = new BigDecimal(2);
     private final List<? super Path2D.Float> paths;
     private final int windingRule;
     private Path2D.Float currentPath;
@@ -124,12 +127,13 @@ public final class PathDelegate {
             boolean evenOdd
     ) throws PathError {
         PathDelegate delegate = new PathDelegate(paths, evenOdd ? Path2D.WIND_EVEN_ODD : Path2D.WIND_NON_ZERO);
-        float[] state = new float[6];
+        BigDecimal[] state = new BigDecimal[6];
+        Arrays.fill(state, ZERO);
         char prevCmd = 'm';
         Path2D.Float prevPath = null;
 
         int[] tmp = new int[1];
-        float[] results = EMPTY_FLOAT_ARRAY;
+        BigDecimal[] results = EMPTY;
         int start, end, pdLen;
         for (start = 0, end = 1, pdLen = pathData.length(); end < pdLen; start = end++) {
             end = nextCmd(pathData, end);
@@ -139,13 +143,13 @@ public final class PathDelegate {
 
             int len = endTrimmed - start;
             if (len > 0) {
-                if (results.length < len) results = new float[len / 2 + 1/*bad estimation but it sort of works*/];
+                if (results.length < len) results = new BigDecimal[len / 2 + 1/*bad estimation but it sort of works*/];
                 int rangesOffset = floatRanges.size();
                 int count = getFloats(pathData, start, endTrimmed, results, tmp, floatRanges);
                 char next = pathData.charAt(start);
                 float lastX = delegate.mLastX, lastY = delegate.mLastY;
                 if ((prevCmd == 'z' || prevCmd == 'Z') && (next != 'm' && next != 'M'))
-                    delegate.moveTo(state[0], state[1]);
+                    delegate.moveTo(state[0].floatValue(), state[1].floatValue());
                 addCommand(delegate, state, prevCmd, start, results, count, pathData, cmds, floatRanges, rangesOffset);
                 prevCmd = next;
                 if (delegate.currentPath != null && prevPath != delegate.currentPath) {
@@ -157,7 +161,7 @@ public final class PathDelegate {
         }
 
         if (end - start == 1 && start < pdLen) { // 'z' case, one last command
-            addCommand(delegate, state, prevCmd, start, EMPTY_FLOAT_ARRAY, 0, pathData, cmds, floatRanges, -1);
+            addCommand(delegate, state, prevCmd, start, EMPTY, 0, pathData, cmds, floatRanges, -1);
         }
         if (pathStarts != null) pathStarts.add(pdLen);
         if (endPositions != null) add(endPositions, delegate.mLastX, delegate.mLastY);
@@ -218,7 +222,7 @@ public final class PathDelegate {
     }
 
     private static int getFloats(
-            String input, int start, int end, float[] results, int[] tmp,
+            String input, int start, int end, BigDecimal[] results, int[] tmp,
             IntArrayList floatRanges
     ) throws PathError {
         start++; // skip cmd
@@ -228,7 +232,7 @@ public final class PathDelegate {
                 boolean endWithNegOrDot = extract(input, start, end, tmp);
                 int endPosition = tmp[0];
                 if (start < endPosition) {
-                    results[count++] = Float.parseFloat(input.substring(start, endPosition));
+                    results[count++] = new BigDecimal(input.substring(start, endPosition));
                     floatRanges.add(start);
                     floatRanges.add(endPosition);
                 }
@@ -241,7 +245,7 @@ public final class PathDelegate {
     }
 
     private static void addCommand(
-            PathDelegate path, float[] current, char previousCmd, int position, float[] val, int count,
+            PathDelegate path, BigDecimal[] current, char previousCmd, int position, BigDecimal[] val, int count,
             String pathData, List<Cmd> cmds, IntArrayList floatRanges, int rangesOffset
     ) throws PathError {
         char cmd = pathData.charAt(position);
@@ -249,12 +253,12 @@ public final class PathDelegate {
         if (params == null) {
             throw new PathError("Unsupported command '" + cmd + "'", TextRange.from(position, 1));
         }
-        float currentX = current[0];
-        float currentY = current[1];
-        float ctrlPointX = current[2];
-        float ctrlPointY = current[3];
-        float currentSegmentStartX = current[4];
-        float currentSegmentStartY = current[5];
+        BigDecimal currentX = current[0];
+        BigDecimal currentY = current[1];
+        BigDecimal ctrlPointX = current[2];
+        BigDecimal ctrlPointY = current[3];
+        BigDecimal currentSegmentStartX = current[4];
+        BigDecimal currentSegmentStartY = current[5];
         int incr = params.length;
         if (incr == 0) { // Zz
             path.close();
@@ -262,9 +266,9 @@ public final class PathDelegate {
             currentY = currentSegmentStartY;
             ctrlPointX = currentSegmentStartX;
             ctrlPointY = currentSegmentStartY;
-            path.mLastX = currentSegmentStartX;
-            path.mLastY = currentSegmentStartY;
-            cmds.add(new Cmd(currentX, currentY, cmd, pathData, floatRanges, -1));
+            path.mLastX = currentSegmentStartX.floatValue();
+            path.mLastY = currentSegmentStartY.floatValue();
+            cmds.add(new Cmd(currentX, currentY, cmd, EMPTY, pathData, floatRanges, -1));
             count = 0; // guard against passing arguments to Zz: skip the following loop
         }
 
@@ -278,43 +282,44 @@ public final class PathDelegate {
                     new TextRange(rangesOffset + 2 * k, floatRanges.getInt(rangesOffset + 2 * count - 1))
                 );
             }
-            cmds.add(new Cmd(currentX, currentY, cmd, pathData, floatRanges, rangesOffset + 2 * k));
-            float reflectiveCtrlPointX;
-            float reflectiveCtrlPointY;
+            cmds.add(new Cmd(currentX, currentY, cmd, Arrays.copyOfRange(val, k, k + incr),pathData, floatRanges, rangesOffset + 2 * k));
+            BigDecimal reflectiveCtrlPointX;
+            BigDecimal reflectiveCtrlPointY;
             switch(cmd) {
                 case 'A':
-                    drawArc(path, currentX, currentY, val[k + 5], val[k + 6], val[k], val[k + 1], val[k + 2], val[k + 3] != 0.0F, val[k + 4] != 0.0F);
+                    drawArc(path, currentX.floatValue(), currentY.floatValue(), val[k + 5].floatValue(), val[k + 6].floatValue(), val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].signum() != 0, val[k + 4].signum() != 0);
                     currentX = val[k + 5];
                     currentY = val[k + 6];
                     ctrlPointX = currentX;
                     ctrlPointY = currentY;
                     break;
                 case 'C':
-                    path.cubicTo(val[k], val[k + 1], val[k + 2], val[k + 3], val[k + 4], val[k + 5]);
+                    path.cubicTo(val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].floatValue(), val[k + 4].floatValue(), val[k + 5].floatValue());
                     currentX = val[k + 4];
                     currentY = val[k + 5];
                     ctrlPointX = val[k + 2];
                     ctrlPointY = val[k + 3];
                     break;
                 case 'H':
-                    path.lineTo(val[k], currentY);
+                    path.lineTo(val[k].floatValue(), currentY.floatValue());
+                    //                               ^^^^^^^^- This should be 0 according to the spec but works differently EVERYWHERE
                     currentX = val[k];
                     break;
                 case 'L':
-                    path.lineTo(val[k], val[k + 1]);
+                    path.lineTo(val[k].floatValue(), val[k + 1].floatValue());
                     currentX = val[k];
                     currentY = val[k + 1];
                     break;
                 case 'M':
                     currentX = val[k];
                     currentY = val[k + 1];
-                    path.moveTo(val[k], val[k + 1]);
+                    path.moveTo(val[k].floatValue(), val[k + 1].floatValue());
                     currentSegmentStartX = currentX;
                     currentSegmentStartY = currentY;
                     cmd = 'L';
                     break;
                 case 'Q':
-                    path.quadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
+                    path.quadTo(val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].floatValue());
                     ctrlPointX = val[k];
                     ctrlPointY = val[k + 1];
                     currentX = val[k + 2];
@@ -324,11 +329,11 @@ public final class PathDelegate {
                     reflectiveCtrlPointX = currentX;
                     reflectiveCtrlPointY = currentY;
                     if (previousCmd == 'c' || previousCmd == 's' || previousCmd == 'C' || previousCmd == 'S') {
-                        reflectiveCtrlPointX = 2.0F * currentX - ctrlPointX;
-                        reflectiveCtrlPointY = 2.0F * currentY - ctrlPointY;
+                        reflectiveCtrlPointX = TWO.multiply(currentX).subtract(ctrlPointX);
+                        reflectiveCtrlPointY = TWO.multiply(currentY).subtract(ctrlPointY);
                     }
 
-                    path.cubicTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1], val[k + 2], val[k + 3]);
+                    path.cubicTo(reflectiveCtrlPointX.floatValue(), reflectiveCtrlPointY.floatValue(), val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].floatValue());
                     ctrlPointX = val[k];
                     ctrlPointY = val[k + 1];
                     currentX = val[k + 2];
@@ -338,89 +343,90 @@ public final class PathDelegate {
                     reflectiveCtrlPointX = currentX;
                     reflectiveCtrlPointY = currentY;
                     if (previousCmd == 'q' || previousCmd == 't' || previousCmd == 'Q' || previousCmd == 'T') {
-                        reflectiveCtrlPointX = 2.0F * currentX - ctrlPointX;
-                        reflectiveCtrlPointY = 2.0F * currentY - ctrlPointY;
+                        reflectiveCtrlPointX = TWO.multiply(currentX).subtract(ctrlPointX);
+                        reflectiveCtrlPointY = TWO.multiply(currentY).subtract(ctrlPointY);
                     }
 
-                    path.quadTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1]);
+                    path.quadTo(reflectiveCtrlPointX.floatValue(), reflectiveCtrlPointY.floatValue(), val[k].floatValue(), val[k + 1].floatValue());
                     ctrlPointX = reflectiveCtrlPointX;
                     ctrlPointY = reflectiveCtrlPointY;
                     currentX = val[k];
                     currentY = val[k + 1];
                     break;
                 case 'V':
-                    path.lineTo(currentX, val[k]);
+                    path.lineTo(currentX.floatValue(), val[k].floatValue());
+                    //          ^^^^^^^^- This should be 0 according to the spec but works differently EVERYWHERE
                     currentY = val[k];
                     break;
                 case 'a':
-                    drawArc(path, currentX, currentY, val[k + 5] + currentX, val[k + 6] + currentY, val[k], val[k + 1], val[k + 2], val[k + 3] != 0.0F, val[k + 4] != 0.0F);
-                    currentX += val[k + 5];
-                    currentY += val[k + 6];
+                    drawArc(path, currentX.floatValue(), currentY.floatValue(), val[k + 5].add(currentX).floatValue(), val[k + 6].add(currentY).floatValue(), val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].signum() != 0, val[k + 4].signum() != 0);
+                    currentX = currentX.add(val[k + 5]);
+                    currentY = currentY.add(val[k + 6]);
                     ctrlPointX = currentX;
                     ctrlPointY = currentY;
                     break;
                 case 'c':
-                    path.rCubicTo(val[k], val[k + 1], val[k + 2], val[k + 3], val[k + 4], val[k + 5]);
-                    ctrlPointX = currentX + val[k + 2];
-                    ctrlPointY = currentY + val[k + 3];
-                    currentX += val[k + 4];
-                    currentY += val[k + 5];
+                    path.rCubicTo(val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].floatValue(), val[k + 4].floatValue(), val[k + 5].floatValue());
+                    ctrlPointX = currentX.add(val[k + 2]);
+                    ctrlPointY = currentY.add(val[k + 3]);
+                    currentX = currentX.add(val[k + 4]);
+                    currentY = currentY.add(val[k + 5]);
                     break;
                 case 'h':
-                    path.rLineTo(val[k], 0.0F);
-                    currentX += val[k];
+                    path.rLineTo(val[k].floatValue(), 0f);
+                    currentX = currentX.add(val[k]);
                     break;
                 case 'l':
-                    path.rLineTo(val[k], val[k + 1]);
-                    currentX += val[k];
-                    currentY += val[k + 1];
+                    path.rLineTo(val[k].floatValue(), val[k + 1].floatValue());
+                    currentX = currentX.add(val[k]);
+                    currentY = currentY.add(val[k + 1]);
                     break;
                 case 'm':
-                    currentX += val[k];
-                    currentY += val[k + 1];
-                    path.rMoveTo(val[k], val[k + 1]);
+                    currentX = currentX.add(val[k]);
+                    currentY = currentY.add(val[k + 1]);
+                    path.rMoveTo(val[k].floatValue(), val[k + 1].floatValue());
                     currentSegmentStartX = currentX;
                     currentSegmentStartY = currentY;
                     cmd = 'l';
                     break;
                 case 'q':
-                    path.rQuadTo(val[k], val[k + 1], val[k + 2], val[k + 3]);
-                    ctrlPointX = currentX + val[k];
-                    ctrlPointY = currentY + val[k + 1];
-                    currentX += val[k + 2];
-                    currentY += val[k + 3];
+                    path.rQuadTo(val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].floatValue());
+                    ctrlPointX = currentX.add(val[k]);
+                    ctrlPointY = currentY.add(val[k + 1]);
+                    currentX = currentX.add(val[k + 2]);
+                    currentY = currentY.add(val[k + 3]);
                     break;
                 case 's':
-                    reflectiveCtrlPointX = 0.0F;
-                    reflectiveCtrlPointY = 0.0F;
+                    reflectiveCtrlPointX = ZERO;
+                    reflectiveCtrlPointY = ZERO;
                     if (previousCmd == 'c' || previousCmd == 's' || previousCmd == 'C' || previousCmd == 'S') {
-                        reflectiveCtrlPointX = currentX - ctrlPointX;
-                        reflectiveCtrlPointY = currentY - ctrlPointY;
+                        reflectiveCtrlPointX = currentX.subtract(ctrlPointX);
+                        reflectiveCtrlPointY = currentY.subtract(ctrlPointY);
                     }
 
-                    path.rCubicTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1], val[k + 2], val[k + 3]);
-                    ctrlPointX = currentX + val[k];
-                    ctrlPointY = currentY + val[k + 1];
-                    currentX += val[k + 2];
-                    currentY += val[k + 3];
+                    path.rCubicTo(reflectiveCtrlPointX.floatValue(), reflectiveCtrlPointY.floatValue(), val[k].floatValue(), val[k + 1].floatValue(), val[k + 2].floatValue(), val[k + 3].floatValue());
+                    ctrlPointX = currentX.add(val[k]);
+                    ctrlPointY = currentY.add(val[k + 1]);
+                    currentX = currentX.add(val[k + 2]);
+                    currentY = currentY.add(val[k + 3]);
                     break;
                 case 't':
-                    reflectiveCtrlPointX = 0.0F;
-                    reflectiveCtrlPointY = 0.0F;
+                    reflectiveCtrlPointX = ZERO;
+                    reflectiveCtrlPointY = ZERO;
                     if (previousCmd == 'q' || previousCmd == 't' || previousCmd == 'Q' || previousCmd == 'T') {
-                        reflectiveCtrlPointX = currentX - ctrlPointX;
-                        reflectiveCtrlPointY = currentY - ctrlPointY;
+                        reflectiveCtrlPointX = currentX.subtract(ctrlPointX);
+                        reflectiveCtrlPointY = currentY.subtract(ctrlPointY);
                     }
 
-                    path.rQuadTo(reflectiveCtrlPointX, reflectiveCtrlPointY, val[k], val[k + 1]);
-                    ctrlPointX = currentX + reflectiveCtrlPointX;
-                    ctrlPointY = currentY + reflectiveCtrlPointY;
-                    currentX += val[k];
-                    currentY += val[k + 1];
+                    path.rQuadTo(reflectiveCtrlPointX.floatValue(), reflectiveCtrlPointY.floatValue(), val[k].floatValue(), val[k + 1].floatValue());
+                    ctrlPointX = currentX.add(reflectiveCtrlPointX);
+                    ctrlPointY = currentY.add(reflectiveCtrlPointY);
+                    currentX = currentX.add(val[k]);
+                    currentY = currentY.add(val[k + 1]);
                     break;
                 case 'v':
-                    path.rLineTo(0.0F, val[k]);
-                    currentY += val[k];
+                    path.rLineTo(0.0F, val[k].floatValue());
+                    currentY = currentY.add(val[k]);
             }
 
             previousCmd = cmd;
