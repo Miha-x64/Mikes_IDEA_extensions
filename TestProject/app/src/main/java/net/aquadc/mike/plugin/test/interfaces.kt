@@ -5,6 +5,7 @@ import android.text.TextWatcher
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.material.internal.TextWatcherAdapter
+import net.aquadc.mike.plugin.test.remember
 import java.io.Serializable
 
 
@@ -34,6 +35,8 @@ class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
         TextView(null).addTextChangedListener(
             @SuppressLint("RestrictedApi") object : TextWatcherAdapter() {}
         )
+
+        remember(1, 2) {}
     }
 
     override val size: Int

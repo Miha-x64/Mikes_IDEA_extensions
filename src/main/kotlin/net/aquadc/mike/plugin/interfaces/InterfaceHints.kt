@@ -110,6 +110,13 @@ private class InterfaceHintsCollector(
         settings.upcast && element is KtCallExpression -> {
             element.calleeExpression?.mainReference?.resolve()?.functionParams?.takeIf { it.isNotEmpty() }?.let { params ->
                 element.referenceExpression()?.referencedName?.let { methodName ->
+                    val lambdaArg = element.lambdaArguments.singleOrNull()
+                    val lambdaParam = lambdaArg?.let { params.lastOrNull() }
+                    // Hide lambda param so we'll never encounter it in the `func(variadicParam1, variadicParam2 as () -> Unit) {}` case
+                    val params = if (lambdaParam == null) params else params.subList(0, params.size - 1)
+
+                    // TODO maybe handle receiver expression, too
+
                     element.valueArgumentList?.arguments?.forEachIndexed { idx, arg ->
                         val argName = arg.getArgumentName()?.asName?.asString()
                         arg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
@@ -124,10 +131,10 @@ private class InterfaceHintsCollector(
                             }
                         }
                     }
-                    element.lambdaArguments.singleOrNull()?.let { arg ->
-                        arg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
-                            params.last().second?.let { pType ->
-                                visitParameter(methodName, pType, argType, arg.textRange.startOffset, sink, prefix = "")
+                    if (lambdaArg != null && lambdaParam != null) {
+                        lambdaArg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
+                            lambdaParam.second?.let { pType ->
+                                visitParameter(methodName, pType, argType, lambdaArg.textRange.startOffset, sink, prefix = "")
                             }
                         }
                     }

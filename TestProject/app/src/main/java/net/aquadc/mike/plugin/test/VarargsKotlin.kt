@@ -28,7 +28,7 @@ fun varargsKotlin() {
     ) {}
 }
 
-private inline fun remember(vararg keys: Any, calculation: () -> Unit) {
+inline fun remember(vararg keys: Any, calculation: () -> Unit) {
 }
 
 fun checkNoOob(a: Int, b: Int = 2, vararg c: Int) {

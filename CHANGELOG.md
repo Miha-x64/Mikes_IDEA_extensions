@@ -3,6 +3,7 @@
   <ul>
     <li>Added inlay hints for vararg array allocation</li>
     <li>Shortening pathData when rewriting</li>
+    <li>Fix upcast hints confusing variadic argument with lambda parameter</li>
   </ul>
 
 ### 0.32
