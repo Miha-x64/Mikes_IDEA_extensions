@@ -28,7 +28,7 @@ class Cmd internal constructor(
     val params: Array<Param>
         get() = paramsOf(cmd)!!
 
-    fun appendTo(context: Cmd?, buf: StringBuilder, precision: Int) {
+    fun appendTo(context: Cmd?, buf: Appendable, precision: Int) {
         var afterFractional = false
         if (params.isEmpty()) {
             buf.append(cmd) // Zz
@@ -145,22 +145,21 @@ class Cmd internal constructor(
 
     companion object {
         private val PARAMS: Array<Array<Param>?> = arrayOfNulls<Array<Param>?>(26).also { params ->
-            val coordinate = arrayOf(Param.Coord)
-            val coordinatePair = arrayOf(Param.Coord, Param.Coord)
-            val coordinate2Pairs = arrayOf(Param.Coord, Param.Coord, Param.Coord, Param.Coord)
-            val coordinate3Pairs = arrayOf(Param.Coord, Param.Coord, Param.Coord, Param.Coord, Param.Coord, Param.Coord)
+            val xyPair = arrayOf(Param.XCoord, Param.YCoord)
+            val xy2Pairs = xyPair + xyPair
+            val coordinate3Pairs = xy2Pairs + xyPair
             params['A'.code - 'A'.code] = arrayOf(
-                Param.Number, Param.Number, Param.Number, Param.Flag, Param.Flag, Param.Coord, Param.Coord,
+                Param.Number, Param.Number, Param.Number, Param.Flag, Param.Flag, Param.XCoord, Param.YCoord,
                 //    radius        radius        angle
             )
             params['C'.code - 'A'.code] = coordinate3Pairs
-            params['H'.code - 'A'.code] = coordinate
-            params['L'.code - 'A'.code] = coordinatePair
-            params['M'.code - 'A'.code] = coordinatePair
-            params['Q'.code - 'A'.code] = coordinate2Pairs
-            params['S'.code - 'A'.code] = coordinate2Pairs
-            params['T'.code - 'A'.code] = coordinatePair
-            params['V'.code - 'A'.code] = coordinate
+            params['H'.code - 'A'.code] = arrayOf(Param.XCoord)
+            params['L'.code - 'A'.code] = xyPair
+            params['M'.code - 'A'.code] = xyPair
+            params['Q'.code - 'A'.code] = xy2Pairs
+            params['S'.code - 'A'.code] = xy2Pairs
+            params['T'.code - 'A'.code] = xyPair
+            params['V'.code - 'A'.code] = arrayOf(Param.YCoord)
             params['Z'.code - 'A'.code] = emptyArray()
         }
 
@@ -171,11 +170,12 @@ class Cmd internal constructor(
     }
 
     enum class Param {
-        Coord,
+        XCoord,
+        YCoord,
         Number,
         Flag {
             override fun appendArgValue(
-                dst: StringBuilder,
+                dst: Appendable,
                 pathData: CharSequence,
                 divider: Char,
                 afterFractional: Boolean,
@@ -195,7 +195,7 @@ class Cmd internal constructor(
         ;
 
         open fun appendArgValue(
-            dst: StringBuilder,
+            dst: Appendable,
             pathData: CharSequence,
             divider: Char,
             afterFractional: Boolean,
@@ -214,8 +214,8 @@ class Cmd internal constructor(
                 floatEnd = pathData.length
             } else {
                 if (((iod > 0 && floatEnd - iod > precision) || // excessive precision
-                        (pathData[floatStart] == '0' && floatEnd - floatStart > 1) || // leading zero(es)
-                        pathData.startsWith("-0", floatStart) || // another case of leading zero
+//                      (pathData[floatStart] == '0' && floatEnd - floatStart > 1) || // leading zero(es)
+//                      pathData.startsWith("-0", floatStart) || // another case of leading zero
                         (iod >= 0 && pathData[floatEnd - 1] == '0'))
                 ) { // trailing zeroes in fractional part
                     pathData = StringBuilder(floatEnd - floatStart).also { it.append(pathData, floatStart, floatEnd) }
@@ -239,8 +239,11 @@ class Cmd internal constructor(
 fun Iterable<Cmd>.maxPrecision(): Int =
     maxOf(Cmd::maxPrecision)
 
-fun List<Cmd>.shorten(): List<Cmd> {
+fun List<Cmd>.shortened(): List<Cmd> {
     val cmds = toMutableList()
+
+    // 1. Collapse pairs of commands into single, where possible:
+    // move + move, line + line if same direction, line + close if line leads to last move direction
     var i = 0
     var lastMove: Cmd? = null
     while (i < cmds.lastIndex) {
@@ -256,9 +259,15 @@ fun List<Cmd>.shorten(): List<Cmd> {
         }
     }
 
-    // TODO shorten (cmd1, cmd).shortenRight -> (cmd1, shortened cmd2) e.g. use shorter Bézier version when using ctrl point from the previous cmd
+    // 2. Shorten commands in context of other commands:
+    // TODO use shorter Bézier version when using ctrl point from the previous cmd
+    // TODO (cmd1, cmd).shortenRight -> (cmd1, shortened cmd2)
 
-    // TODO shorten individual commands e.g. m0 1 ⇒ v1
+    // 3. Shorten individual commands:
+    // Ll to HhVv
+    for (i in cmds.indices) {
+        cmds[i] = cmds[i].shortened()
+    }
 
     return cmds
 }
@@ -299,6 +308,34 @@ private fun collapse(lastMove: Cmd?, a: Cmd, b: Cmd): Cmd? = when {
     }
 
     else -> null
+}
+
+private fun Cmd.shortened(): Cmd =
+    when {
+        cmd == 'L' && args[0] == startX -> Cmd(startX, startY, 'V', args[1])
+        cmd == 'L' && args[1] == startY -> Cmd(startX, startY, 'H', args[0])
+        cmd == 'l' && args[0].signum() == 0 -> Cmd(startX, startY, 'v', args[1])
+        cmd == 'l' && args[1].signum() == 0 -> Cmd(startX, startY, 'h', args[0])
+        else -> this
+    }
+
+private fun Cmd.counterpart(): Cmd { // relative into absolute or vice versa
+    val params = params
+    val abs = cmd.isUpperCase()
+//  val counterpart: BigDecimal.(BigDecimal) -> BigDecimal = if (abs) BigDecimal::subtract else BigDecimal::add
+    return Cmd(
+        startX, startY,
+        if (abs) cmd.lowercaseChar() else cmd.uppercaseChar(),
+        *Array(args.size) {
+            val arg = args[it]
+            when (params[it]) {
+                Cmd.Param.XCoord -> if (abs) arg - startX else arg + startX // arg.counterpart(startX)
+                Cmd.Param.YCoord -> if (abs) arg - startY else arg + startY // arg.counterpart(startY)
+                Cmd.Param.Number -> arg
+                Cmd.Param.Flag -> arg
+            }
+        },
+    )
 }
 
 private operator fun Cmd.Companion.invoke(
@@ -356,7 +393,25 @@ fun List<Cmd>.appendTo(buf: StringBuilder, precision: Int) {
     var last: Cmd? = null
     for (i in indices) {
         val curr = this[i]
+
+        val before = buf.length
         curr.appendTo(last, buf, precision)
-        last = curr
+
+        if (curr.params.isNotEmpty()) {
+            // also try counterpart
+            val between = buf.length
+            val ctr = curr.counterpart()
+            ctr.appendTo(last, buf, precision)
+
+            if (buf.length - between < between - before) { // keep counterpart if shorter
+                buf.delete(before, between)
+                last = ctr
+            } else {
+                buf.setLength(between)
+                last = curr
+            }
+        } else {
+            last = curr
+        }
     }
 }

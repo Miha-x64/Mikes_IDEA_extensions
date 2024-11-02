@@ -225,7 +225,7 @@ internal class PathTag private constructor(
             val maxPrecision = cmds.maxPrecision()
             val canTrimCarefully = maxPrecision > usefulPrecision
             val canTrimAggressively = maxPrecision > usefulPrecision + 1
-            val shortened = cmds.shorten()
+            val shortened = cmds.shortened()
             val rewritten = StringBuilder().also { shortened.appendTo(it, Int.MAX_VALUE) } // we will re-invoke this in "Compact path" fix but there's not much work to do
             val rewriteStart = pathData.indices.firstOrNull { pathData[it] != rewritten.getOrNull(it) } ?: -1
             val rewriteEnd = pathData.indices

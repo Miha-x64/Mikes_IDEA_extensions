@@ -16,9 +16,9 @@ class PathCmdTest {
     }
 
     @Test
-    fun reconstruct1() {
+    fun reconstructShortened() {
         val cmds = ArrayList<Cmd>()
-        val expect = "M17.6,11.48L19.44,8.3a0.63,0.63 0,0 0-1.09-0.63l-1.88,3.24a11.43,11.43 0,0 0-8.94 0L5.65,7.67a0.63,0.63 0,0 0-1.09 0.63L6.4,11.48A10.81,10.81 0,0 0,1 20L23,20A10.81,10.81 0,0 0,17.6 11.48ZM7,17.25A1.25,1.25 0,1 1,8.25 16,1.25 1.25,0 0,1 7,17.25ZM17,17.25A1.25,1.25 0,1 1,18.25 16,1.25 1.25,0 0,1 17,17.25Z"
+        val expect = "M17.6,11.48L19.44,8.3a0.63,0.63 0,0 0-1.09-0.63l-1.88,3.24a11.43,11.43 0,0 0-8.94 0L5.65,7.67A0.63 0.63 0 0 0 4.56 8.3L6.4,11.48A10.81,10.81 0,0 0,1 20H23a10.81 10.81 0 0 0-5.4-8.52ZM7,17.25A1.25,1.25 0,1 1,8.25 16,1.25 1.25,0 0,1 7,17.25Zm10 0A1.25,1.25 0,1 1,18.25 16,1.25 1.25,0 0,1 17,17.25Z"
         PathDelegate.parse(
             "M17.6,11.48 L19.44,8.3a0.63,0.63 0,0 0,-1.09 -0.63l-1.88,3.24a11.43,11.43 0,0 0,-8.94 0L5.65,7.67a0.63,0.63 0,0 0,-1.09 0.63L6.4,11.48A10.81,10.81 0,0 0,1 20L23,20A10.81,10.81 0,0 0,17.6 11.48ZM7,17.25A1.25,1.25 0,1 1,8.25 16,1.25 1.25,0 0,1 7,17.25ZM17,17.25A1.25,1.25 0,2 .3,18.25 16,1.25 1.25,0 0,1 17,17.25Z",
             pathsBlackHole, cmds, //                                                                                                                                                                                              NaUgHtY FlAgS (non-compliant but work) (originally '1 1') -^^^^
@@ -26,7 +26,7 @@ class PathCmdTest {
             false,
         )
         val reconstruction = StringBuilder()
-        cmds.appendTo(reconstruction, 2)
+        cmds.shortened().appendTo(reconstruction, 2)
         assert(reconstruction.contentEquals(expect)) { reconstruction }
         checkBlackHoles()
     }
