@@ -1,35 +1,46 @@
+@file:Suppress("NAME_SHADOWING")
 package net.aquadc.mike.plugin.android.res
 
 import it.unimi.dsi.fastutil.ints.IntArrayList
+import net.aquadc.mike.plugin.copy
+import net.aquadc.mike.plugin.lastIndicesOfExclusive
+import net.aquadc.mike.plugin.tryUpdate
+import net.aquadc.mike.plugin.trimmed
 import org.jetbrains.annotations.TestOnly
+import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
 import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.math.atan2
-import kotlin.math.max
 
-class Cmd internal constructor(
+internal class Cmd(
     val startX: BigDecimal, // We use these values when rewriting,
     val startY: BigDecimal, // so here's my $0.05000000074505806 to avoid screwing up precision.
     val cmd: Char,
     val args: Array<out BigDecimal>,
-    // TODO the following should be optional after adding `args`
-    val pathData: CharSequence,
-    val floatRanges: IntArrayList,
-    val rangesOffset: Int
+    val src: Src? = null, // TODO save punctuation when possible
 ) {
+    internal class Src(
+        val pathData: CharSequence,
+        val floatRanges: IntArrayList,
+        val rangesOffset: Int
+    )
     init {
         require(paramsOf(cmd) != null)
-        if (params.isNotEmpty()) require(rangesOffset >= 0)
+        if (params.isNotEmpty() && src != null) require(src.rangesOffset >= 0)
         // else Zz, no rangesOffset, we're literally nowhere
     }
 
     val startXF get() = startX.toFloat()
     val startYF get() = startY.toFloat()
 
+    val isAbs: Boolean get() = cmd in 'A'..'Z'
+    val isRel: Boolean get() = cmd in 'a'..'z'
+
     val params: Array<Param>
         get() = paramsOf(cmd)!!
 
-    fun appendTo(context: Cmd?, buf: Appendable, precision: Int) {
-        var afterFractional = false
+    fun appendTo(context: Cmd?, buf: Appendable) {
+//        var afterFractional = false
         if (params.isEmpty()) {
             buf.append(cmd) // Zz
         } else {
@@ -39,22 +50,24 @@ class Cmd internal constructor(
             var divider: Char
             if (context != null) {
                 if (when (context.cmd) { // “If a moveto is followed by multiple pairs of coordinates,
-                        'M' -> cmd == 'L' // the subsequent pairs are treated as implicit lineto commands.”
-                        'm' -> cmd == 'l' // https://www.w3.org/TR/SVG/paths.html#PathDataMovetoCommands
-                        else -> context.cmd == cmd
-                    }
+                        'M' -> 'L' // the subsequent pairs are treated as implicit lineto commands.”
+                        'm' -> 'l' // https://www.w3.org/TR/SVG/paths.html#PathDataMovetoCommands
+                        else -> context.cmd
+                    } == cmd
                 ) { // then commands can be chained, preserve divider (or drop later, if useless)
                     divider = cmd
-                    for (i in floatRanges.getInt(rangesOffset) - 1 downTo 0) {
-                        val ch = pathData[i]
-                        if (ch.isCWSP()) {
-                            divider = ch
-                            continue // e.g. in "L 1" we preserve 'L', not the following ' '
-                        } else if (ch == cmd) {
-                            divider = ch
-                            break
-                        } else {
-                            break
+                    src?.run {
+                        for (i in floatRanges.getInt(rangesOffset) - 1 downTo 0) {
+                            val ch = pathData[i]
+                            if (ch.isCWSP()) {
+                                divider = ch
+                                continue // e.g. in "L 1" we preserve 'L', not the following ' '
+                            } else if (ch == cmd) {
+                                divider = ch
+                                break
+                            } else {
+                                break
+                            }
                         }
                     }
                 } else {
@@ -62,12 +75,7 @@ class Cmd internal constructor(
                     divider = '\u0000'
                 }
 
-                context.params.takeIf { it.isNotEmpty() }?.let { ctxParams ->
-                    afterFractional = context.pathData.containsDot(
-                        context.floatRanges.getInt(context.rangesOffset + 2 * ctxParams.size - 2),
-                        context.floatRanges.getInt(context.rangesOffset + 2 * ctxParams.size - 1),
-                    )
-                }
+//                afterFractional = (context.args.lastOrNull()?.scale() ?: 0) > 0
 
             } else {
                 buf.append(cmd) // First command, no chaining.
@@ -77,27 +85,25 @@ class Cmd internal constructor(
             // Now command is added if it is absolutely necessary,
             // or preserved (probably as a whitespace) in `divider` and its necessity depends on adjacent floats' format
 
-            var offset = rangesOffset
-            for (param in params) {
-                val floatStart = floatRanges.getInt(offset++)
-                val floatEnd = floatRanges.getInt(offset++)
-                param.appendArgValue(buf, pathData, divider, afterFractional, floatStart, floatEnd, precision)
-                divider = pathData.takeIf { it.length > floatEnd }?.get(floatEnd)?.takeIf(Char::isCWSP) ?: ' '
-                afterFractional = pathData.containsDot(floatStart, floatEnd)
+            var offset = src?.rangesOffset ?: -1
+            for (i in params.indices) {
+                val arg = args[i]
+                params[i].appendArgValue(buf, divider, arg)
+                divider = src?.run {
+                    val floatStart = floatRanges.getInt(offset++)
+                    val floatEnd = floatRanges.getInt(offset++)
+                    pathData.takeIf { it.length > floatEnd }?.get(floatEnd)?.takeIf(Char::isCWSP)
+                } ?: ',' // most common
+//                afterFractional = arg.scale() > 0
             }
         }
     }
 
-    fun maxPrecision(): Int {
-        var max = 0
-        forEachFloat { _, _, precision ->
-            max = max(max, precision)
-        }
-        return max
-    }
+    fun maxPrecision(): Int =
+        args.ifNotEmpty { maxOf(BigDecimal::scale) } ?: 0
 
     fun firstFloatStart(ofPrecision: Int): Int {
-        forEachFloat { floatStart, _, precision ->
+        src!!.forEachFloat { floatStart, _, precision ->
             if (precision > ofPrecision)
                 return floatStart
         }
@@ -106,7 +112,7 @@ class Cmd internal constructor(
 
     fun lastFloatEnd(ofPrecision: Int): Int {
         var last = -1
-        forEachFloat { _, floatEnd, precision ->
+        src!!.forEachFloat { _, floatEnd, precision ->
             if (precision > ofPrecision)
                 last = floatEnd
         }
@@ -114,7 +120,7 @@ class Cmd internal constructor(
         return last
     }
 
-    private inline fun forEachFloat(block: (floatStart: Int, floatEnd: Int, precision: Int) -> Unit) {
+    private inline fun Src.forEachFloat(block: (floatStart: Int, floatEnd: Int, precision: Int) -> Unit) {
         var i = 0
         val ints = params.size * 2
         while (i < ints) {
@@ -133,10 +139,10 @@ class Cmd internal constructor(
         val buf = StringBuilder()
         if (cmd != 'M') {
             Cmd(BigDecimal.ZERO, BigDecimal.ZERO, 'M', startX, startY)
-                .appendTo(null, buf, Int.MAX_VALUE)
+                .appendTo(null, buf)
             buf.replace(0, 1 /* eat 'M'*/, "@(").append(')')
         }
-        appendTo(null, buf, Int.MAX_VALUE)
+        appendTo(null, buf)
         return buf.toString()
     }
 
@@ -150,16 +156,16 @@ class Cmd internal constructor(
             val coordinate3Pairs = xy2Pairs + xyPair
             params['A'.code - 'A'.code] = arrayOf(
                 Param.Number, Param.Number, Param.Number, Param.Flag, Param.Flag, Param.XCoord, Param.YCoord,
-                //    radius        radius        angle
+                //        rx         ry x-axis-rotation large-arc-flag sweep-flag       x             y
             )
-            params['C'.code - 'A'.code] = coordinate3Pairs
-            params['H'.code - 'A'.code] = arrayOf(Param.XCoord)
-            params['L'.code - 'A'.code] = xyPair
-            params['M'.code - 'A'.code] = xyPair
-            params['Q'.code - 'A'.code] = xy2Pairs
-            params['S'.code - 'A'.code] = xy2Pairs
-            params['T'.code - 'A'.code] = xyPair
-            params['V'.code - 'A'.code] = arrayOf(Param.YCoord)
+            params['C'.code - 'A'.code] = coordinate3Pairs // x1 y1 x2 y2 x y
+            params['H'.code - 'A'.code] = arrayOf(Param.XCoord) // x
+            params['L'.code - 'A'.code] = xyPair // x y
+            params['M'.code - 'A'.code] = xyPair // x y
+            params['Q'.code - 'A'.code] = xy2Pairs // x1 y1 x y
+            params['S'.code - 'A'.code] = xy2Pairs // x2 y2 x y
+            params['T'.code - 'A'.code] = xyPair // x y
+            params['V'.code - 'A'.code] = arrayOf(Param.YCoord) // y
             params['Z'.code - 'A'.code] = emptyArray()
         }
 
@@ -176,70 +182,37 @@ class Cmd internal constructor(
         Flag {
             override fun appendArgValue(
                 dst: Appendable,
-                pathData: CharSequence,
                 divider: Char,
-                afterFractional: Boolean,
-                floatStart: Int,
-                floatEnd: Int,
-                precision: Int
+                value: BigDecimal,
             ) {
                 if (divider != '\u0000') dst.append(divider)
 
-                val flag = pathData[floatStart]
-                dst.append(
-                    if (floatStart + 1 == floatEnd && (flag == '0' || flag == '1')) flag
-                    else if (pathData.subSequence(floatStart, floatEnd).toString().toFloat() == 0f) '0' else '1'
-                )
+                dst.append((value.signum().coerceAtLeast(0) + '0'.code).toChar())
             }
         },
         ;
 
         open fun appendArgValue(
             dst: Appendable,
-            pathData: CharSequence,
             divider: Char,
-            afterFractional: Boolean,
-            floatStart: Int,
-            floatEnd: Int,
-            precision: Int
+            value: BigDecimal,
         ) {
-            val iod = pathData.indexOfDot(floatStart, floatEnd)
-            var pathData = pathData
-            var floatStart = floatStart
-            var floatEnd = floatEnd
-            if (pathData.containsE(floatStart, floatEnd)) { // get rid of exponential, some parsers can't handle it
-                pathData = StringBuilder(BigDecimal(pathData.substring(floatStart, floatEnd)).toPlainString())
-                pathData.trimToPrecision(precision)
-                floatStart = 0
-                floatEnd = pathData.length
-            } else {
-                if (((iod > 0 && floatEnd - iod > precision) || // excessive precision
-//                      (pathData[floatStart] == '0' && floatEnd - floatStart > 1) || // leading zero(es)
-//                      pathData.startsWith("-0", floatStart) || // another case of leading zero
-                        (iod >= 0 && pathData[floatEnd - 1] == '0'))
-                ) { // trailing zeroes in fractional part
-                    pathData = StringBuilder(floatEnd - floatStart).also { it.append(pathData, floatStart, floatEnd) }
-                    pathData.trimToPrecision(precision)
-                    floatStart = 0
-                    floatEnd = pathData.length
-                }
-            }
-
+            val str = value.toPlainString()
             // add divider if absolutely necessary
-            if (pathData[floatStart] == '-') {}
-            else if (pathData[floatStart] == '.' && afterFractional) {}
+            if (str.first() == '-') {}
+//            else if (str.first() == '.' && afterFractional) {}
             else if (divider != '\u0000') dst.append(divider)
 
-            dst.append(pathData, floatStart, floatEnd)
+            dst.append(str)
         }
     }
 
 }
 
-fun Iterable<Cmd>.maxPrecision(): Int =
+internal fun Iterable<Cmd>.maxPrecision(): Int =
     maxOf(Cmd::maxPrecision)
 
-fun List<Cmd>.shortened(): List<Cmd> {
+internal fun List<Cmd>.shortened(precision: Int): List<Cmd> {
     val cmds = toMutableList()
 
     // 1. Collapse pairs of commands into single, where possible:
@@ -259,14 +232,14 @@ fun List<Cmd>.shortened(): List<Cmd> {
         }
     }
 
-    // 2. Shorten commands in context of other commands:
+    // 2. Shorten commands in context of other commands: shortenRight(cmd1, cmd2) -> shortened cmd2
     // TODO use shorter Bézier version when using ctrl point from the previous cmd
-    // TODO (cmd1, cmd).shortenRight -> (cmd1, shortened cmd2)
 
-    // 3. Shorten individual commands:
+    // 3. Shorten individual commands and trim to precision:
     // Ll to HhVv
+    val errCorr = arrayOf(BigDecimal.ZERO, BigDecimal.ZERO)
     for (i in cmds.indices) {
-        cmds[i] = cmds[i].shortened()
+        cmds[i] = cmds[i].shortened().trimTo(precision, errCorr)
     }
 
     return cmds
@@ -321,7 +294,7 @@ private fun Cmd.shortened(): Cmd =
 
 private fun Cmd.counterpart(): Cmd { // relative into absolute or vice versa
     val params = params
-    val abs = cmd.isUpperCase()
+    val abs = isAbs
 //  val counterpart: BigDecimal.(BigDecimal) -> BigDecimal = if (abs) BigDecimal::subtract else BigDecimal::add
     return Cmd(
         startX, startY,
@@ -342,18 +315,7 @@ private operator fun Cmd.Companion.invoke(
     startX: BigDecimal, startY: BigDecimal,
     cmd: Char, vararg args: BigDecimal,
 ): Cmd {
-    val ranges = IntArrayList(2 * args.size)
-    var pos = 0
-    val str = args.joinToString(separator = "") {
-        ranges.add(pos)
-        val str = it.toPlainString()
-        pos += str.length
-        ranges.add(pos)
-        str
-    }
-    return Cmd(startX, startY, cmd, args, str, ranges, 0).also {
-        check(2 * it.params.size == ranges.size)
-    }
+    return Cmd(startX, startY, cmd, args)
 }
 
 private val LINE_CMDS = charArrayOf('L', 'l', 'H', 'h', 'V', 'v')
@@ -379,39 +341,47 @@ private fun Vec2F.is0(): Boolean {
     return x == 0f && y == 0f
 }
 
-private fun Cmd.end(): Pair<BigDecimal, BigDecimal> = when (cmd) {
-    'L', 'M' -> args.let { (ex, ey) -> ex to ey }
-    'l', 'm' -> args.let { (dx, dy) -> (startX + dx) to (startY + dy) }
-    'H' -> args.single() to startY
-    'h' -> (startX + args.single()) to startY
-    'V' -> startX to args.single()
-    'v' -> startX to (startY + args.single())
-    else -> throw UnsupportedOperationException()
+private fun Cmd.end(): Pair<BigDecimal, BigDecimal> {
+    val (exi, eyi) = params.let {
+        require(it.isNotEmpty()) { "end (X, Y) of Zz are the ones of last Mm, bro" }
+        it.lastIndicesOfExclusive(Cmd.Param.XCoord, Cmd.Param.YCoord)
+    }
+    val abs = isAbs
+    return Pair(
+        if (exi < 0) startX else if (abs) args[exi] else startX + args[exi],
+        if (eyi < 0) startY else if (abs) args[eyi] else startY + args[eyi],
+    )
 }
 
-fun List<Cmd>.appendTo(buf: StringBuilder, precision: Int) {
+private fun Cmd.trimTo(precision: Int, errCorr: Array<BigDecimal>): Cmd {
+    if (params.isEmpty()) return this
+
+    val (exi, eyi) = params.lastIndicesOfExclusive(Cmd.Param.XCoord, Cmd.Param.YCoord)
+    var args = args
+    if (isRel) {
+        val (ecx, ecy) = errCorr
+        if (ecx.signum() != 0 || ecy.signum() != 0) { // && (exi || eyi) — cmds with params have at least one coordinate
+            val argsMut = args.copy()
+            argsMut.tryUpdate(exi) { dx -> dx + ecx }
+            argsMut.tryUpdate(eyi) { dy -> dy + ecy }
+            args = argsMut
+        }
+    }
+    val trimmed = Cmd(startX, startY, cmd, *args.trimmed(precision, RoundingMode.HALF_EVEN, null))
+    val (iex, iey) = end()
+    val (fex, fey) = trimmed.end()
+    errCorr[0] = iex - fex
+    errCorr[1] = iey - fey
+    return trimmed
+
+    // TODO try counterpart
+}
+
+internal fun List<Cmd>.appendTo(buf: StringBuilder) {
     var last: Cmd? = null
     for (i in indices) {
         val curr = this[i]
-
-        val before = buf.length
-        curr.appendTo(last, buf, precision)
-
-        if (curr.params.isNotEmpty()) {
-            // also try counterpart
-            val between = buf.length
-            val ctr = curr.counterpart()
-            ctr.appendTo(last, buf, precision)
-
-            if (buf.length - between < between - before) { // keep counterpart if shorter
-                buf.delete(before, between)
-                last = ctr
-            } else {
-                buf.setLength(between)
-                last = curr
-            }
-        } else {
-            last = curr
-        }
+        curr.appendTo(last, buf)
+        last = curr
     }
 }

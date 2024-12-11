@@ -268,7 +268,7 @@ public final class PathDelegate {
             ctrlPointY = currentSegmentStartY;
             path.mLastX = currentSegmentStartX.floatValue();
             path.mLastY = currentSegmentStartY.floatValue();
-            cmds.add(new Cmd(currentX, currentY, cmd, EMPTY, pathData, floatRanges, -1));
+            cmds.add(new Cmd(currentX, currentY, cmd, EMPTY, new Cmd.Src(pathData, floatRanges, -1)));
             count = 0; // guard against passing arguments to Zz: skip the following loop
         }
 
@@ -282,7 +282,7 @@ public final class PathDelegate {
                     new TextRange(rangesOffset + 2 * k, floatRanges.getInt(rangesOffset + 2 * count - 1))
                 );
             }
-            cmds.add(new Cmd(currentX, currentY, cmd, Arrays.copyOfRange(val, k, k + incr),pathData, floatRanges, rangesOffset + 2 * k));
+            cmds.add(new Cmd(currentX, currentY, cmd, Arrays.copyOfRange(val, k, k + incr), new Cmd.Src(pathData, floatRanges, rangesOffset + 2 * k)));
             BigDecimal reflectiveCtrlPointX;
             BigDecimal reflectiveCtrlPointY;
             switch(cmd) {

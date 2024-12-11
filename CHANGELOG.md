@@ -4,6 +4,7 @@
     <li>Added inlay hints for vararg array allocation</li>
     <li>Shortening pathData when rewriting</li>
     <li>Fix upcast hints confusing variadic argument with lambda parameter</li>
+    <li>Vector pathData error correction when trimming relative commands</li>
   </ul>
 
 ### 0.32

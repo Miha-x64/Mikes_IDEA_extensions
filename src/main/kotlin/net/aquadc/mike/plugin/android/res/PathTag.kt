@@ -225,9 +225,11 @@ internal class PathTag private constructor(
             val maxPrecision = cmds.maxPrecision()
             val canTrimCarefully = maxPrecision > usefulPrecision
             val canTrimAggressively = maxPrecision > usefulPrecision + 1
-            val shortened = cmds.shortened()
-            val rewritten = StringBuilder().also { shortened.appendTo(it, Int.MAX_VALUE) } // we will re-invoke this in "Compact path" fix but there's not much work to do
-            val rewriteStart = pathData.indices.firstOrNull { pathData[it] != rewritten.getOrNull(it) } ?: -1
+            val shortened = cmds.shortened(Int.MAX_VALUE)
+            val aggressive = cmds.shortened(usefulPrecision)
+            val careful = cmds.shortened(usefulPrecision + 1)
+            val rewritten = StringBuilder().also { shortened.appendTo(it) } // we will re-invoke this in "Compact path" fix but there's not much work to do
+            val rewriteStart = pathData.indices.firstOrNull { pathData[it] != rewritten.getOrNull(it) && !pathData[it].isCWSP() } ?: -1
             val rewriteEnd = pathData.indices
                 .firstOrNull { pathData[pathData.length - it - 1] != rewritten.getOrNull(rewritten.length - it - 1) }
                 ?.let { pathData.length - it }
@@ -249,9 +251,9 @@ internal class PathTag private constructor(
                     } else TextRange.from(beginValueAt, rawPathData.length),
                     *fixes(
                         // quickfixes are sorted alphabetically by IntelliJ, mind names so order is preserved
-                        if (isOnTheFly && canTrimAggressively) OptimizePathFix(shortened, "Reduce precision aggressively$andMaybeShorten", usefulPrecision) else null,
-                        if (canTrimCarefully) OptimizePathFix(shortened, "Reduce precision carefully$andMaybeShorten", usefulPrecision + 1) else null,
-                        if (rewriteStart >= 0) OptimizePathFix(shortened, "Shorten path", Int.MAX_VALUE) else null,
+                        if (isOnTheFly && canTrimAggressively) OptimizePathFix(aggressive, "Reduce precision aggressively$andMaybeShorten") else null,
+                        if (canTrimCarefully) OptimizePathFix(careful, "Reduce precision carefully$andMaybeShorten") else null,
+                        if (rewriteStart >= 0) OptimizePathFix(shortened, "Shorten path") else null,
                     )
                 )
             }
@@ -647,80 +649,12 @@ internal class PathTag private constructor(
 private class OptimizePathFix(
     @FileModifier.SafeFieldForPreview private val cmds: List<Cmd>,
     name: String,
-    private val targetPrecision: Int,
 ) : NamedLocalQuickFix(name) {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         (descriptor.psiElement.parent as XmlAttribute)
-            .setValue(StringBuilder().also { cmds.appendTo(it, targetPrecision) }.toString())
+            .setValue(StringBuilder().also { cmds.appendTo(it) }.toString())
     }
 }
-
-internal fun StringBuilder.trimToPrecision(targetPrecision: Int): StringBuilder {
-    var carry = false
-    run { // lower precision
-        val precision = length - 1 - indexOf('.')
-        if (precision > targetPrecision) {
-            val trim = precision - targetPrecision
-            val iol = lastIndex
-            repeat(trim) { i ->
-                carry = this[iol - i] - '0' + carry.asInt > 4
-            }
-            delete(length - trim, length)
-        }
-    }
-    run<Unit> { // clean up and carry fractional part
-        var fractional = true
-        while (isNotEmpty()) {
-            val iol = lastIndex
-            val ch = this[iol]
-            if (ch == '.') {
-                fractional = false
-            } else if (fractional && (carry && ch == '9' || !carry && ch == '0')) {
-                // carry over to the previous digit
-            } else if (fractional && carry && ch in '0'..'8') {
-                this[iol]++
-                carry = false
-                break
-            } else break
-            deleteCharAt(iol)
-        }
-
-        var iol = lastIndex
-        if (!fractional) { // carry whole part
-            while (iol >= 0 && carry) {
-                val ch = this[iol]
-                if (ch == '9') {
-                    this[iol--] = '0'
-                } else if (ch in '0'..'8') {
-                    this[iol] = ch + 1
-                    carry = false
-                } else {
-                    check(ch == '-')
-                    break
-                }
-            }
-        }
-
-        if (carry) insert(max(iol, 0), '1')
-        else if (isEmpty()) append('0')
-        else if (length == 1 && this[0] == '-') setCharAt(0, '0') // -0 -> 0
-    }
-
-    // drop leading zeroes
-    val start = if (this[0] == '-') 1 else 0
-    while (length > start + 2 &&
-        this[start] == '0' &&
-        this[start+1] == '0' /*this[start+1].let { it == '0' || it == '.' }*/)
-        deleteCharAt(start) // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- this term would allow `.fractional` form.
-    // Save one leading zero instead, “to avoid crashes on some pre-Marshmallow devices” Ⓒ InvalidVectorPath lint rule
-
-    if (length == 2 && this[0] == '-' && this[1] == '0')
-        deleteCharAt(0)
-
-    return this
-}
-
-private inline val Boolean.asInt get() = if (this) 1 else 0
 
 private fun removeSubPathFix(
     pathData: String,
