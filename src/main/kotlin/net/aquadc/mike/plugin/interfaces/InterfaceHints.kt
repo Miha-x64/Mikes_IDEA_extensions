@@ -191,7 +191,7 @@ private class InterfaceHintsCollector(
             val argClass = when (argumentType) {
                 UastErrorType, is PsiCapturedWildcardType -> null
                 is PsiClassType -> argumentType
-                is PsiPrimitiveType -> argumentType.getBoxedType(parameterType.manager, allScope(parameterType.getProject()))
+                is PsiPrimitiveType -> argumentType.getBoxedType(parameterType.manager, allScope(parameterType.project))
                 is PsiMethodReferenceType, is PsiLambdaExpressionType, is PsiLambdaParameterType -> null
                 else -> Logger.getInstance(InterfaceHintsCollector::class.java)
                     .error("arg type is ${argumentType::class.java} : $argumentType")

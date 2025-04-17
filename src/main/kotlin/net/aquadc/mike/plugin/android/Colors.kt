@@ -251,7 +251,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
  */
 class ColorIntLiteralFolding : FoldingBuilderEx() {
     override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> {
-        if (quick || (root !is PsiJavaFile && root !is KtFile)) return FoldingDescriptor.EMPTY
+        if (quick || (root !is PsiJavaFile && root !is KtFile)) return FoldingDescriptor.EMPTY_ARRAY
         val regions = SmartList<FoldingDescriptor>()
         when (root) {
             is PsiJavaFile -> root.accept(object : JavaRecursiveElementWalkingVisitor() {
@@ -265,7 +265,7 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
                 }
             })
         }
-        return if (regions.isEmpty()) FoldingDescriptor.EMPTY else regions.toTypedArray()
+        return if (regions.isEmpty()) FoldingDescriptor.EMPTY_ARRAY else regions.toTypedArray()
     }
     private fun PsiElement.tryFoldTo(regions: SmartList<FoldingDescriptor>) {
         val colorInt = text.toHexIntLiteralValue("0x", 8, '_')

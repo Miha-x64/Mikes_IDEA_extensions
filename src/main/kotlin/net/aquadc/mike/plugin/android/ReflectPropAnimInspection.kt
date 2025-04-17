@@ -148,10 +148,10 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
         private const val TPath = "android.graphics.Path"
         private const val TView = "android.view.View"
         private val dontMindArgs: ArgsPredicate = { true }
-        private val firstArgMustBeView: ArgsPredicate = { (arg,) ->
+        private val firstArgMustBeView: ArgsPredicate = { (arg) ->
             arg.getExpressionType()?.let { arg.getTypeByName(TView)?.isAssignableFrom(it) } == true
         }
-        private val firstArgMustBeViewClass: ArgsPredicate = { (arg,) ->
+        private val firstArgMustBeViewClass: ArgsPredicate = { (arg) ->
             ((arg.getExpressionType() as? PsiClassType)?.typeArguments()?.firstOrNull() as? PsiType)
                 ?.let { arg.getTypeByName(TView)?.isAssignableFrom(it) } == true
         }

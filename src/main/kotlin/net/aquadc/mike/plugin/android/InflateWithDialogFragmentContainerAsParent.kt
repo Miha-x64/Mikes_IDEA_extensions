@@ -39,9 +39,9 @@ class InflateWithDialogFragmentContainerAsParent : UastInspection() {
             var params: List<UParameter>? = null
             if (interestingClass && node.name == "onCreateView" && node.uastParameters.also { params = it }.size == 3 &&
                 params!![0].qn == "android.view.LayoutInflater" &&
-                params!![1].qn == "android.view.ViewGroup" &&
-                params!![2].qn == "android.os.Bundle") {
-                containerParam = params!![1]
+                params[1].qn == "android.view.ViewGroup" &&
+                params[2].qn == "android.os.Bundle") {
+                containerParam = params[1]
                 return false
             }
             return true

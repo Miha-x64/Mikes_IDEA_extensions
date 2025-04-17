@@ -62,7 +62,7 @@ class ShapeAttrApplicationOrder : UastInspection() {
                     } else if (nextCallExpr is UBinaryExpression &&
                         nextCallExpr.leftOperand.also { nextCallExpr = it } is UReferenceExpression &&
                             ((nextCallExpr as UReferenceExpression).resolvedName ?: "") in computeOpacityCallers &&
-                            sameReceiver(nextCallExpr as UReferenceExpression, nodeReceiver)) {
+                            sameReceiver(nextCallExpr, nodeReceiver)) {
                         return
                     }
                 }

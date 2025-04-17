@@ -9,8 +9,8 @@ import com.intellij.openapi.editor.FoldingGroup
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
-import com.intellij.refactoring.suggested.endOffset
-import com.intellij.refactoring.suggested.startOffset
+import com.intellij.psi.util.endOffset
+import com.intellij.psi.util.startOffset
 import com.intellij.util.SmartList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import net.aquadc.mike.plugin.not
@@ -30,7 +30,7 @@ import kotlin.math.min
 class BackingPropertyFolding : FoldingBuilderEx() {
 
     override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> {
-        if (quick || root !is KtFile) return FoldingDescriptor.EMPTY
+        if (quick || root !is KtFile) return FoldingDescriptor.EMPTY_ARRAY
 
         val regions = SmartList<FoldingDescriptor>()
         root.accept(object : KotlinRecursiveElementWalkingVisitor() {
@@ -42,8 +42,8 @@ class BackingPropertyFolding : FoldingBuilderEx() {
                         ?: return
                 val backingName = backing.name?.takeIf { it.contains(propName, ignoreCase = true) } ?: return
                 val publicType = property.typeReference ?: property.getter?.returnTypeReference ?: return
-                val preceding = property.siblings(false, false).filter(IS_CODE).firstOrNull().takeIf { it == backing }
-                val following = property.siblings(true, false).filter(IS_CODE).firstOrNull().takeIf { it == backing }
+                val preceding = property.siblings(forward = false, withItself = false).filter(IS_CODE).firstOrNull().takeIf { it == backing }
+                val following = property.siblings(forward = true, withItself = false).filter(IS_CODE).firstOrNull().takeIf { it == backing }
                 if (preceding == null && following == null) return
 
                 val colonPrivateType = (backing.typeReference ?: backing.getter?.returnTypeReference)
@@ -98,12 +98,12 @@ class BackingPropertyFolding : FoldingBuilderEx() {
             ) {
                 val lineStarts = IntArrayList()
                 lineStarts.add(startElement.startOffset)
-                (startElement.siblings(forward = true, withItself = true).takeWhile { it != endElement } + endElement).forEach {
-                    if (it.textContains('\n')) {
-                        val text = it.text
+                (startElement.siblings(forward = true, withItself = true).takeWhile { it != endElement } + endElement).forEach { el ->
+                    if (el.textContains('\n')) {
+                        val text = el.text
                         var iof = -1
                         while (text.indexOf('\n', startIndex = iof).also { iof = it } >= 0)
-                            lineStarts.add(it.startOffset + ++iof)
+                            lineStarts.add(el.startOffset + ++iof)
                     }
                 }
 
@@ -127,7 +127,7 @@ class BackingPropertyFolding : FoldingBuilderEx() {
             }
         })
 
-        return if (regions.isEmpty()) FoldingDescriptor.EMPTY else regions.toTypedArray()
+        return if (regions.isEmpty()) FoldingDescriptor.EMPTY_ARRAY else regions.toTypedArray()
     }
 
     override fun getPlaceholderText(node: ASTNode): String? = null

@@ -1,3 +1,8 @@
+### 0.34
+  <ul>
+    <li>IDEA 2025.1 compatibility (K2 mode)</li>
+    <li>Updated to official JetBrains plugin template</li>
+  </ul>
 
 ### 0.33
   <ul>

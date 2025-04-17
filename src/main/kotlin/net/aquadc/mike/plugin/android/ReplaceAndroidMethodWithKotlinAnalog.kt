@@ -96,17 +96,17 @@ class ReplaceAndroidMethodWithKotlinAnalog : LocalInspectionTool(), CleanupLocal
     }
 
     private companion object {
-        private const val TextUtils = "android.text.TextUtils"
-        private val join = CallMatcher.staticCall(TextUtils, "join") // -> String
+        private const val ATTextUtils = "android.text.TextUtils"
+        private val join = CallMatcher.staticCall(ATTextUtils, "join") // -> String
         private val joinArray = join.parameterTypes(JAVA_LANG_CHAR_SEQUENCE, "$JAVA_LANG_OBJECT[]")
         private val joinIterable = join.parameterTypes(JAVA_LANG_CHAR_SEQUENCE, JAVA_LANG_ITERABLE)
 
-        private val split = CallMatcher.staticCall(TextUtils, "split") // -> String[]
+        private val split = CallMatcher.staticCall(ATTextUtils, "split") // -> String[]
         private val splitWithStr = split.parameterTypes(JAVA_LANG_STRING, /*regexp*/JAVA_LANG_STRING)
         private val splitWithPat = split.parameterTypes(JAVA_LANG_STRING, Pattern::class.java.name)
 
-        private val isEmpty = CallMatcher.staticCall(TextUtils, "isEmpty").parameterTypes(JAVA_LANG_CHAR_SEQUENCE/*?*/) // -> boolean
-        private val equals = CallMatcher.staticCall(TextUtils, "equals").parameterTypes(JAVA_LANG_CHAR_SEQUENCE/*?*/, JAVA_LANG_CHAR_SEQUENCE/*?*/) // -> boolean
+        private val isEmpty = CallMatcher.staticCall(ATTextUtils, "isEmpty").parameterTypes(JAVA_LANG_CHAR_SEQUENCE/*?*/) // -> boolean
+        private val equals = CallMatcher.staticCall(ATTextUtils, "equals").parameterTypes(JAVA_LANG_CHAR_SEQUENCE/*?*/, JAVA_LANG_CHAR_SEQUENCE/*?*/) // -> boolean
 
         private val matchers = arrayOf(
             joinArray, joinIterable,

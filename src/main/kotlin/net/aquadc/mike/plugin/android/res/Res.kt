@@ -9,9 +9,9 @@ import com.intellij.psi.xml.XmlTag
 
 
 private val resTypes = HashMap<String, ResourceType>().apply {
-    ResourceType.values().forEach {
+    ResourceType.entries.forEach {
         if (it.hasInnerClass) {
-            put(it.getName(), it)
+            put(it.name, it)
         }
     }
 }
@@ -59,7 +59,7 @@ fun ResourceResolver?.resolve(raw: String?): Pair<String?, String?> {
     }
 
     val resName = raw.substring(if (slash < 0) 1 else (slash + 1))
-    canonical = "@${if (resNs === ResourceNamespace.ANDROID) "android:" else ""}${resType.getName()}/$resName"
+    canonical = "@${if (resNs === ResourceNamespace.ANDROID) "android:" else ""}${resType.name}/$resName"
     val resourceReference = ResourceReference(resNs, resType, resName)
     return canonical to getResolvedResource(resourceReference)?.value
 }

@@ -45,7 +45,7 @@ internal abstract class FoldNumMacro(
     }
     private fun Expression.toBigDecimal(context: ExpressionContext?) =
         try { calculateResult(context)?.toString()?.let(::BigDecimal) }
-        catch (e: NumberFormatException) { null }
+        catch (_: NumberFormatException) { null }
 }
 
 /** A data extraction function for live templates required for vector shape completion.*/

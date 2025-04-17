@@ -169,10 +169,10 @@ class UnsupportedFeatureInspection : UastInspection() {
                             UastCallKind.CONSTRUCTOR_CALL ->
                                 return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass}"); null }
                             else -> {
-                                if (expr.returnType == INT_ARRAY)
-                                    return expr.valueArguments
+                                return if (expr.returnType == INT_ARRAY)
+                                    expr.valueArguments
                                 else
-                                    return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass}"); null }
+                                    expr.sourcePsi?.let { log.error("$it | ${expr.javaClass}"); null }
                             }
                         }
 

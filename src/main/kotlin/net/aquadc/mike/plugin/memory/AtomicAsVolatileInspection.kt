@@ -69,7 +69,7 @@ class AtomicAsVolatileInspection : UastInspection() {
     }
 
     private val UField.uTypeElement: PsiElement get() =
-        ((this as? UField)?.sourcePsi as? KtProperty)?.typeReference?.typeElement ?: // Kotlin explicit type, or
+        (this.sourcePsi as? KtProperty)?.typeReference?.typeElement ?: // Kotlin explicit type, or
         typeReference?.sourcePsi ?: // Java type, or
         uastInitializer?.sourcePsi ?: // initializer expression (let's think that type is inferred), or
         this // the whole field declaration, if something went wrong

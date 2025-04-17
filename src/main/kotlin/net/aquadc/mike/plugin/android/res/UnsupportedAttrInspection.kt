@@ -88,7 +88,7 @@ private class Crap(
                 message = "<include layout=\"?themeAttribute\"> {1}",
             ),
         )
-        val resTypes = shitBunch.mapTo(EnumSet.noneOf(ResourceFolderType::class.java), Crap::resType)
+        val resTypes: EnumSet<ResourceFolderType> = shitBunch.mapTo(EnumSet.noneOf(ResourceFolderType::class.java), Crap::resType)
     }
 
 }

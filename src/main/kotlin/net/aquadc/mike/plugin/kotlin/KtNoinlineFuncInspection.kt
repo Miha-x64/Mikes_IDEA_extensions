@@ -22,9 +22,9 @@ class KtNoinlineFuncInspection : LocalInspectionTool() {
             function
                 .takeIf(KtNamedFunction::isLocal)
                 ?.funKeyword
-                ?.let { _fun ->
+                ?.let { func ->
                     noinlineMessage(function)?.let { message ->
-                        holder.registerProblem(_fun, message, ProblemHighlightType.WEAK_WARNING)
+                        holder.registerProblem(func, message, ProblemHighlightType.WEAK_WARNING)
                     }
                 }
         }

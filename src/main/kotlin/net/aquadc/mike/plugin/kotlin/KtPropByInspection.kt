@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.types.expressions.OperatorConventions
 import org.jetbrains.kotlin.util.OperatorNameConventions
-import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 /**
  * @author Mike Gorünóv
@@ -67,15 +66,9 @@ class KtPropByInspection : LocalInspectionTool() {
 
         // org.jetbrains.kotlin.idea.search.isPotentiallyOperator
         val PsiElement?.isPotentiallyOperator: Boolean
-            get() {
-                val namedFunction = this as? KtNamedFunction ?: return false
-                if (namedFunction.hasModifier(KtTokens.OPERATOR_KEYWORD)) return true
-                // operator modifier could be omitted for overriding function
-                if (!namedFunction.hasModifier(KtTokens.OVERRIDE_KEYWORD)) return false
-                val name = namedFunction.name ?: return false
-                if (!OperatorConventions.isConventionName(Name.identifier(name))) return false
-                return true
-            }
+            get() =
+                this is KtNamedFunction && // operator modifier could be omitted for overriding function
+                    (hasModifier(KtTokens.OPERATOR_KEYWORD) || hasModifier(KtTokens.OVERRIDE_KEYWORD))
     }
 
 }

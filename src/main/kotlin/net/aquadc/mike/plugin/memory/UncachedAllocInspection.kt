@@ -88,7 +88,7 @@ class UncachedAllocInspection : UastInspection() {
                     expr, // remember the whole expression (for quickfix) but highlight only the relevant part
                     "This allocation should be cached",
                     *fixes(
-                        LanguageRefactoringSupport.INSTANCE.forContext(expr)?.introduceConstantHandler?.let {
+                        LanguageRefactoringSupport.getInstance().forContext(expr)?.introduceConstantHandler?.let {
                             object : IntroduceConstantFix() {
                                 override fun getHandler(): RefactoringActionHandler = it
                             }

@@ -1,7 +1,7 @@
-/.idea/
-/.gradle/
-/build/
-# Project exclude paths
-/out/
-/out/production/classes/
+.gradle
+.idea
+.intellijPlatform
+build
 local.properties
+out
+.kotlin

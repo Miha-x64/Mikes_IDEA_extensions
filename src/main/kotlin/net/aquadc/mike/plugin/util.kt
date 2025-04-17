@@ -24,7 +24,7 @@ import com.intellij.psi.PsiMethodCallExpression
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiStatement
-import com.intellij.psi.PsiType
+import com.intellij.psi.PsiTypes
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
@@ -349,6 +349,10 @@ private fun paramOfNoinline(callee: KtNamedFunction): String =
 private fun noinlineParamOfInline(callee: KtNamedFunction, param: KtParameter): String =
     "This function cannot be inlined as it is passed to inline function ${callee.name} as a value for noinline parameter ${param.name}"
 
+/**
+ * Find the biggest element compared by the value from [selector] and matching the [predicate]
+ * It's like `.filter(selector andThen predicate).maxBy(selector)`
+ */
 inline fun <T, R : Comparable<R>> Array<out T>.maxByIf(selector: (T) -> R, predicate: (R) -> Boolean): T? {
     var i = 0
     var hasFirst = false
@@ -460,14 +464,8 @@ inline fun IntArrayList.indexOfFirst(predicate: (Int) -> Boolean): Int {
 inline fun Boolean.toInt(): Int =
     if (this) 1 else 0
 
-internal val PsiType_INT: PsiPrimitiveType by lazy {
-    try {
-        // still unavailable in 2022.1.4 (last AS release)
-        Class.forName("com.intellij.psi.PsiTypes").getMethod("intType").invoke(null) as PsiPrimitiveType
-    } catch (e: ReflectiveOperationException) {
-        PsiType.INT // deprecated for removal since IU-231.6471.13
-    }
-}
+internal inline val PsiType_INT: PsiPrimitiveType
+    get() = PsiTypes.intType()
 
 abstract class DumbHintsConfigurable : ImmediateConfigurable {
     override fun createComponent(listener: ChangeListener): JComponent = panel {}

@@ -99,10 +99,8 @@ public class Shapes
         double sum1 = 0;
         for (int i=0; i<points.size()-1; i++)
         {
-            int i0 = i;
-            int i1 = i + 1;
-            Point2D p0 = points.get(i0);
-            Point2D p1 = points.get(i1);
+            Point2D p0 = points.get(i);
+            Point2D p1 = points.get(i + 1);
             double x0 = p0.getX();
             double y0 = p0.getY();
             double x1 = p1.getX();
@@ -110,8 +108,8 @@ public class Shapes
             sum0 += x0 * y1;
             sum1 += x1 * y0;
         }
-        Point2D p0 = points.get(0);
-        Point2D pn = points.get(points.size()-1);
+        Point2D p0 = points.getFirst();
+        Point2D pn = points.getLast();
         double x0 = p0.getX();
         double y0 = p0.getY();
         double xn = pn.getX();

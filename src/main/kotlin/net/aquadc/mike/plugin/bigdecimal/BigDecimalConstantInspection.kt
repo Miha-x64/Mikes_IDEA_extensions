@@ -71,8 +71,8 @@ class BigDecimalConstantInspection : UastInspection(), CleanupLocalInspectionToo
                     constantOfNumber(argVal, PsiUtil.getLanguageLevel(src), declaringClassFqn == TBigInteger)
                 is String ->
                     try { constantOfNumber(BigDecimal(argVal).toBigIntegerExact(), PsiUtil.getLanguageLevel(src), declaringClassFqn == TBigInteger) }
-                    catch (e: NumberFormatException) { null }
-                    catch (e: ArithmeticException) { null }
+                    catch (_: NumberFormatException) { null }
+                    catch (_: ArithmeticException) { null }
                 else ->
                     null // that's ok e.g. 12.34
             }?.let { replacement ->
