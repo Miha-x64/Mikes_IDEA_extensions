@@ -7,8 +7,10 @@ import java.util.regex.Pattern
 
 fun androidTextUtils() {
     TextUtils.join(", ", arrayOf(1, 2, 3))
+    TextUtils.join("; ", arrayOf(1, 2, 3))
     TextUtils.join(", ", listOf(1, 2, 3))
     TextUtils.split("a, b, c", ", ")
     TextUtils.split("a, b, c", Pattern.compile(", "))
     TextUtils.isEmpty("")
+    TextUtils.equals("", null)
 }

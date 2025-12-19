@@ -1,5 +1,6 @@
 package net.aquadc.mike.plugin.android
 
+import com.android.tools.idea.kotlin.evaluateConstant
 import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalQuickFix
@@ -13,8 +14,6 @@ import com.intellij.psi.util.parentOfType
 import com.siyeh.ig.callMatcher.CallMatcher
 import net.aquadc.mike.plugin.test
 import org.jetbrains.kotlin.idea.base.resources.KotlinBundle
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
-import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtExpression
@@ -22,9 +21,6 @@ import org.jetbrains.kotlin.psi.KtParenthesizedExpression
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtPsiUtil
 import org.jetbrains.kotlin.psi.callExpressionVisitor
-import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator.Companion.getConstant
-import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
-import org.jetbrains.kotlin.types.TypeUtils
 import java.util.regex.Pattern
 
 /**
@@ -37,28 +33,27 @@ class ReplaceAndroidMethodWithKotlinAnalog : LocalInspectionTool(), CleanupLocal
     ): PsiElementVisitor = callExpressionVisitor { call: KtCallExpression ->
         val which = matchers.indexOfFirst { it.test(call) }
         when (which) {
+            // TextUtils.join(CharSequence, Object[] | Iterable)
             0, 1 -> call.valueArgumentList!!.arguments.let { (delimiterArg, tokensArg) ->
                 val delimiter = delimiterArg.getArgumentExpression()
                 val tokens = tokensArg.getArgumentExpression()
                 if (delimiter == null || tokens == null) null
-                else "(${tokens.text}).joinToString(" +
-                        (delimiter.takeIf {
-                            getConstant(it, it.analyze(BodyResolveMode.PARTIAL))
-                                ?.getValue(TypeUtils.NO_EXPECTED_TYPE) != ", "
-                        }?.text ?: "") +
-                        ")"
+                else "(${tokens.text}).joinToString(" + (delimiter.takeIf { it.evaluateConstant<String>() != ", " }?.text ?: "") + ")"
             }
+            // TextUtils.split(String, String | Pattern)
             2, 3 -> call.valueArgumentList!!.arguments.let { (textArg, patternArg) ->
                 val text = textArg.getArgumentExpression()
                 val pattern = patternArg.getArgumentExpression()
                 if (text == null || pattern == null) null
                 else "(${text.text}).split(${if (which == 2) "Regex(${pattern.text})" else pattern.text})"
             }
+            // TextUtils.isEmpty
             4 -> call.valueArgumentList!!.arguments.let { (strArg) ->
                 val str = strArg.getArgumentExpression()
                 if (str == null) null
                 else "(${str.text}).isNullOrEmpty()"
             }
+            // TextUtils.equals
             5 -> call.valueArgumentList!!.arguments.let { (aArg, bArg) ->
                 val a = aArg.getArgumentExpression()
                 val b = bArg.getArgumentExpression()
@@ -82,9 +77,9 @@ class ReplaceAndroidMethodWithKotlinAnalog : LocalInspectionTool(), CleanupLocal
                     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
                         val psi = descriptor.psiElement.parentOfType<KtCallExpression>(withSelf = true)!!
                             .let { it.parent as? KtDotQualifiedExpression ?: it }
-                        val expr = CodeStyleManager.getInstance(project).reformat(ShortenReferences.DEFAULT.process(
+                        val expr = CodeStyleManager.getInstance(project).reformat(/*FIXME broken in K2 ShortenReferences.DEFAULT.process(*/
                             psi.replace(KtPsiFactory((psi as KtExpression).project).createExpression(replacement)) as KtExpression
-                        ))
+                        /*)*/)
                         (expr.firstChild as? KtParenthesizedExpression)?.let {
                             if (KtPsiUtil.areParenthesesUseless(it))
                                 it.replace(it.expression!!)
