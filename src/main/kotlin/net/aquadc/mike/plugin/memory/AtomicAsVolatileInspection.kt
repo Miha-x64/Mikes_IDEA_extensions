@@ -48,7 +48,7 @@ class AtomicAsVolatileInspection : UastInspection() {
         if (qualifiedName in atomics && isAtomicAbused(src)) {
             holder.registerProblem(
                 field.uTypeElement,
-                "${field.type.presentableText} can be replaced with volatile"
+                "Atomic can be replaced with volatile"
             )
         }
     }
