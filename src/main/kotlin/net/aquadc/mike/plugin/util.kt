@@ -236,7 +236,7 @@ class NamedReplacementFix(
                 )
             )
         } else if (psi.language === KotlinLanguage.INSTANCE)
-            CodeStyleManager.getInstance(psi.project).reformat(ShortenReferences.DEFAULT.process(replaceKt(psi)))
+            CodeStyleManager.getInstance(psi.project).reformat(/*FIXME broken in K2 ShortenReferences.DEFAULT.process(*/replaceKt(psi)/*)*/)
     }
 
     private fun replace(project: Project, psi: PsiElement) {
