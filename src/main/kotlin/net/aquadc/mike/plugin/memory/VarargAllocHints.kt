@@ -72,7 +72,7 @@ abstract class VarargAllocationHintsProvider(
     override fun getCaseDescription(case: ImmediateConfigurable.Case): String? =
         "<p>Hints arguments which are implicitly passed as vararg parameters.</p><br/>" +
             "<p><small>The feature is provided by " +
-            "<a href=\"https://github.com/Miha-x64/Mikes_IDEA_extensions\">Mike's IDEA Extensions</a>." +
+            "<a href=\"https://github.com/Miha-x64/Mikes_IDEA_extensions\">Mike's IDE Extensions</a>." +
             "</small></p>"
     override fun createConfigurable(settings: VarargAllocHintsSettings): ImmediateConfigurable = object : DumbHintsConfigurable() {
         override val cases: List<ImmediateConfigurable.Case> get() = listOf(

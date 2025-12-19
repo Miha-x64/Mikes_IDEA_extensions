@@ -1,5 +1,5 @@
 
-## Mike's IDEA extensions
+## Mike's IDE extensions
 
 [![IntelliJ IDEA Plugin](https://img.shields.io/jetbrains/plugin/v/12690-mike-s-idea-extensions?label=plugin&logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)
 [![IntelliJ IDEA Plugin](https://img.shields.io/jetbrains/plugin/d/12690-mike-s-idea-extensions?logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)

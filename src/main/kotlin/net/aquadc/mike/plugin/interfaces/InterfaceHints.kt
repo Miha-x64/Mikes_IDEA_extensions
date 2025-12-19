@@ -70,7 +70,7 @@ abstract class InterfaceHintsP(
         }?.let {
             "<p>$it</p><br/>" +
                     "<p><small>The feature is provided by " +
-                    "<a href=\"https://github.com/Miha-x64/Mikes_IDEA_extensions\">Mike's IDEA Extensions</a>." +
+                    "<a href=\"https://github.com/Miha-x64/Mikes_IDEA_extensions\">Mike's IDE Extensions</a>." +
                     "</small></p>"
         }
 
