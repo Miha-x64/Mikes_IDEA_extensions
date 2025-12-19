@@ -2,6 +2,8 @@
   <ul>
     <li>IDEA 2025.1 compatibility (K2 mode)</li>
     <li>Updated to official JetBrains plugin template</li>
+    <li>Cyrillic regexp range <code>[А-Яа-я]</code> checker
+        now fix adjacent ranges in one shot and unwrap useless square brackets</li>
   </ul>
 
 ### 0.33

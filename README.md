@@ -52,6 +52,11 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li><code>&lt;AnyScrollableView></code> should have an ID to save its scroll position</li>
   </ul>
 
+  <h3>Regexp inspections</h3>
+  <ul>
+    <li>Ranges <code>[А-Я]</code>, <code>[а-я]</code> do not cover any of Cyrillic alphabets, some letters are out of range</li>
+  </ul>
+
   <h3>Editor tweaks</h3>
   <ul>
     <li>Inlay hints when upcasting to interface, e. g.<br/>putExtra(list<code>as Serializable</code>)</li>

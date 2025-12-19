@@ -6,6 +6,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElementVisitor
 import net.aquadc.mike.plugin.NamedLocalQuickFix
+import net.aquadc.mike.plugin.regexp.BadCyrillicRegexp.Fix.detectAYaRange
 import org.intellij.lang.regexp.inspection.RegExpReplacementUtil
 import org.intellij.lang.regexp.psi.RegExpCharRange
 import org.intellij.lang.regexp.psi.RegExpElementVisitor
@@ -18,64 +19,76 @@ class BadCyrillicRegexp : LocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
         object : RegExpElementVisitor() {
             override fun visitRegExpCharRange(range: RegExpCharRange) {
-                val (isLower, isUpper) = range.isAYaRange()
-                if (isLower || isUpper) {
+                if (range.detectAYaRange() != 0) {
                     holder.registerProblem(
                         range,
-                        if (isLower) MSG_LOWER else MSG_UPPER,
-                        Fix(null), Fix(isUpper)
+                        "Ranges А-Я, а-я do not fully cover any of Cyrillic alphabets, some letters are out of range",
+                        Fix,
                     )
                 }
             }
         }
 
-    class Fix(private val upper: Boolean?) : NamedLocalQuickFix(when (upper) {
-        null -> "Match any Cyrillic letter"
-        true -> "Match UPPERCASE Cyrillic letter"
-        false -> "Match lowercase Cyrillic letter"
-        // titleCase is omitted intentionally
-    }) {
+    private object Fix : NamedLocalQuickFix("Match letters from all Cyrillic alphabets") {
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-            val badRange = descriptor.psiElement as? RegExpCharRange ?: return
+            val subj = descriptor.psiElement as RegExpCharRange
+            var detection = subj.detectAYaRange()
+            var start = subj.textRangeInParent.startOffset
+            var end = subj.textRangeInParent.endOffset
 
-            var start = badRange.startOffsetInParent
-            var end = start + badRange.textLength
+            // detect sibling ranges to hit them in one shot
+            var tmp = 0
+            var sib = subj.prevSibling
+            if (sib is RegExpCharRange && sib.detectAYaRange().also { tmp = it } != 0) {
+                start = sib.textRangeInParent.startOffset
+                if (tmp != detection) detection = 0
+            }
+            sib = subj.nextSibling
+            if (sib is RegExpCharRange && sib.detectAYaRange().also { tmp = it } != 0) {
+                end = sib.textRangeInParent.endOffset
+                if (tmp != detection) detection = 0
+            }
 
-            // fix а-яА-Я with one shot:
-            (badRange.prevSibling as? RegExpCharRange)?.let { if (it.isAYaRange().any()) start = it.startOffsetInParent }
-            (badRange.nextSibling as? RegExpCharRange)?.let { if (it.isAYaRange().any()) end += it.textLength }
+            // eat useless []
+            val original = subj.parent.text
+            if (start > 0 && original[start-1] == '[' && original.length > end && original[end] == ']') {
+                start--
+                end++
+            }
 
-            // replace our range:
-            val badRegexpPsi = badRange.parent
-            val badRegexp = badRegexpPsi.text
+            // build replacement
             val replacement = StringBuilder()
-                .append(badRegexp, 0, start)
-                .append("\\p{IsCyrillic}")
-                .also { when (upper) {
-                    true -> it.append("&&").append("\\p{IsUppercase}")
-                    false -> it.append("&&").append("\\p{IsLowercase}")
-                    null -> { /* do nothing */ }
-                } }
-                .append(badRegexp, end, badRegexp.length)
+                .append(original, 0, start)
+                .appendCategory("IsCyrillic")
+                .also {
+                    when (detection) {
+                        -1 -> it.append("&&").appendCategory("IsLowercase")
+                        +1 -> it.append("&&").appendCategory("IsUppercase")
+                    }
+                }
+                .append(original, end, original.length)
                 .toString()
                 // fix double escaping in the rest of regexp:
                 .replace("\\\\", "\\") // I'd like to do this on Builder but too lazy to re-implement it
 
-            RegExpReplacementUtil.replaceInContext(badRegexpPsi, replacement)
+            // commit
+            RegExpReplacementUtil.replaceInContext(subj.parent, replacement)
         }
+
+        /**
+         * @return +1 for upper (А-Я), -1 for lower (а-я), 0 if not detected
+         */
+        fun RegExpCharRange.detectAYaRange(): Int {
+            val from = from.value
+            val to = (to ?: return 0).value
+            return when {
+                from == 0x0430 && to == 0x044F -> -1
+                from == 0x0410 && to == 0x042F -> +1
+                else -> 0
+            }
+        }
+
+        private fun StringBuilder.appendCategory(name: String): StringBuilder =
+            append('\\').append('p').append('{').append(name).append('}')
     }
 }
-
-private fun RegExpCharRange.isAYaRange(): Pair<Boolean, Boolean> {
-    val from = from.value
-    val to = (to ?: return false to false).value
-    return (from == 0x0430 && to == 0x044F) to (from == 0x0410 && to == 0x042F)
-}
-
-private fun Pair<Boolean, Boolean>.any(): Boolean =
-    first || second
-
-private val MSG_LOWER = msg("а-я")
-private val MSG_UPPER = msg("А-Я")
-private fun msg(range: String) =
-    "Range [$range] does not correspond to any of Cyrillic alphabets because of missing letters"
