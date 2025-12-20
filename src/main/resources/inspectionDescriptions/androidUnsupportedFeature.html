@@ -31,6 +31,7 @@
     <li>A Drawable class should override <code>getConstantState()</code>.
         Null ConstantState may lead to <a href="https://issuetracker.google.com/issues/37068452">crashes</a>;
         inherited ConstantState guarantees caching bugs when inflated from resources.</li>
+    <li>Overriding <code>Activity.onCreate(Bundle, PersistableBundle)</code> is probably a mistake, did you mean <code>Activity.onCreate(Bundle)</code>?</li>
 </ul>
 
 <p><small>The inspection is provided by <a href="https://github.com/Miha-x64/Mikes_IDEA_extensions">Mike's IDE Extensions</a>.</small></p>
