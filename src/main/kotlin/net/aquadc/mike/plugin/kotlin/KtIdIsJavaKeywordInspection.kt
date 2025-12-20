@@ -1,6 +1,7 @@
 package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
@@ -35,7 +36,7 @@ class KtIdIsJavaKeywordInspection : LocalInspectionTool() {
     ): PsiElementVisitor = object : KtVisitorVoid() {
         override fun visitPackageDirective(directive: KtPackageDirective) {
             directive.packageNames.forEach {
-                check(it.getReferencedName(), it)
+                check(it.getReferencedName(), it, null)
             }
         }
         override fun visitDeclaration(dcl: KtDeclaration) {
@@ -84,14 +85,20 @@ class KtIdIsJavaKeywordInspection : LocalInspectionTool() {
                     }
                 } ?: return // string template (invalid) or complex compile-time expression (rare; give up)
 
-            check(name, jvmNameExpr ?: (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl)
+            check(name, jvmNameExpr ?: (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl, renameFix.takeIf { jvmNameExpr == null })
         }
 
-        private fun check(name: String, highlight: PsiElement) {
+        private fun check(name: String, highlight: PsiElement, fix: LocalQuickFix?) {
             KtPsiUtil.unquoteIdentifier(name).takeIf { it in javaKeywords }?.let { id ->
-                holder.registerProblem(highlight, "Identifier \"$id\" is a Java keyword", RenameFix())
+                val complaint = "Identifier \"$id\" is a Java keyword"
+                if (fix == null) holder.registerProblem(highlight, complaint)
+                else holder.registerProblem(highlight, complaint, fix)
             }
         }
+    }
+
+    private companion object {
+        private val renameFix = RenameFix()
     }
 
 }
