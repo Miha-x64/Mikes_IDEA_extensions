@@ -1,13 +1,7 @@
 @file:Suppress("UnstableApiUsage")
 package net.aquadc.mike.plugin.interfaces
 
-import com.intellij.codeInsight.hints.FactoryInlayHintsCollector
-import com.intellij.codeInsight.hints.ImmediateConfigurable
-import com.intellij.codeInsight.hints.InlayGroup
-import com.intellij.codeInsight.hints.InlayHintsCollector
-import com.intellij.codeInsight.hints.InlayHintsProvider
-import com.intellij.codeInsight.hints.InlayHintsSink
-import com.intellij.codeInsight.hints.SettingsKey
+import com.intellij.codeInsight.hints.*
 import com.intellij.lang.jvm.types.JvmReferenceType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
@@ -20,15 +14,13 @@ import net.aquadc.mike.plugin.maxByIf
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.j2k.getContainingClass
-import org.jetbrains.kotlin.j2k.getContainingMethod
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtCallableDeclaration
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.UParameter
-import org.jetbrains.uast.UastErrorType
-import org.jetbrains.uast.toUElementOfType
+import org.jetbrains.uast.*
 
 class InterfaceHintsJava : InterfaceHintsP(settingsKey) {
     private companion object {
@@ -143,7 +135,7 @@ private class InterfaceHintsCollector(
         }
         settings.overr && element is PsiAnnotation -> {
             element.takeIf { it.nameReferenceElement?.qualifiedName == "java.lang.Override" }?.let { el ->
-                el.getContainingMethod()?.findSuperMethods()?.firstOrNull()?.containingClass?.let { declaringT ->
+                el.getParentOfType<PsiMethod>(true)?.findSuperMethods()?.firstOrNull()?.containingClass?.let { declaringT ->
                     visitOverride(el, declaringT, sink, element.textRange.endOffset, true)
                 }
             }

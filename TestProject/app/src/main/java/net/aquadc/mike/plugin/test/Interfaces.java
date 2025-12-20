@@ -6,12 +6,12 @@ import android.os.PersistableBundle;
 import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
-import kotlin.Function;
 import kotlin.jvm.functions.Function1;
 
 import java.io.Serializable;
 import java.util.*;
 
+/** @noinspection CloneableClassWithoutClone*/
 @SuppressWarnings({"WeakerAccess", "SameParameterValue", "unused", "rawtypes"})
 public class Interfaces implements Cloneable {
 
@@ -48,7 +48,7 @@ public class Interfaces implements Cloneable {
         @Override
         protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            findViewById(0).setOnClickListener(this);
+            findViewById(0).setOnClickListener(this); // don't trigger: setOnClickListener(this as OnClickListener) is useless
         }
 
         @Override
