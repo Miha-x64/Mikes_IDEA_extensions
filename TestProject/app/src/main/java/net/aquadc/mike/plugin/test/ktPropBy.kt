@@ -6,8 +6,11 @@ import kotlin.properties.ReadOnlyProperty
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-val a by lazy { "whatever" } // ok
-val b by mapOf("y" to "lulz") // ok
+// OK
+val a by lazy { "whatever" }
+val b by mapOf("y" to "lulz")
+
+// not OK
 val c by 1.toByte()
 val d by Delegates.notNull<String>()
 var e by getRWP()

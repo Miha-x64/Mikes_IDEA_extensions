@@ -277,10 +277,10 @@ abstract class KtFunctionObjectVisitor : KtVisitorVoid() {
 }
 
 val KtFunction.isInline: Boolean
-    get() = modifierList?.hasModifier(KtTokens.INLINE_KEYWORD) == true
+    get() = hasModifier(KtTokens.INLINE_KEYWORD)
 
 val KtParameter.isNoinline: Boolean
-    get() = modifierList?.hasModifier(KtTokens.NOINLINE_KEYWORD) == true
+    get() = hasModifier(KtTokens.NOINLINE_KEYWORD)
 
 val KtExpression.containingFunction: KtFunction?
     get() {
