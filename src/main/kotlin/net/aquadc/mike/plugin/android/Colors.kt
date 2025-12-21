@@ -40,6 +40,7 @@ import net.aquadc.mike.plugin.FunctionCallVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import net.aquadc.mike.plugin.PsiType_INT
 import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.constantValue
 import net.aquadc.mike.plugin.fixes
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
@@ -81,15 +82,20 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
             declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean =
-            if (kind == UastCallKind.METHOD_CALL &&
-                methodName == "parseColor" &&
-                declaringClassFqn == "android.graphics.Color") {
-                valueArguments.firstOrNull()?.sourcePsi?.let { argSrc ->
-                    report(holder, src.parent as? KtDotQualifiedExpression ?: src, argSrc)
-                }
-                true
+            if (kind == UastCallKind.METHOD_CALL) {
+                if (declaringClassFqn == "android.graphics.Color" && methodName == "parseColor") {
+                    valueArguments.firstOrNull()?.sourcePsi?.let { argSrc ->
+                        check(holder, src.parent as? KtDotQualifiedExpression ?: src, argSrc)
+                    }
+                    true
+                } else if (node.lang == KotlinLanguage.INSTANCE && declaringClassFqn == "androidx.core.graphics.ColorKt" && methodName == "toColorInt") {
+                    receiver?.sourcePsi?.let { argSrc ->
+                        check(holder, src.parent as? KtDotQualifiedExpression ?: src, argSrc)
+                    }
+                    true
+                } else false
             } else false
-        private fun report(holder: ProblemsHolder, call: PsiElement, argSrc: PsiElement) {
+        private fun check(holder: ProblemsHolder, call: PsiElement, argSrc: PsiElement) {
             val colorInt = argSrc.toColorInt()
             val literal = argSrc.text
             if (colorInt == 1) {
@@ -376,6 +382,9 @@ class CopyPasteColor : CopyPastePreProcessor {
 private val Int.opaque6translucent8 get() = if (isOpaque) 6 else 8
 private val Int.isOpaque get() = (this ushr 24) == 0xFF
 
+/**
+ * @return 1 - invalid, 2 - non-constant, other - some color
+ */
 private fun PsiElement.toColorInt(): Int = when {
     textLength !in 3..17 -> 2 // red..0xF_F_F_F_F_F_F_F
     this is PsiLiteralExpression -> when (type) {
@@ -385,6 +394,8 @@ private fun PsiElement.toColorInt(): Int = when {
     }
     this is KtLiteralStringTemplateEntry -> // UAST.sourcePsi peeks into string template, if I understood correctly
         text.parseColorString()
+    this is KtStringTemplateExpression ->
+        constantValue()?.parseColorString() ?: 2
     this is KtConstantExpression && node.elementType == KT_INTEGER_CONSTANT ->
         text.toHexIntLiteralValue("0x", 8, '_')
     else -> 2

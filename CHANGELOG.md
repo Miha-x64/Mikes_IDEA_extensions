@@ -4,6 +4,7 @@
     <li>Updated to official JetBrains plugin template</li>
     <li>Cyrillic regexp range <code>[А-Яа-я]</code> checker
         now fix adjacent ranges in one shot and unwrap useless square brackets</li>
+    <li>Constant color parsing inspection detects <code>&lt;constexpr&gt;.toColorInt()</code> just like <code>Color.parseColor(&lt;constexpr&gt;)</code></li>
   </ul>
 
 ### 0.33

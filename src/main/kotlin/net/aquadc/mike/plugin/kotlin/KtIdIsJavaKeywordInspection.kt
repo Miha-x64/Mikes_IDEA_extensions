@@ -8,6 +8,7 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.siyeh.ig.fixes.RenameFix
 import net.aquadc.mike.plugin.SortedArray
+import net.aquadc.mike.plugin.constantValue
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
@@ -76,14 +77,7 @@ class KtIdIsJavaKeywordInspection : LocalInspectionTool() {
 
             val name =
                 if (jvmNameExpr == null) dcl.name ?: return // invalid (or anonymous?)
-                else (jvmNameExpr as? KtStringTemplateExpression)?.entries?.let { entries ->
-                    buildString {
-                        for (e in entries) {
-                            if (e is KtLiteralStringTemplateEntry) append(e.node.text)
-                            else return
-                        }
-                    }
-                } ?: return // string template (invalid) or complex compile-time expression (rare; give up)
+                else (jvmNameExpr as? KtStringTemplateExpression)?.constantValue() ?: return
 
             check(name, jvmNameExpr ?: (dcl as? PsiNameIdentifierOwner)?.nameIdentifier ?: dcl, renameFix.takeIf { jvmNameExpr == null })
         }

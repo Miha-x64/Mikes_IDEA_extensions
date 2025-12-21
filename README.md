@@ -35,7 +35,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
     <li>Use of reflective <code>ObjectAnimator</code>/<code>PropertyValuesHolder</code></li>
     <li>Use of attributes like <code>android.R.attr.enabled</code> in context where state attributes expected, like <code>android.R.attr.state_enabled</code></li>
-    <li><code>Color.parseColor(&lt;constant expression&gt;)</code> should be replaced with an integer literal</li>
+    <li><code>Color.parseColor(&lt;constexpr&gt;)</code> or <code>&lt;constexpr&gt;.toColorInt()</code> should be replaced with an integer literal</li>
     <li>Useless resource element
       <ul>
         <li>Drawables: single-item layer-lists, single stateless item selectors, insetless insets, empty shapes</li>

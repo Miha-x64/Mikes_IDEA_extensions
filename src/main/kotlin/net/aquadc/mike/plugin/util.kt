@@ -11,6 +11,7 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.java.JavaBundle
 import com.intellij.lang.java.JavaLanguage
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
@@ -40,13 +41,16 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtBlockExpression
+import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtEscapeStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtLambdaExpression
+import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
@@ -54,6 +58,8 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtReferenceExpression
 import org.jetbrains.kotlin.psi.KtReturnExpression
+import org.jetbrains.kotlin.psi.KtSimpleNameStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
 import org.jetbrains.kotlin.psi.KtVisitorVoid
@@ -477,3 +483,17 @@ abstract class DumbHintsConfigurable : ImmediateConfigurable {
 
 fun PresentationFactory.hint(text: String): InlayPresentation =
     roundWithBackgroundAndSmallInset(text(text))
+
+fun KtStringTemplateExpression.constantValue(): String? =
+    buildString {
+        entries.forEach {
+            append(when (it) {
+                is KtBlockStringTemplateEntry -> return null
+                is KtEscapeStringTemplateEntry -> it.unescapedValue
+                is KtLiteralStringTemplateEntry -> it.text
+                is KtSimpleNameStringTemplateEntry -> return null
+                else -> Logger.getInstance("#net.aquadc.mike.plugin.util").warn("unexpected KtStringTemplateEntry ${it.javaClass}: $it | ${it.text}").also { return null }
+//                is KtStringTemplateEntryWithExpression -> return null // unsure what's this: hasInterpolation() ignores it
+            })
+        }
+    }
