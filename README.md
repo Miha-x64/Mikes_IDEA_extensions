@@ -6,12 +6,16 @@
 
 <!-- start plugin.xml -->
 
-Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector drawable optimizer, color previewer.
+<p>This plugin focuses on finding subtle bugs, 
+performance pitfalls, and API misuse that standard inspections often miss in Java, Kotlin, and Android projects.</p>
+
+<p>It's developed for <del>myself</del> developers who care about performance, memory usage, correctness, 
+and want their IDE to actively point out non-obvious problems and better alternatives while they code.</p>
 
   <h3>UAST (Java + Kotlin) inspections</h3>
   <ul>
-    <li>Atomic can be replaced with volatile</li>
-    <li>Allocation should be cached (new Gson(), new OkHttpClient())</li>
+    <li><code>Atomic</code> can be replaced with <code>volatile</code></li>
+    <li>Allocation should be cached (<code>Gson()</code>, <code>OkHttpClient()</code>)</li>
     <li><code>BigDecimal|BigInteger</code> instantiation can be replaced with constant <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
     <li><code>(BigDecimal|BigInteger).compareTo(ZERO)</code> can be replaced with <code>signum()</code> <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
   </ul>
@@ -24,7 +28,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Anonymous function won't be inlined;
       function cannot be inlined if it is a receiver of an extension function</li>
     <li><del>Nullable argument to string concatenation</del> <i>should be re-implemented in more reliable way</i></li>
-    <li>Boxed primitive array allocation</li>
+    <li>Boxed primitive array allocation (<code>arrayOf(1, 2, 3)</code>)</li>
   </ul>
 
   <h3>Android inspections</h3>
@@ -41,16 +45,16 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
         <li>Drawables: single-item layer-lists, single stateless item selectors, insetless insets, empty shapes</li>
         <li>Vector drawables: empty paths and clip-paths, invisible paths, suboptimal paths, useless clip-paths and groups, attributes with no effect</li>
         <li>Animations and animators: empty and single-element sets</li>
-        <li>Layouts: overridden attributes in (layout_margin|padding)(Left|Top|Right|Bottom|Start|End|Horizontal|Vertical|*)</li>
+        <li>Layouts: suspicious combination of <code>(layout_margin|padding)(Left|Top|Right|Bottom|Start|End|Horizontal|Vertical|*)</code></li>
       </ul>
     </li>
-    <li>Android utility methods should be replaced with Kotlin extensions</li>
+    <li>Android <code>TextUtils</code> methods should be replaced with Kotlin extensions</li>
     <li><code>setOnClickListener</code> doesn't work on <code>RecyclerView</code>, on <code>VideoView</code> before API 26</li>
     <li>Kotlin Android Extensions are deprecated</li>
     <li>Drawable subclass should override <code>getConstantState()</code></li>
     <li><code>Activity#onCreate(, PersistableBundle)</code> will highly likely not be called</li>
     <li><code>&lt;AnyScrollableView></code> should have an ID to save its scroll position</li>
-    <li><code>Context.obtainStylesAttributes</code>/<code>Context.withStyledAttributes</code> need a sorted array</li>
+    <li><code>Context.obtainStylesAttributes</code>|<code>Context.withStyledAttributes</code> need a sorted array</li>
   </ul>
 
   <h3>Regexp inspections</h3>
@@ -58,12 +62,12 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Ranges <code>[А-Я]</code>, <code>[а-я]</code> do not cover any of Cyrillic alphabets, some letters are out of range</li>
   </ul>
 
-  <h3>Editor tweaks</h3>
+  <h3>Editor features</h3>
   <ul>
-    <li>Inlay hints when upcasting to interface, e. g.<br/>putExtra(list<code>as Serializable</code>)</li>
-    <li>Inlay hints when overriding an interface method, e. g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
+    <li>Inlay hints when upcasting to interface, e.g.<br/>putExtra(list<code>as Serializable</code>)</li>
+    <li>Inlay hints when overriding an interface method, e.g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
     <li>Inlay hints for vararg array allocation: <br/>String.format("%d", <code>new[]{</code>1<code>}</code>);<br/>maxOf(1, <code>*[</code>2, 3, 4<code>]</code>)</li>
-    <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code>, color picker for Android, pasting CSS colors as int literals</li>
+    <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code>, color picker, pasting CSS colors as int literals</li>
     <li>Backing property folding for Kotlin</li>
     <li>Live templates for SVG and Android Vector Drawable pathData</li>
     <li>Live templates for implementing <code>Property</code> for <code>ObjectAnimator</code></li>
@@ -71,4 +75,5 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
 
 <!-- end plugin.xml -->
 
-  [Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions)
+  [Plugin page on JetBrains marketplace](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions) <br/>
+  Alternatively, new versions are announced on and uploaded to my [Telegram channel](https://t.me/javanese_online)
