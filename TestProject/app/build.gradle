@@ -26,4 +26,5 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'androidx.annotation:annotation:1.6.0'
     implementation 'com.google.android.material:material:1.9.0'
+    implementation "androidx.core:core-ktx:1.17.0"
 }

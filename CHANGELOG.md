@@ -5,6 +5,7 @@
     <li>Cyrillic regexp range <code>[А-Яа-я]</code> checker
         now fix adjacent ranges in one shot and unwrap useless square brackets</li>
     <li>Constant color parsing inspection detects <code>&lt;constexpr&gt;.toColorInt()</code> just like <code>Color.parseColor(&lt;constexpr&gt;)</code></li>
+    <li>Checking <code>Context.withStyledAttributes</code> for sorted array argument just like <code>Context.obtainStyledSttributes</code></li>
   </ul>
 
 ### 0.33

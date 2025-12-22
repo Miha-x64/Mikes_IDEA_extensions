@@ -50,6 +50,7 @@ Code quality goodifier, RAM saver, performance watcher, mood upgrader, vector dr
     <li>Drawable subclass should override <code>getConstantState()</code></li>
     <li><code>Activity#onCreate(, PersistableBundle)</code> will highly likely not be called</li>
     <li><code>&lt;AnyScrollableView></code> should have an ID to save its scroll position</li>
+    <li><code>Context.obtainStylesAttributes</code>/<code>Context.withStyledAttributes</code> need a sorted array</li>
   </ul>
 
   <h3>Regexp inspections</h3>

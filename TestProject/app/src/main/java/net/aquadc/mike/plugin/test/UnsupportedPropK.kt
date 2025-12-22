@@ -1,11 +1,14 @@
 @file:Suppress("UnusedImport")
 package net.aquadc.mike.plugin.test
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.view.View
 import android.widget.VideoView
+import androidx.core.content.withStyledAttributes
 import kotlinx.android.synthetic.*
 
+@SuppressLint("ResourceType", "UseKtx")
 fun test(context: Context?) {
     View(context).setOnClickListener(null)
     VideoView(context).setOnClickListener(null)
@@ -21,6 +24,7 @@ fun test(context: Context?) {
     context.obtainStyledAttributes(UnsupportedPropJ.ATTRS).recycle()
     context.obtainStyledAttributes(ATTRS).recycle()
     context.obtainStyledAttributes(R.styleable.ActionBar).recycle()
+    context.withStyledAttributes(null, UnsupportedPropJ.ATTRS) {}
 }
 val ATTRS = intArrayOf(android.R.attr.content, 0)
 @JvmField val ATTRS2 = intArrayOf(android.R.attr.content, 0)

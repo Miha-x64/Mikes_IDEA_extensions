@@ -1,10 +1,13 @@
 package net.aquadc.mike.plugin.test;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.View;
 import android.widget.VideoView;
 
+/** @noinspection resource*/
 public class UnsupportedPropJ {
+    @SuppressLint("ResourceType")
     @SuppressWarnings("unused")
     static void test(Context context) {
         new View(context).setOnClickListener(null);

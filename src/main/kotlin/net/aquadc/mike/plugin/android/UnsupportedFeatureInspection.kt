@@ -115,7 +115,8 @@ class UnsupportedFeatureInspection : UastInspection() {
                 )
         }
         private fun checkObtainStyled(src: PsiElement, declaringClassFqn: String, method: String, args: List<UExpression>) {
-            if (declaringClassFqn == "android.content.Context" && method == "obtainStyledAttributes") {
+            if (declaringClassFqn == "android.content.Context" && method == "obtainStyledAttributes" ||
+                declaringClassFqn == "androidx.core.content.ContextKt" && method == "withStyledAttributes") {
                 val attrs = (args.singleOrNull() ?: args.getOrNull(1) ?: return)
                 attrs.intArrayElementExpressions()?.takeIf { it.size > 1 }?.let { attrExprs ->
                     val attrValues = attrExprs.evaluateIntElements() //^ 0..1-sized arrays are always sorted
@@ -186,7 +187,7 @@ class UnsupportedFeatureInspection : UastInspection() {
                             ?: return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass} | $srcRef | $referrent"); null }
                     }
                     else -> {
-                        return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass}"); null }
+                        return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass} | ${it.text}"); null }
                     }
                 }
             }
