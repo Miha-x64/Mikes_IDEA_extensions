@@ -16,22 +16,14 @@ import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtPsiFactory
-import org.jetbrains.uast.UCallExpression
-import org.jetbrains.uast.UElement
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.UastCallKind
-import org.jetbrains.uast.evaluateString
-import org.jetbrains.uast.getParentOfType
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
-import org.jetbrains.uast.wrapULiteral
 import com.intellij.codeInsight.FileModificationService.getInstance as fileModificationService
 import com.intellij.lang.java.JavaLanguage.INSTANCE as Java
 import com.intellij.psi.CommonClassNames.JAVA_LANG_OBJECT as TObject
 import com.intellij.psi.CommonClassNames.JAVA_LANG_STRING as TString
 import net.aquadc.mike.plugin.miserlyMapNullize as mapNullize
 import org.jetbrains.kotlin.idea.KotlinLanguage.INSTANCE as Kotlin
-import org.jetbrains.kotlin.idea.core.ShortenReferences.Companion.DEFAULT as ShortenRefs
 
 
 typealias ArgsPredicate = (args: List<UExpression>) -> Boolean
@@ -99,11 +91,11 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                             call as PsiExpression,
                             TView + '.' + replacements.single()
                         ) else if (lang == Kotlin) CodeStyleManager.getInstance(call.project).reformat(
-                            ShortenRefs.process(
+//                            ShortenRefs.process( FIXME
                                 (call.parent as? KtDotQualifiedExpression ?: call).replace(
                                     KtPsiFactory(call.project).createExpression(TView + '.' + replacements.single())
                                 ) as KtElement
-                            )
+//                            )
                         )
                     } else {
                         if (lang == Java) {
@@ -121,7 +113,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                                     kt.createExpression("$TView.$replacement")
                                 )
                             }
-                            CodeStyleManager.getInstance(call.project).reformat(ShortenRefs.process(call))
+                            CodeStyleManager.getInstance(call.project).reformat(/*FIXME ShortenRefs.process(*/call/*)*/)
                         }
                         if (replaceMethodWith != null) {
                             if (lang == Java) {
