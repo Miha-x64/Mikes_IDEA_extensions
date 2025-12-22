@@ -119,8 +119,7 @@ abstract class FunctionCallVisitor(
     final override fun visitBinaryExpression(node: UBinaryExpression): Boolean {
         val src = node.sourcePsi ?: return true
         val op = node.operatorIdentifier?.name
-        if (assignment && op == "=" && false) {
-            //             DISABLED ^^^^^^^^ seems to be already handled by UAST!
+        if (assignment && op == "=") {
             (node.leftOperand as? UReferenceExpression)?.let { leftRef ->
                 val name = leftRef.resolvedName
                 val cls = leftRef.resolvedClassFqn
@@ -497,3 +496,11 @@ fun KtStringTemplateExpression.constantValue(): String? =
             })
         }
     }
+
+/*inline fun <R> Logger.measure(tag: String, block: () -> R): R {
+    var time = System.nanoTime()
+    val value = block()
+    time = System.nanoTime() - time
+    warn("$tag took ${time / 1000 / 1000.0} ms")
+    return value
+}*/
