@@ -1,6 +1,5 @@
 package net.aquadc.mike.plugin.android
 
-import com.android.tools.idea.kotlin.getQualifiedName
 import com.android.utils.SparseArray
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
@@ -19,15 +18,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.RawText
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.project.Project
-import com.intellij.psi.JavaRecursiveElementWalkingVisitor
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiExpression
-import com.intellij.psi.PsiField
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiJavaFile
-import com.intellij.psi.PsiLiteralExpression
-import com.intellij.psi.PsiPrimitiveType
-import com.intellij.psi.PsiReferenceExpression
+import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.java.PsiLiteralExpressionImpl.parseStringCharacters
 import com.intellij.psi.util.PsiLiteralUtil.getStringLiteralContent
 import com.intellij.psi.util.parentOfType
@@ -36,35 +27,16 @@ import com.intellij.ui.ColorPickerListener
 import com.intellij.util.SmartList
 import com.siyeh.ig.PsiReplacementUtil
 import it.unimi.dsi.fastutil.bytes.ByteArrays
-import net.aquadc.mike.plugin.FunctionCallVisitor
-import net.aquadc.mike.plugin.NamedReplacementFix
-import net.aquadc.mike.plugin.PsiType_INT
-import net.aquadc.mike.plugin.UastInspection
-import net.aquadc.mike.plugin.constantValue
-import net.aquadc.mike.plugin.fixes
+import net.aquadc.mike.plugin.*
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
-import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtConstantExpression
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
-import org.jetbrains.kotlin.psi.KtExpression
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
-import org.jetbrains.kotlin.psi.KtPsiFactory
-import org.jetbrains.kotlin.psi.KtReferenceExpression
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression
-import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.UField
-import org.jetbrains.uast.UReferenceExpression
-import org.jetbrains.uast.UastCallKind
-import org.jetbrains.uast.getAsJavaPsiElement
-import org.jetbrains.uast.toUElementOfType
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import java.awt.Color
 import java.awt.Component
 import java.awt.Graphics
+import java.awt.Graphics2D
 import java.awt.event.MouseEvent
 import java.awt.geom.RoundRectangle2D
 import java.util.*
@@ -133,7 +105,7 @@ private val colorConstantValues = intArrayOf(
  * @author Mike Gorünóv
  */
 @Suppress("UseJBColor")
-class GutterColorPreview : LineMarkerProviderDescriptor() {
+class GutterColorPreview : LineMarkerProviderDescriptor() { // TODO ensure no duplicate preview for Compose
     override fun getName(): String =
         "Color preview"
 
@@ -154,14 +126,16 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
     private val sharedClip = RoundRectangle2D.Float()
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
-        var colorInt = element.toColorInt() // TODO preview Color.(a)rgb()
-        if (colorInt == 2) colorInt = element.asReferenceToColorInt()
+        if (element is KtLiteralStringTemplateEntry) return null // we're previewing full KtStringTemplate
+        var colorInt = element.toColorInt() // try previewing constant
+        if (colorInt == 2) colorInt = element.asReferenceToColorInt() // try previewing reference
+//      if (colorInt == 2) colorInt = TODO("maybe preview Color.(a)rgb(int|float...) if someone uses it...")
         if (colorInt == 1 || colorInt == 2 || !colorInt.worthPreviewing) return null // skip almost invisible colors
         val icon = synchronized(iconCache) {
             iconCache[colorInt] ?: ColorIcon(sharedClip, colorInt.toAwtColor()).also { iconCache.put(colorInt, it) }
         }
         return LineMarkerInfo(
-            element.firstLeaf, element.textRange, icon, null,
+            element, element.textRange, icon, null,
             { e: MouseEvent, elt: PsiElement ->
                 ColorPicker.showDialog(
                     e.component, "Edit Color", colorInt.toAwtColor(), true,
@@ -184,7 +158,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
     private fun replaceColor(elt: PsiElement, color: Int) {
         if (elt.language == JavaLanguage.INSTANCE) {
             var expr = elt.parentOfType<PsiExpression>() ?: return
-            while (expr.type == null) expr = expr.parentOfType<PsiExpression>() ?: return // 'Color' -> 'Color.RED'
+            while (expr.type == null) expr = expr.parentOfType<PsiExpression>() ?: return // 'RED' -> 'Color.RED'
             if (expr.type == PsiType_INT)
                 PsiReplacementUtil.replaceExpression(
                     expr,
@@ -196,28 +170,24 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
                     color.toPaddedUpperHex(color.opaque6translucent8, "\"#".toByteArray(), "\"".toByteArray()),
                 )
         } else if (elt.language == KotlinLanguage.INSTANCE) {
-            var expr = elt.parentOfType<KtExpression>() ?: return
-            while (expr.parent is KtDotQualifiedExpression) expr = expr.parent as KtExpression // also 'hex' -> 'hex.toInt()' as a side effect
-            if (expr.analyze(BodyResolveMode.PARTIAL).getType(expr)?.unwrap()?.getQualifiedName()?.asString() == "kotlin.Int") {
+            if (elt is KtStringTemplateExpression) {
+                elt.replace(
+                    KtPsiFactory(elt.project).createExpression(
+                        color.toPaddedUpperHex(color.opaque6translucent8, "\"#".toByteArray(), "\"".toByteArray()),
+                    )
+                )
+            } else {
+                val expr = elt.parentOfType<KtExpression>() ?: return
                 val postfix =
                     if ((color ushr 24) > 0x7f) TO_INT_POSTFIX else ByteArrays.EMPTY_ARRAY
                 expr.replace(
-                    KtPsiFactory(elt.project).createExpression(
+                    KtPsiFactory(expr.project).createExpression(
                         color.toPaddedUpperHex(8, HEX_LITERAL_PREFIX, postfix),
-                    )
-                )
-            } else if (expr is KtStringTemplateExpression) {
-                expr.replace(
-                    KtPsiFactory(elt.project).createExpression(
-                        color.toPaddedUpperHex(color.opaque6translucent8, "\"#".toByteArray(), "\"".toByteArray()),
                     )
                 )
             }
         }
     }
-
-    @Suppress("RecursivePropertyAccessor") // as designed
-    private val PsiElement.firstLeaf get(): PsiElement = firstChild?.firstLeaf ?: this
 
     /**
      * Avoids previewing too transparent colors. The threshold is typical Ripple alpha, around 0x19..0x20.
@@ -229,6 +199,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
         private val sharedBounds: RoundRectangle2D.Float,
         private val color: Color,
     ) : Icon {
+        private val light = if (color.alpha > 127) color.red + color.green + color.blue > 3 * 128 else null
         override fun getIconWidth(): Int = 12
         override fun getIconHeight(): Int = 12
         override fun paintIcon(c: Component, g: Graphics, x: Int, y: Int) {
@@ -240,6 +211,7 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
             g.fillRect(x, y, 12, 12)
             g.clip = oldClip
             g.color = oldColor
+            g.drawStroke()
         }
         private fun Graphics.drawChecker(x: Int, y: Int) {
             color = Color.WHITE
@@ -248,6 +220,15 @@ class GutterColorPreview : LineMarkerProviderDescriptor() {
             color = Color.BLACK
             fillRect(x + 6, y, 6, 6)
             fillRect(x, y + 6, 6, 6)
+        }
+        private fun Graphics.drawStroke() {
+            this as? Graphics2D ?: return
+            if (light != null) {
+                val oldPaint = paint
+                paint = if (light) Color.BLACK else Color.WHITE
+                draw(sharedBounds)
+                paint = oldPaint
+            }
         }
     }
 }
@@ -267,6 +248,7 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
             })
             is KtFile -> root.accept(object : KotlinRecursiveElementWalkingVisitor() {
                 override fun visitConstantExpression(expression: KtConstantExpression) {
+                    // FIXME the code is invoked but has no effect
                     if (expression.node.elementType == KT_INTEGER_CONSTANT) expression.tryFoldTo(regions)
                 }
             })
@@ -356,13 +338,13 @@ class CopyPasteColor : CopyPastePreProcessor {
 
     private fun CharSequence.parseChannels(): Int {
         // sorry, now I will allocate
-        val channels = split(',')
+        val channels = split(',', limit = 5)
         var color = when (channels.size) {
             3 -> 0xFF
             4 -> channels[3].toFloatOrNull()?.let { (it * 255).toInt() } ?: return 1
             else -> return 1
         }
-        for (i in 0..2) {
+        repeat(3) { i ->
             val trimmed = channels[i].trim()
             color = (color shl 8) or
                     if (trimmed.endsWith('%'))
