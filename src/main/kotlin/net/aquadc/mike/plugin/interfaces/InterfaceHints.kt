@@ -8,12 +8,12 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbService
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope.allScope
+import com.intellij.psi.util.parentOfType
 import net.aquadc.mike.plugin.DumbHintsConfigurable
 import net.aquadc.mike.plugin.hint
 import net.aquadc.mike.plugin.maxByIf
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
-import org.jetbrains.kotlin.j2k.getContainingClass
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
@@ -158,7 +158,7 @@ private class InterfaceHintsCollector(
         javaElement: PsiElement, declaringType: PsiClass, sink: InlayHintsSink, offset: Int, java: Boolean
     ) {
         if (!declaringType.isInterface) return // such a hint is useless in single class inheritance model
-        val containingClass = javaElement.getContainingClass() ?: return
+        val containingClass = javaElement.parentOfType<PsiClass>() ?: return
         containingClass.mainInterface?.let { main ->
             if (main == declaringType || main.isInheritor(declaringType, true)) return
         }

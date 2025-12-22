@@ -1,5 +1,6 @@
 package net.aquadc.mike.plugin.memory
 
+import com.android.tools.lint.detector.api.getReceiver
 import com.intellij.codeInsight.hints.FactoryInlayHintsCollector
 import com.intellij.codeInsight.hints.HorizontalConstraints
 import com.intellij.codeInsight.hints.ImmediateConfigurable
@@ -18,10 +19,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.nextLeafs
 import com.intellij.psi.util.prevLeafs
-import com.intellij.refactoring.suggested.endOffset
-import com.intellij.refactoring.suggested.startOffset
+import com.intellij.psi.util.startOffset
 import net.aquadc.mike.plugin.DumbHintsConfigurable
 import net.aquadc.mike.plugin.hint
 import net.aquadc.mike.plugin.miserlyMap as map
@@ -135,8 +136,7 @@ private class VarargAllocationHintsCollector(
                 it.sourcePsi.let { it is KtParameter && it.isVarArg }
         }
         val variadicParamName = uastParameters.getOrNull(variadicParamIndex)?.name
-        if (callee.sourcePsi?.isExtensionDeclaration() == true || // not sure what should I check
-            uastParameters.first() is KotlinReceiverUParameter)
+        if (callee.sourcePsi?.isExtensionDeclaration() == true || callee.getReceiver() != null)
             variadicParamIndex--
 
         if (variadicParamIndex < 0) return true
