@@ -1,3 +1,7 @@
+### 0.35
+  <ul>
+  </ul>
+
 ### 0.34
   <ul>
     <li>IDEA 2025.1 compatibility (K2 mode)</li>
