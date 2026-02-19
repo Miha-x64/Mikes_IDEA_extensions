@@ -1,5 +1,6 @@
 ### 0.35
   <ul>
+    <li>Fix freeze in <code>PathTag.overdraw</code> by approximating <code>PathIterator</code>s</li>
   </ul>
 
 ### 0.34

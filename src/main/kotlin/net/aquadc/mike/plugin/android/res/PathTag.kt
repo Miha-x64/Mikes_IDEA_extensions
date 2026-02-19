@@ -46,6 +46,7 @@ internal class PathTag private constructor(
     private val floatRanges: IntArrayList,
     private val valueShiftInText: Int,
     private val paint: PathPaintAttrs?,
+    private val px: Float,
 ) {
     private val pathTag get() = pathDataAttr.parentOfType<XmlTag>()!!
     private var fills: MutableList<Area?>? = null
@@ -67,6 +68,7 @@ internal class PathTag private constructor(
             pathAttr: XmlAttributeValue,
             matrix: AffineTransform?,
             usefulPrecision: Int,
+            px: Float,
         ): PathTag? {
             val rawPathData = pathAttr.value // FIXME we need value and text, extract them without copying
             val pathData = rr.resolve(rawPathData).second ?: return null
@@ -104,7 +106,7 @@ internal class PathTag private constructor(
             }
             val (subPathRanges, startPoss, endPoss) =
                 if (paths.size > 1 && paint?.fillOpacity != PixelFormat.TRANSPARENT) {
-                    merge(paths, pathStarts, endPositions, evenOdd)
+                    merge(paths, pathStarts, endPositions, evenOdd, px)
                 } else if (paths.size > 1 && pathStarts != null) {
                     val ends = endPositions?.let {
                         List(it.size / 2) { i ->
@@ -129,14 +131,14 @@ internal class PathTag private constructor(
             holder.tryProposeShortening(cmds, pathData, usefulPrecision, pathAttr, rawPathData, beginValueAt)
 
             if (matrix != null) paths.forEach { it.transform(matrix) }
-            return PathTag(pathAttr, paths, subPathRanges, startPoss, endPoss, floatRanges, beginValueAt, paint)
+            return PathTag(pathAttr, paths, subPathRanges, startPoss, endPoss, floatRanges, beginValueAt, paint, px)
         }
 
         /** Handles intersections which can lead to “donut holes” and invert the whole sub-path meaning. */
         private fun merge(
-            paths: SmartList<Path2D.Float>, pathStarts: IntArrayList?, endPositions: FloatArrayList?, /*TODO*/ @Suppress("UNUSED_PARAMETER") evenOdd: Boolean,
+            paths: SmartList<Path2D.Float>, pathStarts: IntArrayList?, endPositions: FloatArrayList?, /*TODO*/ @Suppress("UNUSED_PARAMETER") evenOdd: Boolean, px: Float,
         ): Triple<ArrayList<IntArrayList>?, ArrayList<FloatArrayList>?, ArrayList<FloatArrayList>?> {
-            val areas = paths.mapTo(ArrayList(), ::Area)
+            val areas = paths.mapTo(ArrayList(paths.size)) { it.approxArea(px) }
             val ranges: ArrayList<IntArrayList>? = ranges(pathStarts, paths)
             var startPoss: ArrayList<FloatArrayList>? = null
             var endPoss: ArrayList<FloatArrayList>? = null
@@ -157,11 +159,11 @@ internal class PathTag private constructor(
                 var victim: Area? = null
                 var j = i + 1
                 while (j < paths.size) {
-                    if (victim == null) victim = Area(areas[i])
+                    if (victim == null) victim = areas[i].copy()
                     victim.subtract(areas[j])
                     if (!areas[i].equals(victim)) {
                         victim = null
-                        merge(paths, areas, ranges, startPoss, endPoss, i, j)
+                        merge(paths, areas, ranges, startPoss, endPoss, i, j, px)
                         j = i
                     }
                     j++
@@ -186,11 +188,11 @@ internal class PathTag private constructor(
             paths: SmartList<Path2D.Float>, areas: ArrayList<Area>,
             ranges: ArrayList<IntArrayList>?,
             startPositions: ArrayList<FloatArrayList>?, endPositions: ArrayList<FloatArrayList>?,
-            i: Int, j: Int,
+            i: Int, j: Int, px: Float,
         ) {
             paths[i].append(paths[j], false)
             paths.removeAt(j)
-            areas[i] = Area(paths[i])
+            areas[i] = paths[i].approxArea(px)
             areas.removeAt(j)
             if (ranges != null) {
                 val myRanges = ranges[i]
@@ -291,7 +293,7 @@ internal class PathTag private constructor(
                     if (strokeCaps != null || strokeJoins != null)
                         checkStroke(outline, strokeCaps, strokeJoins, index)
                 }
-                ?.toArea()
+                ?.approxArea(px)
                 ?.takeIf { !it.effectivelyEmpty(usefulPrecision) }
 //                ?.also { strokedSubPaths!!.set(index) }
             val opaqueStrokeArea = strokeArea
@@ -299,7 +301,7 @@ internal class PathTag private constructor(
                 ?.also { opaque += it }
 
             val fillArea = outline.takeIf { !noFill }
-                ?.toArea()?.without(opaqueStrokeArea) // stroke is drawn on top of fill
+                ?.toArea()
                 ?.takeIf { !it.effectivelyEmpty(usefulPrecision) }
                 ?.also { fillArea ->
 //                    filledSubPaths!!.set(index)
@@ -309,7 +311,9 @@ internal class PathTag private constructor(
                             reallyEvenOdd = true
                 }
 
-            if (fills == null) check(fillArea == null) else fills.add(fillArea)
+            if (fills == null) check(fillArea == null)
+            else fills.add(fillArea?.approxArea(px)?.without(opaqueStrokeArea) /* stroke is drawn on top of fill */)
+
             if (strokes == null) check(strokeArea == null) else strokes.add(strokeArea)
         }
 
@@ -346,7 +350,9 @@ internal class PathTag private constructor(
     }
 
     fun merged(): Area? = // TODO split clip-paths, too
-        outlines.map(::Area).takeIf(List<*>::isNotEmpty)?.reduce { acc, area -> acc.add(area); acc }
+        outlines
+            .takeIf(List<*>::isNotEmpty)
+            ?.fold(Area()) { acc, path -> acc.add(path.approxArea(px)); acc }
 
     fun applyClip(
         clipPath: Area?, clips: List<Area>, usefulClips: IntOpenHashSet,
@@ -758,3 +764,12 @@ internal fun Area.effectivelyEmpty(usefulPrecision: Int): Boolean {
             Shapes.computeSubShapes(this).all { Shapes.computeSignedArea(it, 0.0).absoluteValue < minArea }
 //  FIXME   ^^^^^^^^^^^^^^^^ this step can be skipped safely under certain conditions
 }
+
+// Area.subtract(Area) could take a lot of time if not approximated
+private fun Shape.approxArea(px: Float): Area =
+    Area(Path2D.Float().also {
+        it.append(getPathIterator(null, px.toDouble().takeIf { it.isFinite() } ?: 0.0), false)
+    })
+
+
+private inline fun Area.copy(): Area = Area(this)

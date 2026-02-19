@@ -51,11 +51,12 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) { // TODO check for broken 
 
     val xDensity = maxIntrinsicWidthPx / vWidth
     val yDensity = maxIntrinsicHeightPx / vHeight
-    var px =
+    val px =
         1 / (if (xDensity.isFinite()) (if (yDensity.isFinite()) max(xDensity, yDensity) else xDensity) else yDensity)
     var usefulPrecision = -1
     if (px > 0) { // and implicit NaN-check
         usefulPrecision = 0
+        var px = px
         while (px < 1) {
             usefulPrecision++
             px *= 10
@@ -66,7 +67,7 @@ internal fun ProblemsHolder.checkVector(tag: XmlTag) { // TODO check for broken 
     val viewport = if (vWidth.isNaN() || vHeight.isNaN()) null else Area(Rectangle2D.Float(0f, 0f, vWidth, vHeight))
     val paths = SmartList<PathTag>()
     checkVectorGroup(
-        rr, tag, null, viewport, usefulPrecision,
+        rr, tag, null, viewport, usefulPrecision, px,
         paths, SmartList(), SmartList(), IntOpenHashSet(),
         HashMap(),
     )
@@ -101,6 +102,7 @@ private fun ProblemsHolder.checkVectorGroup(
     tag: XmlTag,
     parentMatrix: AffineTransform?, parentClip: Area?,
     usefulPrecision: Int,
+    px: Float,
     paths: SmartList<PathTag>,
     clipTags: SmartList<XmlTag>, clips: SmartList<Area>, usefulClips: IntOpenHashSet,
     colorToArea: HashMap<String, Area>,
@@ -124,18 +126,18 @@ private fun ProblemsHolder.checkVectorGroup(
     subTags.forEachIndexed { index, subTag ->
         when (subTag.name) {
             "clip-path" ->
-                checkClip(subTag, isRoot, rr, matrix, usefulPrecision, localClip)?.let { clip ->
+                checkClip(subTag, isRoot, rr, matrix, usefulPrecision, px, localClip)?.let { clip ->
                     clipTags.add(subTag)
                     clips.add(clip)
                     localClip = clip
                 }
             "group" ->
                 checkVectorGroup(
-                    rr, subTag, matrix, localClip, usefulPrecision, paths, clipTags, clips, usefulClips, colorToArea,
+                    rr, subTag, matrix, localClip, usefulPrecision, px, paths, clipTags, clips, usefulClips, colorToArea,
                 )
             "path" -> { // TODO propose merging pathDatas of sibling paths with same attrs
                 subTag.getAttribute("pathData", ANDROID_NS)?.valueElement?.let { pathData ->
-                    PathTag.parse(this, rr, pathData, matrix, usefulPrecision)?.also { pathTag ->
+                    PathTag.parse(this, rr, pathData, matrix, usefulPrecision, px)?.also { pathTag ->
                         pathTag.toAreas(this, usefulPrecision)
 
                         // Propose transferring clip-path's pathData to the only clipped path.
@@ -248,6 +250,7 @@ private fun ProblemsHolder.checkClip(
     rr: ResourceResolver?,
     matrix: AffineTransform?,
     usefulPrecision: Int,
+    px: Float,
     parentClip: Area?
 ): Area? {
     val parent = if (isRoot) "vector" else "group"
@@ -261,7 +264,7 @@ private fun ProblemsHolder.checkClip(
         )
         null
     } else {
-        val clipArea = PathTag.parse(this, rr, pathData, matrix, usefulPrecision)?.merged()
+        val clipArea = PathTag.parse(this, rr, pathData, matrix, usefulPrecision, px)?.merged()
         if (clipArea == null) {
             null // bad path, ignore
         } else if (clipArea.effectivelyEmpty(usefulPrecision)) {
