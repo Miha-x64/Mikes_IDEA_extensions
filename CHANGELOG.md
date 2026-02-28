@@ -1,6 +1,7 @@
 ### 0.35
   <ul>
     <li>Fix freeze in <code>PathTag.overdraw</code> by approximating <code>PathIterator</code>s</li>
+    <li>Remove backing property folding for Kotlin: <a href="https://kotlinlang.org/docs/whatsnew23.html#explicit-backing-fields">backing field syntax</a> is added to the language</li>
   </ul>
 
 ### 0.34
