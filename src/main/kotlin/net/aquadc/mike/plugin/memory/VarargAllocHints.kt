@@ -13,6 +13,7 @@ import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.codeInsight.hints.presentation.RecursivelyUpdatingRootPresentation
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbService
+import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiCallExpression
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
@@ -90,7 +91,11 @@ private class VarargAllocationHintsCollector(
 ) : FactoryInlayHintsCollector(editor) {
 
     private companion object {
-        private val HINTS = arrayOf("new[]{", "}", "*[", "]", "*")
+        private val HINTS = arrayOf("new[]{", "}", "…", "*[", "]", "*")
+        private const val HINT_JNEWA = 0
+        private const val HINT_JSPRD = 2
+        private const val HINT_KNEWA = 3
+        private const val HINT_KSPREAD = 5
         private val CONSTRAINTS = HorizontalConstraints(0, true) // in case of two hints, like `rest...` `new[] {` we wanna be last
     }
     private val hints: Array<InlayPresentation> = HINTS.map { factory.hint(it) }
@@ -119,9 +124,12 @@ private class VarargAllocationHintsCollector(
             args.expressionCount >= paramList.parametersCount) {
             val firstVarArg = args.expressions[paramList.parametersCount - 1]
             if (firstVarArg !is PsiNewExpression || !firstVarArg.isArrayCreation) {
-                // Java spread is implicit. Yea, we're gonna false-negative on vararg of arrays, but fuck that
-                sink.addInlineElement(firstVarArg.startOffset, RecursivelyUpdatingRootPresentation(hints[0]), CONSTRAINTS)
-                sink.addInlineElement(args.expressions.last().endOffset, RecursivelyUpdatingRootPresentation(hints[1]), CONSTRAINTS)
+                if (firstVarArg.type is PsiArrayType) {
+                    sink.addInlineElement(firstVarArg.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_JSPRD]), CONSTRAINTS)
+                } else {
+                    sink.addInlineElement(firstVarArg.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_JNEWA]), CONSTRAINTS)
+                    sink.addInlineElement(args.expressions.last().endOffset, RecursivelyUpdatingRootPresentation(hints[HINT_JNEWA + 1]), CONSTRAINTS)
+                }
             }
         }
     }
@@ -149,7 +157,7 @@ private class VarargAllocationHintsCollector(
                 // maxOf(a = 1, other =  intArrayOf(2, 3, 4))
                 //                 draw * here
                 namedVarArg.getArgumentExpression()?.let { ae ->
-                    sink.addInlineElement(ae.startOffset, RecursivelyUpdatingRootPresentation(hints[4]), CONSTRAINTS)
+                    sink.addInlineElement(ae.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_KSPREAD]), CONSTRAINTS)
                 }
             }
         } else {
@@ -180,7 +188,7 @@ private class VarargAllocationHintsCollector(
                         firstVarArg.prevLeafs.firstOrNull { it !is PsiWhiteSpace && it !is PsiComment }
                             ?.takeIf { it.node.elementType === KtTokens.LPAR }?.endOffset
                             ?: firstVarArg.startOffset,
-                        RecursivelyUpdatingRootPresentation(hints[2]),
+                        RecursivelyUpdatingRootPresentation(hints[HINT_KNEWA]),
                         CONSTRAINTS,
                     )
                     val lastVarArg = args[varArgEndIndex - 1]
@@ -188,7 +196,7 @@ private class VarargAllocationHintsCollector(
                         lastVarArg.nextLeafs.firstOrNull { it !is PsiWhiteSpace && it !is PsiComment && it.node.elementType !== KtTokens.COMMA }
                             ?.takeIf { it.node.elementType == KtTokens.RPAR }
                             ?.startOffset ?: lastVarArg.endOffset,
-                        RecursivelyUpdatingRootPresentation(hints[3]),
+                        RecursivelyUpdatingRootPresentation(hints[HINT_KNEWA + 1]),
                         CONSTRAINTS,
                     )
                     /*

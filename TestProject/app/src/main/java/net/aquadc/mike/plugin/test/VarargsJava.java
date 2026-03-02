@@ -2,7 +2,6 @@ package net.aquadc.mike.plugin.test;
 
 import android.annotation.SuppressLint;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class VarargsJava {
@@ -13,6 +12,8 @@ public class VarargsJava {
     @SuppressLint("DefaultLocale")
     public static void main(String[] args) {
         List.of(1, 2); // no
+        Object[] oneTwo = new Object[] { 1, 2 };
+        List.of(oneTwo);
         List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
         List.of(new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 });
         String.format("%d", 1);
