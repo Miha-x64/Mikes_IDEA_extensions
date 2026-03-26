@@ -34,7 +34,6 @@ import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
 import org.jetbrains.kotlin.utils.indexOfFirst
 import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.kotlin.KotlinReceiverUParameter
 import org.jetbrains.uast.toUElementOfType
 
 class VarargAllocHintsJava : VarargAllocationHintsProvider(settingsKey) {
@@ -144,8 +143,9 @@ private class VarargAllocationHintsCollector(
                 it.sourcePsi.let { it is KtParameter && it.isVarArg }
         }
         val variadicParamName = uastParameters.getOrNull(variadicParamIndex)?.name
-        if (callee.sourcePsi?.isExtensionDeclaration() == true || callee.getReceiver() != null)
-            variadicParamIndex--
+        if (callee.sourcePsi?.isExtensionDeclaration() == true ||
+            (callee.uastParameters.isNotEmpty() && callee.getReceiver() != null))
+            variadicParamIndex-- // in compiled code, ^^^^^^^^^^^^^^^^^ this is uastParameters.first() for some reason, so avoid crash by checking emptiness
 
         if (variadicParamIndex < 0) return true
 
