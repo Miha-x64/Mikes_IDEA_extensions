@@ -29,6 +29,7 @@ import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UImportStatement
+import org.jetbrains.uast.ULambdaExpression
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UParenthesizedExpression
 import org.jetbrains.uast.UReferenceExpression
@@ -186,6 +187,10 @@ class UnsupportedFeatureInspection : UastInspection() {
                                 ?.toUElementOfType<UExpression>()?.also { expr = it }
                             ?: return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass} | $srcRef | $referrent"); null }
                     }
+
+                    // some other expressions we don't need
+                    is ULambdaExpression -> return null
+
                     else -> {
                         return expr.sourcePsi?.let { log.error("$it | ${expr.javaClass} | ${it.text}"); null }
                     }
