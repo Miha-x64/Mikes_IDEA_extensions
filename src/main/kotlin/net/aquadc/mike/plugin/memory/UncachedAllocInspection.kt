@@ -16,6 +16,7 @@ import net.aquadc.mike.plugin.UastInspection
 import net.aquadc.mike.plugin.fixes
 import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
+import org.jetbrains.kotlin.idea.util.sourceRoot
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClassBody
@@ -41,7 +42,9 @@ class UncachedAllocInspection : UastInspection() {
     ): AbstractUastNonRecursiveVisitor = object : AbstractUastNonRecursiveVisitor() {
 
         override fun visitExpression(node: UExpression): Boolean {
-            node.sourcePsi?.let(::checkExpression)
+            if (node.sourcePsi?.containingFile?.sourceRoot?.parent?.name?.let { "test" == it || "Test" in it } != true) {
+                node.sourcePsi?.let(::checkExpression)
+            }
             return true
         }
 
