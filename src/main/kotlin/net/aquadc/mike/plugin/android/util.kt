@@ -2,7 +2,6 @@ package net.aquadc.mike.plugin.android
 
 import com.android.ide.common.resources.ResourceResolver
 import com.android.resources.ResourceFolderType
-import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.model.AndroidModel
 import com.intellij.openapi.vfs.VirtualFile
@@ -14,8 +13,8 @@ import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 fun AndroidFacet.resTypeOf(file: PsiFile): ResourceFolderType? =
     ModuleResourceManagers.getInstance(this).localResourceManager.getFileResourceFolderType(file)
 
-val AndroidFacet.androidMinSdk: AndroidVersion?
-    get() = AndroidModel.get(this)?.minSdkVersion
+val AndroidFacet.androidMinSdk: Int?
+    get() = AndroidModel.get(this)?.minSdkVersion?.featureLevel
 
 private var resolveResolver: (ConfigurationManager, VirtualFile) -> ResourceResolver? = { man, vf ->
     try {

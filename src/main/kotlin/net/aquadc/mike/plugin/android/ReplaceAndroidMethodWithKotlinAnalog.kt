@@ -38,7 +38,7 @@ class ReplaceAndroidMethodWithKotlinAnalog : LocalInspectionTool(), CleanupLocal
                 val delimiter = delimiterArg.getArgumentExpression()
                 val tokens = tokensArg.getArgumentExpression()
                 if (delimiter == null || tokens == null) null
-                else "(${tokens.text}).joinToString(" + (delimiter.takeIf { it.evaluateConstant<String>() != ", " }?.text ?: "") + ")"
+                else "(${tokens.text}).joinToString(" + (delimiter.text.takeIf { it != "\", \"" } ?: "") + ")"
             }
             // TextUtils.split(String, String | Pattern)
             2, 3 -> call.valueArgumentList!!.arguments.let { (textArg, patternArg) ->

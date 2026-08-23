@@ -29,7 +29,6 @@ import com.siyeh.ig.PsiReplacementUtil
 import it.unimi.dsi.fastutil.bytes.ByteArrays
 import net.aquadc.mike.plugin.*
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementWalkingVisitor
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -246,7 +245,7 @@ class ColorIntLiteralFolding : FoldingBuilderEx() {
                     if (expression.type == PsiType_INT) expression.tryFoldTo(regions)
                 }
             })
-            is KtFile -> root.accept(object : KotlinRecursiveElementWalkingVisitor() {
+            is KtFile -> root.accept(object : KtTreeVisitorVoid() {
                 override fun visitConstantExpression(expression: KtConstantExpression) {
                     // FIXME the code is invoked but has no effect
                     if (expression.node.elementType == KT_INTEGER_CONSTANT) expression.tryFoldTo(regions)

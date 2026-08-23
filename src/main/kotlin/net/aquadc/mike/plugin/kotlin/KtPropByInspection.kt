@@ -1,9 +1,7 @@
 package net.aquadc.mike.plugin.kotlin
 
 import com.intellij.codeInspection.LocalInspectionTool
-import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.modcommand.ModCommandAction
 import com.intellij.modcommand.ModCommandService
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -38,14 +36,10 @@ class KtPropByInspection : LocalInspectionTool() {
 
         override fun visitNamedFunction(function: KtNamedFunction) {
             if (function.isDelegationFunction && !function.isInline) {
-                var fix: LocalQuickFix = AddModifierFix(function, KtTokens.INLINE_KEYWORD)
-                if (fix is ModCommandAction) {
-                    fix = ModCommandService.getInstance().wrapToQuickFix(fix)
-                }
                 holder.registerProblem(
                     function.nameIdentifier ?: function,
                     "Delegation functions should be inline",
-                    fix,
+                    ModCommandService.getInstance().wrapToQuickFix(AddModifierFix(function, KtTokens.INLINE_KEYWORD)),
                 )
             }
         }

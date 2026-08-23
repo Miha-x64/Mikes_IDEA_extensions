@@ -3,6 +3,7 @@
     <li>Fix freeze in <code>PathTag.overdraw</code> by approximating <code>PathIterator</code>s</li>
     <li>Remove backing property folding for Kotlin: <a href="https://kotlinlang.org/docs/whatsnew23.html#explicit-backing-fields">backing field syntax</a> is added to the language</li>
     <li>Fix false-positive Java vararg array allocation hint (consumeVararg(<code>new[]{</code>array<code>}</code>)), show spread (consumeVararg(<code>…</code>array)) instead</li>
+    <li>IntelliJ 2026.1.4 and Studio Quali 3 compatibility</li>
   </ul>
 
 ### 0.34

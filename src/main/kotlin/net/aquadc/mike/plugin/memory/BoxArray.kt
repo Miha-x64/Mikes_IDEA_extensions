@@ -6,7 +6,6 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import net.aquadc.mike.plugin.NamedReplacementFix
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.types.KaTypeNullability
 import org.jetbrains.kotlin.asJava.namedUnwrappedElement
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -38,7 +37,7 @@ class BoxArray : LocalInspectionTool() {
                 val t = expression.expressionType
                 if (t?.isClassType(StandardClassIds.Array) == true)
                     t.arrayElementType
-                        ?.takeIf { it.nullability == KaTypeNullability.NON_NULLABLE && it.isPrimitive }
+                        ?.takeIf { !it.isNullable && it.isPrimitive }
                         ?.expandedSymbol?.classId?.shortClassName?.identifier
                 else null
             } ?: return

@@ -36,7 +36,7 @@ class UselessResElement : LocalInspectionTool(), CleanupLocalInspectionTool {
                 ANIM, ANIMATOR -> file.rootTag?.let(::checkAnim)
                 XML -> file.rootTag?.let(::checkXml)
                 LAYOUT -> file.rootTag?.let {
-                    MarginsPaddings.checkLayoutTag(holder, af.androidMinSdk?.apiLevel ?: -1, isOnTheFly, it)
+                    MarginsPaddings.checkLayoutTag(holder, af.androidMinSdk ?: -1, isOnTheFly, it)
                 }
                 else -> {} // nothing to do here
             }
