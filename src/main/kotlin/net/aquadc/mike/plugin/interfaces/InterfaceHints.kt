@@ -16,9 +16,9 @@ import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
+import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.uast.*
 
@@ -86,9 +86,9 @@ private class InterfaceHintsCollector(
     private fun doCollect(element: PsiElement, sink: InlayHintsSink): Unit = when {
         settings.upcast && element is PsiMethodCallExpression -> {
             element.argumentList.expressions.takeIf(Array<*>::isNotEmpty)?.let { args ->
-                element.methodExpression.reference?.resolve()?.functionParams?.let { params ->
+                element.methodExpression.reference?.resolve()?.toUElementOfType<UMethod>()?.uastParameters?.let { params ->
                     args.forEachIndexed { idx, arg: PsiExpression ->
-                        params.getOrNull(idx)?.second?.let { parameterType ->
+                        params.getOrNull(idx)?.resolveClassType()?.let { parameterType ->
                             element.methodExpression.referenceName?.let { methodName ->
                                 arg.type?.let { argType ->
                                     visitParameter(methodName, parameterType, argType, arg.textRange.endOffset, sink)
@@ -100,32 +100,52 @@ private class InterfaceHintsCollector(
             }
         }
         settings.upcast && element is KtCallExpression -> {
-            element.calleeExpression?.mainReference?.resolve()?.functionParams?.takeIf { it.isNotEmpty() }?.let { params ->
+            val uMethod = element.calleeExpression?.mainReference?.resolve()?.toUElementOfType<UMethod>()
+            uMethod?.uastParameters?.takeIf { it.isNotEmpty() }?.toMutableList()?.let { params ->
                 element.referenceExpression()?.referencedName?.let { methodName ->
-                    val lambdaArg = element.lambdaArguments.singleOrNull()
-                    val lambdaParam = lambdaArg?.let { params.lastOrNull() }
                     // Hide lambda param so we'll never encounter it in the `func(variadicParam1, variadicParam2 as () -> Unit) {}` case
-                    val params = if (lambdaParam == null) params else params.subList(0, params.size - 1)
+                    val lambdaArg = element.lambdaArguments.singleOrNull()
+                    val lambdaParam = lambdaArg?.let { params.removeLast() }
+
+                    if (uMethod.sourcePsi?.isExtensionDeclaration() == true) params.removeFirst()
 
                     // TODO maybe handle receiver expression, too
 
-                    element.valueArgumentList?.arguments?.forEachIndexed { idx, arg ->
+                    var currentVararg: UParameter? = null
+                    element.valueArgumentList?.arguments?.forEach { arg ->
                         val argName = arg.getArgumentName()?.asName?.asString()
                         arg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
                             if (argName == null) {
-                                params.getOrNull(idx)?.second?.let { pType ->
-                                    visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
+                                params.firstOrNull()?.let { param ->
+                                    param.resolveClassType()?.let { pType ->
+                                        visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
+                                    }
+                                    if (param.isVarArgs) currentVararg = param else params.removeFirst()
                                 }
                             } else {
-                                params.firstOrNull { (name, _) -> name == argName }?.second?.let { pType ->
-                                    visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
+                                if (currentVararg != null) {
+                                    /*
+                                     * CompositionLocalProvider(
+                                     *     Provider1 provides value1, // positional vararg starts
+                                     *     Provider2 provides value2, // still the same parameter
+                                     *     content = {}, // vararg parameter is dismissed here
+                                     * )
+                                     */
+                                    params.remove(currentVararg)
+                                    currentVararg = null
+                                }
+                                params.firstOrNull { p -> p.name == argName }?.let { param ->
+                                    param.resolveClassType()?.let { pType ->
+                                        visitParameter(methodName, pType, argType, arg.textRange.endOffset, sink)
+                                    }
+                                    params.remove(param)
                                 }
                             }
                         }
                     }
                     if (lambdaArg != null && lambdaParam != null) {
                         lambdaArg.getArgumentExpression()?.toUElementOfType<UExpression>()?.getExpressionType()?.let { argType ->
-                            lambdaParam.second?.let { pType ->
+                            lambdaParam.resolveClassType()?.let { pType ->
                                 visitParameter(methodName, pType, argType, lambdaArg.textRange.startOffset, sink, prefix = "")
                             }
                         }
@@ -154,6 +174,8 @@ private class InterfaceHintsCollector(
         else -> null
     } ?: Unit
 
+    private fun UParameter.resolveClassType() = (type as? JvmReferenceType)?.resolve() as? PsiClass
+
     private fun visitOverride(
         javaElement: PsiElement, declaringType: PsiClass, sink: InlayHintsSink, offset: Int, java: Boolean
     ) {
@@ -166,14 +188,6 @@ private class InterfaceHintsCollector(
         sink.addInlineElement(offset, false, factory.hint(if (java) "from $className" else "$className."), false)
     }
 
-    private val PsiElement.functionParams
-        get() =
-            (this as? PsiMethod)?.parameters?.map { null to (it.type as? JvmReferenceType)?.resolve() as? PsiClass }
-                ?: (this as? KtCallableDeclaration)?.valueParameters?.map { param ->
-                    param.name to
-                        (param.toUElementOfType<UParameter>()?.type as? JvmReferenceType)?.resolve() as? PsiClass
-                }
-
     private fun visitParameter(
         methodName: String, parameterType: PsiElement, argumentType: PsiType, offset: Int, sink: InlayHintsSink,
         prefix: String = "as ",
@@ -182,16 +196,17 @@ private class InterfaceHintsCollector(
             if (!parameterType.isInterface) return
             val argClass = when (argumentType) {
                 UastErrorType, is PsiCapturedWildcardType -> null
-                is PsiClassType -> argumentType
-                is PsiPrimitiveType -> argumentType.getBoxedType(parameterType.manager, allScope(parameterType.project))
-                is PsiMethodReferenceType, is PsiLambdaExpressionType, is PsiLambdaParameterType -> null
+                is PsiClassType -> argumentType.resolve()
+                is PsiPrimitiveType ->
+                    if (argumentType == PsiTypes.nullType()) JavaPsiFacade.getInstance(parameterType.project).findClass("java.lang.Void", allScope(parameterType.project))
+                    else argumentType.getBoxedType(parameterType.manager, allScope(parameterType.project))?.resolve()
+                is PsiMethodReferenceType, is PsiLambdaExpressionType, is PsiLambdaParameterType, is PsiArrayType -> null
                 else -> Logger.getInstance(InterfaceHintsCollector::class.java)
                     .error("arg type is ${argumentType::class.java} : $argumentType")
                     .let { null }
-            }?.resolve() ?: return
-            if (argClass.qualifiedName == "java.lang.Void") return // null as Something
+            } ?: return
             (argClass.mainInterface ?: argClass.takeIf { it.name == null }?.superClass)?.let { main ->
-                if (main == parameterType || main.isInheritor(parameterType, true)) return
+                if (main == parameterType || main.qualifiedName == parameterType.qualifiedName || main.isInheritor(parameterType, true)) return
             }
             parameterType.typeName?.takeIf { !methodName.contains(it, ignoreCase = true) }?.let { typeName ->
                 sink.addInlineElement(offset, false, factory.hint(prefix + typeName), false)
@@ -234,7 +249,7 @@ private class InterfaceHintsCollector(
                     qn.substring("kotlin.jvm.functions.Function".length).toIntOrNull()?.let {
                         repeat(it) { append('.') }
                     } ?: Logger.getInstance(InterfaceHintsCollector::class.java).error("unparsable arity: $qn")
-                    append(") -> …")
+                    append(")→_")
                 }
             else name
         }

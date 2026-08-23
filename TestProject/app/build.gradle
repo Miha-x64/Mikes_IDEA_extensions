@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 android {
     compileSdkVersion 33
@@ -17,6 +18,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    buildFeatures {
+        compose = true
+    }
     namespace 'net.aquadc.mike.plugin.test'
 }
 
@@ -27,4 +31,5 @@ dependencies {
     implementation 'androidx.annotation:annotation:1.6.0'
     implementation 'com.google.android.material:material:1.9.0'
     implementation "androidx.core:core-ktx:1.17.0"
+    implementation 'androidx.compose.runtime:runtime:1.12.0'
 }

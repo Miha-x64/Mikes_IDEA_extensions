@@ -1,9 +1,10 @@
-@file:Suppress("ktNoinlineFunc", "UNUSED_PARAMETER")
+@file:Suppress("ktNoinlineFunc", "UNUSED_PARAMETER", "SameParameterValue", "UnusedExpression", "UnusedReceiverParameter")
 import android.annotation.SuppressLint
-import android.text.Editable
-import android.text.TextWatcher
 import android.widget.TextView
 import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.tooling.LocalInspectionTables
 import com.google.android.material.internal.TextWatcherAdapter
 import net.aquadc.mike.plugin.test.remember
 import java.io.Serializable
@@ -52,13 +53,20 @@ class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
     override fun invoke() {
     }
 
-    private fun member(ser: Serializable, cmp: Comparable<*>, lst: List<Number>, f: () -> Unit, cl: Cloneable, r: Runnable) {
-    }
-    private fun Serializable.memberExt(cmp: Comparable<*>, lst: List<Number>, func: () -> Unit, cl: Cloneable, r: Runnable) {
-    }
+    private fun member(ser: Serializable, cmp: Comparable<*>, lst: List<Number>, f: () -> Unit, cl: Cloneable, r: Runnable) {}
+    private fun Serializable.memberExt(cmp: Comparable<*>, lst: List<Number>, func: () -> Unit, cl: Cloneable, r: Runnable) {}
 }
 
 private fun top(a: Serializable, b: Comparable<*>, c: List<Number>, f: () -> Unit, cl: Cloneable, r: () -> Unit) {
 }
 private fun Serializable.topExt(b: Comparable<*>, c: List<Number>, f: () -> Unit, cl: Cloneable, r: Runnable) {
+}
+
+@Composable
+fun Provide() {
+    CompositionLocalProvider(
+        LocalInspectionTables provides null,
+        LocalInspectionTables provides null,
+        content = {},
+    )
 }
