@@ -65,7 +65,7 @@ abstract class VarargAllocationHintsProvider(
     override val name: String
         get() = "Vararg allocation hints"
     override val group: InlayGroup
-        get() = InlayGroup.PARAMETERS_GROUP
+        get() = InlayGroup.VALUES_GROUP
     override val description: String?
         get() = "Hints highlighting array allocations in varargs"
     override val previewText: String?
