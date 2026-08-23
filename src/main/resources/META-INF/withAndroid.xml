@@ -14,13 +14,6 @@
 
         <localInspection
                 language="UAST"
-                shortName="androidTargetApiShouldBeRequires" displayName="@TargetApi should be replaced with @RequiresApi"
-                groupName="Android"
-                enabledByDefault="true" level="WARNING" cleanupTool="true"
-                implementationClass="net.aquadc.mike.plugin.android.TargetApiInspection" />
-
-        <localInspection
-                language="UAST"
                 shortName="reflectPropAnimInspection" displayName="Use of reflective ObjectAnimator/PropertyValuesHolder"
                 groupName="Android"
                 enabledByDefault="true" level="WARNING" cleanupTool="true"
@@ -77,5 +70,12 @@
         <defaultLiveTemplates file="/liveTemplates/objectAnimatorProperty.xml" />
 
     </extensions>
+
+    <!--actions>
+        <action id="net.aquadc.mike.plugin.android.res.ExportAsSvg"
+                class="net.aquadc.mike.plugin.android.res.ExportAsSvg" text="Export &lt;vector&gt; as SVG">
+            <add-to-group group-id="FileExportGroup" anchor="last"/>
+        </action>
+    </actions-->
 
 </idea-plugin>

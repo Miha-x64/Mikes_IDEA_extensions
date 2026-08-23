@@ -4,6 +4,7 @@
     <li>Remove backing property folding for Kotlin: <a href="https://kotlinlang.org/docs/whatsnew23.html#explicit-backing-fields">backing field syntax</a> is added to the language</li>
     <li>Fix false-positive Java vararg array allocation hint (consumeVararg(<code>new[]{</code>array<code>}</code>)), show spread (consumeVararg(<code>…</code>array)) instead</li>
     <li>IntelliJ 2026.1.4 and Studio Quali 3 compatibility</li>
+    <li>Remove “<code>@TargetApi</code> should be replaced with <code>@RequiresApi</code>” superseded by Android lint <code>UseRequiresApi</code></li>
   </ul>
 
 ### 0.34

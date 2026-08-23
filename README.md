@@ -36,7 +36,6 @@ and want their IDE to actively point out non-obvious problems and better alterna
     <li><code>&lt;include layout="?themeAttribute"&gt;</code> requires Marshmallow</li>
     <li><code>&lt;drawable android:tint&gt;</code> requires Lollipop</li>
     <li><code>&lt;layer-list>&lt;item android:gravity&gt;</code> requires Marshmallow</li>
-    <li><code>@TargetApi</code> should be replaced with <code>@RequiresApi</code></li>
     <li>Use of reflective <code>ObjectAnimator</code>/<code>PropertyValuesHolder</code></li>
     <li>Use of attributes like <code>android.R.attr.enabled</code> in context where state attributes expected, like <code>android.R.attr.state_enabled</code></li>
     <li><code>Color.parseColor(&lt;constexpr&gt;)</code> or <code>&lt;constexpr&gt;.toColorInt()</code> should be replaced with an integer literal</li>
