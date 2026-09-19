@@ -7,6 +7,7 @@
     <li>Remove “<code>@TargetApi</code> should be replaced with <code>@RequiresApi</code>” superseded by Android lint <code>UseRequiresApi</code></li>
     <li>Upcast hints: fix broken order for vararg; get rid of pesky “func <code>()->_</code> {”; resurrect “null <code>as Serializable</code>”</li>
     <li>Vararg allocation hints: move to Values group (previously was in Parameters group which is called “Parameter names” in the GUI)</li>
+    <li>Do not trigger “Heavyweight property delegation” in test sources</li>
   </ul>
 
 ### 0.34

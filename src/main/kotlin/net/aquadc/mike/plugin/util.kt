@@ -19,6 +19,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiExpression
 import com.intellij.psi.PsiExpressionStatement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiMethodCallExpression
@@ -37,6 +38,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.idea.references.mainReference
+import org.jetbrains.kotlin.idea.util.sourceRoot
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtBinaryExpression
@@ -76,6 +78,7 @@ import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 import javax.swing.JComponent
 import kotlin.math.min
 import kotlin.reflect.KMutableProperty0
+import kotlin.text.contains
 
 
 abstract class UastInspection : LocalInspectionTool() {
@@ -504,3 +507,6 @@ fun KtStringTemplateExpression.constantValue(): String? =
     warn("$tag took ${time / 1000 / 1000.0} ms")
     return value
 }*/
+
+val PsiFile.isTest: Boolean?
+    get() = sourceRoot?.parent?.name?.let { "test" == it || "Test" in it }

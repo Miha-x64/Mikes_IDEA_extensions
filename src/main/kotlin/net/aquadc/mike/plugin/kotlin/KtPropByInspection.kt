@@ -7,6 +7,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import net.aquadc.mike.plugin.isInline
+import net.aquadc.mike.plugin.isTest
 import org.jetbrains.kotlin.idea.quickfix.AddModifierFix
 import org.jetbrains.kotlin.idea.references.AbstractKtReference
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -24,18 +25,19 @@ class KtPropByInspection : LocalInspectionTool() {
         holder: ProblemsHolder, isOnTheFly: Boolean,
     ): PsiElementVisitor = object : KtVisitorVoid() {
         override fun visitProperty(property: KtProperty) {
-            property.delegate?.let { delegate ->
-                (delegate.reference as? AbstractKtReference<*>)?.let { reference ->
-                    if (reference.multiResolve(true)
-                        .any { (it.element as? KtNamedFunction)?.isInline == false }) {
-                        holder.registerProblem(delegate, TextRange.from(0, 2), "Heavyweight property delegation")
+            if (property.containingFile.isTest != true) {
+                property.delegate?.let { delegate ->
+                    (delegate.reference as? AbstractKtReference<*>)?.let { reference ->
+                        if (reference.multiResolve(true).any { (it.element as? KtNamedFunction)?.isInline == false }) {
+                            holder.registerProblem(delegate, TextRange.from(0, 2), "Heavyweight property delegation")
+                        }
                     }
                 }
             }
         }
 
         override fun visitNamedFunction(function: KtNamedFunction) {
-            if (function.isDelegationFunction && !function.isInline) {
+            if (function.containingFile.isTest != true && function.isDelegationFunction && !function.isInline) {
                 holder.registerProblem(
                     function.nameIdentifier ?: function,
                     "Delegation functions should be inline",
