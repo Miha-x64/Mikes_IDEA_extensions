@@ -1,6 +1,5 @@
 package net.aquadc.mike.plugin.memory
 
-import com.android.tools.lint.detector.api.getReceiver
 import com.intellij.codeInsight.hints.FactoryInlayHintsCollector
 import com.intellij.codeInsight.hints.HorizontalConstraints
 import com.intellij.codeInsight.hints.ImmediateConfigurable
@@ -26,7 +25,6 @@ import com.intellij.psi.util.prevLeafs
 import com.intellij.psi.util.startOffset
 import net.aquadc.mike.plugin.DumbHintsConfigurable
 import net.aquadc.mike.plugin.hint
-import net.aquadc.mike.plugin.miserlyMap as map
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -35,6 +33,7 @@ import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
 import org.jetbrains.kotlin.utils.indexOfFirst
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
+import net.aquadc.mike.plugin.miserlyMap as map
 
 class VarargAllocHintsJava : VarargAllocationHintsProvider(settingsKey) {
     private companion object {
@@ -143,8 +142,7 @@ private class VarargAllocationHintsCollector(
                 it.sourcePsi.let { it is KtParameter && it.isVarArg }
         }
         val variadicParamName = uastParameters.getOrNull(variadicParamIndex)?.name
-        if (callee.sourcePsi?.isExtensionDeclaration() == true ||
-            (callee.uastParameters.isNotEmpty() && callee.getReceiver() != null))
+        if (callee.sourcePsi?.isExtensionDeclaration() == true)
             variadicParamIndex-- // in compiled code, ^^^^^^^^^^^^^^^^^ this is uastParameters.first() for some reason, so avoid crash by checking emptiness
 
         if (variadicParamIndex < 0) return true

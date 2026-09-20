@@ -8,6 +8,7 @@
     <li>Upcast hints: fix broken order for vararg; get rid of pesky “func <code>()->_</code> {”; resurrect “null <code>as Serializable</code>”</li>
     <li>Vararg allocation hints: move to Values group (previously was in Parameters group which is called “Parameter names” in the GUI)</li>
     <li>Do not trigger “Heavyweight property delegation” in test sources</li>
+    <li>Vararg allocation hints: probably fix <code>NoClassDefFoundError</code></li>
   </ul>
 
 ### 0.34
