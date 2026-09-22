@@ -1,8 +1,10 @@
 
 ## Mike's IDE extensions
 
-[![IntelliJ IDEA Plugin](https://img.shields.io/jetbrains/plugin/v/12690-mike-s-idea-extensions?label=plugin&logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)
-[![IntelliJ IDEA Plugin](https://img.shields.io/jetbrains/plugin/d/12690-mike-s-idea-extensions?logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)
+[![IntelliJ IDEA Plugin version](https://img.shields.io/jetbrains/plugin/v/12690-mike-s-idea-extensions?label=plugin&logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)
+[![IntelliJ IDEA Plugin downloads](https://img.shields.io/jetbrains/plugin/d/12690-mike-s-idea-extensions?logo=intellij-idea)](https://plugins.jetbrains.com/plugin/12690-mike-s-idea-extensions/)
+[![Download from GitHub Releases](https://img.shields.io/badge/releases-blue?logo=github)](https://github.com/Miha-x64/Mikes_IDEA_extensions/releases)
+[![Subscribe to updates in Telegram](https://img.shields.io/badge/releases-darkgreen?logo=telegram)](https://t.me/javanese_online)
 
 <!-- start plugin.xml -->
 
