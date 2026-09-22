@@ -100,7 +100,7 @@ internal class Cmd(
     }
 
     fun maxPrecision(): Int =
-        args.ifNotEmpty { maxOf(BigDecimal::scale) } ?: 0
+        args.ifNotEmpty { maxOf(BigDecimal::scale) } ?: -1
 
     fun firstFloatStart(ofPrecision: Int): Int {
         src!!.forEachFloat { floatStart, _, precision ->

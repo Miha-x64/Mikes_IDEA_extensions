@@ -18,6 +18,7 @@ and want their IDE to actively point out non-obvious problems and better alterna
     <li>Allocation should be cached (<code>Gson()</code>, <code>OkHttpClient()</code>)</li>
     <li><code>BigDecimal|BigInteger</code> instantiation can be replaced with constant <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
     <li><code>(BigDecimal|BigInteger).compareTo(ZERO)</code> can be replaced with <code>signum()</code> <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
+    <li>Excessive SVG pathData in a string literal</li>
   </ul>
 
   <h3>Kotlin inspections</h3>

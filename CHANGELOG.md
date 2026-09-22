@@ -9,6 +9,7 @@
     <li>Vararg allocation hints: move to Values group (previously was in Parameters group which is called “Parameter names” in the GUI)</li>
     <li>Do not trigger “Heavyweight property delegation” in test sources</li>
     <li>Vararg allocation hints: probably fix <code>NoClassDefFoundError</code></li>
+    <li>Added “Excessive SVG pathData in a string literal” inspection and minor improvements to Vector Asset pathData checking</li>
   </ul>
 
 ### 0.34

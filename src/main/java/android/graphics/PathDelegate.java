@@ -240,7 +240,7 @@ public final class PathDelegate {
             }
             return count;
         } catch (NumberFormatException e) {
-            throw new PathError("Can't parseFloat", new TextRange(start, end));
+            throw new PathError("Can't parse number", new TextRange(start, end));
         }
     }
 
@@ -273,13 +273,19 @@ public final class PathDelegate {
         }
 
         for (int k = 0; k < count; k += incr) {
-            if (k + incr >= val.length) {
+            if (k + incr >= val.length || val[k + incr - 1] == null) {
+                var err = new StringBuilder("Missing arguments for ").append(cmd).append('(');
+                String separ = "";
+                for (int i = 0; i < params.length; i++) {
+                    err.append(separ)
+                            .append(params[i])
+                            .append(": ")
+                            .append(val.length > k + i && val[k + i] != null ? val[k + i] : "?");
+                    separ = ", ";
+                }
                 throw new PathError(
-                    String.format(
-                        "Missing arguments for '%s': provided %d, required %d %s",
-                        cmd, count % params.length, params.length, Arrays.toString(params)
-                    ),
-                    new TextRange(rangesOffset + 2 * k, floatRanges.getInt(rangesOffset + 2 * count - 1))
+                        err.append(')').toString(),
+                        new TextRange(rangesOffset + 2 * k, floatRanges.getInt(rangesOffset + 2 * count - 1))
                 );
             }
             cmds.add(new Cmd(currentX, currentY, cmd, Arrays.copyOfRange(val, k, k + incr), new Cmd.Src(pathData, floatRanges, rangesOffset + 2 * k)));
@@ -534,7 +540,7 @@ public final class PathDelegate {
     public static final class PathError extends Exception {
         public final TextRange at;
         PathError(String message, TextRange at) {
-            super(message);
+            super(message, null, false, false);
             this.at = at;
         }
     }

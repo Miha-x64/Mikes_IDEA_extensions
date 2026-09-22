@@ -10,13 +10,19 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.lang.java.JavaLanguage
+import com.intellij.lang.xml.XMLLanguage
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiExpression
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.SmartList
+import com.siyeh.ig.PsiReplacementUtil
 import de.javagl.geom.Shapes
 import it.unimi.dsi.fastutil.floats.FloatArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -25,6 +31,8 @@ import net.aquadc.mike.plugin.NamedLocalQuickFix
 import net.aquadc.mike.plugin.fixes
 import net.aquadc.mike.plugin.indexOfFirst
 import net.aquadc.mike.plugin.toInt
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import java.awt.Shape
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area
@@ -96,13 +104,14 @@ internal class PathTag private constructor(
             }
             if (paths.isEmpty())
                 return null
-            if (pathStarts != null && paths.size != pathStarts.size - 1 &&
-                pathStarts.getInt(pathStarts.size - 1) != rawPathData.length) {
-                // heal ranges for a broken path, may happen when editing path by hand on the fly
-                pathStarts.add(rawPathData.length)
-            }
-            check(pathStarts == null || paths.size == pathStarts.size - 1) {
-                "${paths.size} paths but ${pathStarts!!.size} start indices in path $pathData: $pathStarts"
+            if (pathStarts != null) { // FIXME seems to be useless, figure out when & why ever triggered
+                if (paths.size != pathStarts.size - 1 && pathStarts.getInt(pathStarts.size - 1) != pathData.length) {
+                    // heal ranges for a broken path, may happen when editing path by hand on the fly
+                    pathStarts.add(pathData.length)
+                }
+                check(paths.size == pathStarts.size - 1) {
+                    "${paths.size} paths but ${pathStarts.size} start indices in path $pathData: $pathStarts"
+                }
             }
             val (subPathRanges, startPoss, endPoss) =
                 if (paths.size > 1 && paint?.fillOpacity != PixelFormat.TRANSPARENT) {
@@ -213,51 +222,6 @@ internal class PathTag private constructor(
             if (endPositions != null) {
                 endPositions[i].addAll(endPositions[j])
                 endPositions.removeAt(j)
-            }
-        }
-
-        private fun ProblemsHolder.tryProposeShortening(
-            cmds: List<Cmd>,
-            pathData: String,
-            usefulPrecision: Int,
-            pathAttr: XmlAttributeValue,
-            rawPathData: String,
-            beginValueAt: Int
-        ) {
-            val maxPrecision = cmds.maxPrecision()
-            val canTrimCarefully = maxPrecision > usefulPrecision
-            val canTrimAggressively = maxPrecision > usefulPrecision + 1
-            val shortened = cmds.shortened(Int.MAX_VALUE)
-            val aggressive = cmds.shortened(usefulPrecision)
-            val careful = cmds.shortened(usefulPrecision + 1)
-            val rewritten = StringBuilder().also { shortened.appendTo(it) } // we will re-invoke this in "Compact path" fix but there's not much work to do
-            val rewriteStart = pathData.indices.firstOrNull { pathData[it] != rewritten.getOrNull(it) && !pathData[it].isCWSP() } ?: -1
-            val rewriteEnd = pathData.indices
-                .firstOrNull { pathData[pathData.length - it - 1] != rewritten.getOrNull(rewritten.length - it - 1) }
-                ?.let { pathData.length - it }
-                ?: -1
-
-            if (canTrimAggressively || rewriteStart >= 0) {
-                val andMaybeShorten = if (rewriteStart >= 0) " & shorten path" else ""
-                registerProblem(
-                    pathAttr,
-                    if (canTrimAggressively) "Subpixel precision" else "Excessive pathData",
-                    ProblemHighlightType.WEAK_WARNING,
-                    if (pathData === rawPathData) {
-                        val highlightStart =
-                            min(cmds.firstOrNull { it.maxPrecision() > usefulPrecision }?.firstFloatStart(usefulPrecision) ?: Int.MAX_VALUE, rewriteStart.takeIf { it >= 0 } ?: Int.MAX_VALUE)
-                        assert(highlightStart != Int.MAX_VALUE) { "at least one of min() should be valid, got maxPrecision=$maxPrecision, canTrim=$canTrimCarefully || $canTrimAggressively" }
-                        val highlightEnd = max(cmds.lastOrNull { it.maxPrecision() > usefulPrecision }?.lastFloatEnd(usefulPrecision) ?: -1, rewriteEnd)
-                        assert(highlightEnd != -1) { "at least one of max() should be valid, got maxPrecision=$maxPrecision, canTrim=$canTrimCarefully || $canTrimAggressively" }
-                        TextRange(beginValueAt + highlightStart, beginValueAt + highlightEnd)
-                    } else TextRange.from(beginValueAt, rawPathData.length),
-                    *fixes(
-                        // quickfixes are sorted alphabetically by IntelliJ, mind names so order is preserved
-                        if (isOnTheFly && canTrimAggressively) OptimizePathFix(aggressive, "Reduce precision aggressively$andMaybeShorten") else null,
-                        if (canTrimCarefully) OptimizePathFix(careful, "Reduce precision carefully$andMaybeShorten") else null,
-                        if (rewriteStart >= 0) OptimizePathFix(shortened, "Shorten path") else null,
-                    )
-                )
             }
         }
 
@@ -652,13 +616,85 @@ internal class PathTag private constructor(
 
 }
 
+internal fun ProblemsHolder.tryProposeShortening(
+    cmds: List<Cmd>,
+    pathData: String,
+    usefulPrecision: Int,
+    element: PsiElement,
+    rawPathData: String,
+    beginValueAt: Int,
+) {
+    val maxPrecision: Int
+    val aggressive: List<Cmd>?
+    val careful: List<Cmd>?
+    if (usefulPrecision >= 0) {
+        maxPrecision = cmds.maxPrecision()
+        aggressive = if (maxPrecision > usefulPrecision + 1) cmds.shortened(usefulPrecision) else null
+        careful = if (maxPrecision > usefulPrecision) cmds.shortened(usefulPrecision + 1) else null
+    } else {
+        maxPrecision = -1
+        aggressive = null
+        careful = null
+    }
+    val shortened = cmds.shortened(Int.MAX_VALUE)
+    val rewritten = StringBuilder().also { shortened.appendTo(it) } // we will re-invoke this in "Compact path" fix but there's not much work to do
+    val rewriteStart = pathData.indices.firstOrNull { pathData[it] != rewritten.getOrNull(it) && !pathData[it].isCWSP() } ?: -1
+    val rewriteEnd = pathData.indices
+        .firstOrNull { pathData[pathData.length - it - 1] != rewritten.getOrNull(rewritten.length - it - 1) }
+        ?.let { pathData.length - it }
+        ?: -1
+
+    if (aggressive != null || rewriteStart >= 0) {
+        val andMaybeShorten = if (rewriteStart >= 0) " & shorten path" else ""
+        registerProblem(
+            element,
+            if (aggressive != null) "Subpixel precision" else "Excessive pathData",
+            ProblemHighlightType.WEAK_WARNING,
+            if (pathData === rawPathData) {
+                val highlightStart =
+                    min(cmds.firstOrNull { it.maxPrecision() > usefulPrecision }?.firstFloatStart(usefulPrecision) ?: Int.MAX_VALUE, rewriteStart.takeIf { it >= 0 } ?: Int.MAX_VALUE)
+                assert(highlightStart != Int.MAX_VALUE) { "at least one of min() should be valid, got maxPrecision=$maxPrecision, canTrim=${careful != null} || ${aggressive != null}" }
+                val highlightEnd = max(cmds.lastOrNull { it.maxPrecision() > usefulPrecision }?.lastFloatEnd(usefulPrecision) ?: -1, rewriteEnd)
+                assert(highlightEnd != -1) { "at least one of max() should be valid, got maxPrecision=$maxPrecision, canTrim=${careful != null} || ${aggressive != null}" }
+                TextRange(beginValueAt + highlightStart, beginValueAt + highlightEnd)
+            } else TextRange.from(beginValueAt, rawPathData.length),
+            *fixes(
+                // quickfixes are sorted alphabetically by IntelliJ, mind names so order is preserved
+                if (isOnTheFly && aggressive != null) OptimizePathFix(aggressive, "Reduce precision aggressively$andMaybeShorten") else null,
+                if (careful != null) OptimizePathFix(careful, "Reduce precision carefully$andMaybeShorten") else null,
+                if (rewriteStart >= 0) OptimizePathFix(shortened, "Shorten path") else null,
+            )
+        )
+    }
+}
+
 private class OptimizePathFix(
     @FileModifier.SafeFieldForPreview private val cmds: List<Cmd>,
     name: String,
 ) : NamedLocalQuickFix(name) {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        (descriptor.psiElement.parent as XmlAttribute)
-            .setValue(StringBuilder().also { cmds.appendTo(it) }.toString())
+        when (descriptor.psiElement.language) {
+            XMLLanguage.INSTANCE -> {
+                (descriptor.psiElement.parent as XmlAttribute)
+                    .setValue(StringBuilder().also { cmds.appendTo(it) }.toString())
+            }
+            JavaLanguage.INSTANCE -> {
+                PsiReplacementUtil.replaceExpressionAndShorten(
+                    descriptor.psiElement as PsiExpression,
+                    StringBuilder().append('"').also { cmds.appendTo(it) }.append('"').toString(),
+                )
+            }
+            KotlinLanguage.INSTANCE -> {
+                descriptor.psiElement.replace(
+                    KtPsiFactory(project).createExpression(
+                        StringBuilder().append('"').also { cmds.appendTo(it) }.append('"').toString(),
+                    )
+                )
+            }
+            else -> {
+                Logger.getInstance(javaClass).warn("Unsupported language: ${descriptor.psiElement.language}")
+            }
+        }
     }
 }
 

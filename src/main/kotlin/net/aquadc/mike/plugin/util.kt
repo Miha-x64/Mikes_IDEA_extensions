@@ -1,5 +1,6 @@
 package net.aquadc.mike.plugin
 
+import com.android.tools.lint.detector.api.explicitReceiver
 import com.intellij.codeInsight.FileModificationService
 import com.intellij.codeInsight.hints.ChangeListener
 import com.intellij.codeInsight.hints.ImmediateConfigurable
@@ -36,7 +37,6 @@ import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.util.sourceRoot
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -69,6 +69,8 @@ import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.uast.UBinaryExpression
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.ULiteralExpression
+import org.jetbrains.uast.UPolyadicExpression
 import org.jetbrains.uast.UQualifiedReferenceExpression
 import org.jetbrains.uast.UReferenceExpression
 import org.jetbrains.uast.UResolvable
@@ -155,6 +157,52 @@ abstract class FunctionCallVisitor(
         node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
         declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
     ): Boolean
+}
+
+abstract class StringVisitor : AbstractUastNonRecursiveVisitor() {
+    override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean = // trim*
+        visitString(
+            node.sourcePsi ?: return false,
+            (node.selector as? UCallExpression ?: return false).evaluateString() ?: return false,
+        )
+    override fun visitBinaryExpression(node: UBinaryExpression): Boolean { // string concatenation
+        val uParent = node.uastParent
+        if (uParent is UExpression && uParent.evaluate() is String)
+            return true // dedupe
+        return visitString(node.sourcePsi ?: return false, node.evaluate() as? String ?: return false)
+    }
+    override fun visitPolyadicExpression(node: UPolyadicExpression): Boolean { // multiple string concatenation
+        val uParent = node.uastParent
+        if (uParent is UExpression && uParent.evaluate() is String)
+            return true // dedupe
+        if (uParent is UQualifiedReferenceExpression && uParent.selector.let { it is UCallExpression && it.evaluateString() != null })
+            return true // dedupe
+        return visitString(node.sourcePsi ?: return false, node.evaluate() as? String ?: return false)
+    }
+    override fun visitLiteralExpression(node: ULiteralExpression): Boolean { // single string
+        val uParent = node.uastParent
+        if (uParent is UExpression && uParent.evaluate() is String)
+            return true // dedupe
+        if (uParent is UQualifiedReferenceExpression && uParent.selector.let { it is UCallExpression && it.evaluateString() != null })
+            return true // dedupe
+        return visitString(node.sourcePsi ?: return false, node.evaluate() as? String ?: return false)
+    }
+    private fun UCallExpression.evaluateString(): String? {
+        val args = valueArgumentCount
+        if (args > 1) return null
+        val receiver = explicitReceiver?.evaluate() as? String ?: return null
+        return when (resolve()?.name) {
+            "trimIndent" if args == 0 ->
+                receiver.trimIndent()
+            "trimMargin" if args == 0 ->
+                receiver.trimMargin()
+            "trimMargin" if args == 1 ->
+                receiver.trimMargin(valueArguments.single().evaluate() as? String ?: return null)
+            else ->
+                null
+        }
+    }
+    abstract fun visitString(src: PsiElement, value: String): Boolean
 }
 
 val UResolvable.resolvedClassFqn: String?

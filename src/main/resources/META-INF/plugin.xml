@@ -94,13 +94,18 @@
 
         <!--TODO errorHandler implementation="" / -->
 
-        <!-- SVG pathData live templates -->
+        <!-- region SVG pathData -->
+        <localInspection
+            language="UAST" shortName="SvgPathDataShorten" displayName="Excessive SVG pathData in a string literal"
+            groupName="JVM languages" enabledByDefault="true" level="WEAK WARNING"
+            implementationClass="net.aquadc.mike.plugin.svg.SvgPathDataShortenInspection" />
         <liveTemplateContext implementation="net.aquadc.mike.plugin.svg.SvgPathDataContext" contextId="text/svg+xml; context=pathData" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MultiplyMacro" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.MinMacro" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.AddMacro" />
         <liveTemplateMacro implementation="net.aquadc.mike.plugin.svg.SvgExtractMacro" />
         <defaultLiveTemplates file="/liveTemplates/pathData.xml" />
+        <!-- endregion SVG pathData -->
     </extensions>
 
     <depends>com.intellij.modules.lang</depends>

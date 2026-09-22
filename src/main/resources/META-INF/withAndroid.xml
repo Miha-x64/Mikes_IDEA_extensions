@@ -41,7 +41,7 @@
 
         <localInspection
             shortName="ReplaceAndroidMethodWithKotlinAnalog"
-            displayName="Android utility methods should be replaced with Kotlin extension"
+            displayName="Android utility method should be replaced with Kotlin extension"
             groupPath="Kotlin" groupName="Style issues" level="WEAK WARNING" language="kotlin" enabledByDefault="true"
             implementationClass="net.aquadc.mike.plugin.android.ReplaceAndroidMethodWithKotlinAnalog" />
 
