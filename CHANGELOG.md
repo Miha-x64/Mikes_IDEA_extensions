@@ -1,3 +1,8 @@
+### 0.36
+  <ul>
+    <li>Fix mistakenly showing interface upcast hints for <code>$continuation</code> parameter</li>
+  </ul>
+
 ### 0.35
   <ul>
     <li>Fix freeze in <code>PathTag.overdraw</code> by approximating <code>PathIterator</code>s</li>

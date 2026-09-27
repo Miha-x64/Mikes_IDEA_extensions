@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.tooling.LocalInspectionTables
 import com.google.android.material.internal.TextWatcherAdapter
+import kotlinx.coroutines.suspendCancellableCoroutine
 import net.aquadc.mike.plugin.test.remember
 import java.io.Serializable
 
@@ -39,6 +40,9 @@ class Iii : AbstractList<Nothing>(), Runnable, Cloneable, () -> Unit {
 
         remember(1, 2) {}
     }
+
+    suspend fun ignoreContinuation() =
+        suspendCancellableCoroutine<Unit> {  }
 
     override val size: Int
         get() = 0

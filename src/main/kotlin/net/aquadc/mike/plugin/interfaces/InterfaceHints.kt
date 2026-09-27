@@ -7,6 +7,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbService
 import com.intellij.psi.*
+import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.search.GlobalSearchScope.allScope
 import com.intellij.psi.util.parentOfType
 import net.aquadc.mike.plugin.DumbHintsConfigurable
@@ -16,8 +17,10 @@ import net.aquadc.mike.plugin.referencedName
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtModifierListOwner
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
+import org.jetbrains.kotlin.psi.psiUtil.hasSuspendModifier
 import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.uast.*
@@ -103,9 +106,14 @@ private class InterfaceHintsCollector(
             val uMethod = element.calleeExpression?.mainReference?.resolve()?.toUElementOfType<UMethod>()
             uMethod?.uastParameters?.takeIf { it.isNotEmpty() }?.toMutableList()?.let { params ->
                 element.referenceExpression()?.referencedName?.let { methodName ->
+                    // Hide '$completion: Continuation' parameter to avoid `suspendCancelableCoroutine Continuation {}`
+                    if ((uMethod.sourcePsi as? KtModifierListOwner)?.modifierList?.hasSuspendModifier() == true &&
+                        (params.lastOrNull()?.type as? PsiClassReferenceType)?.canonicalText == "kotlin.coroutines.Continuation<? super T>")
+                        params.removeLast()
+
                     // Hide lambda param so we'll never encounter it in the `func(variadicParam1, variadicParam2 as () -> Unit) {}` case
                     val lambdaArg = element.lambdaArguments.singleOrNull()
-                    val lambdaParam = lambdaArg?.let { params.removeLast() }
+                    val lambdaParam = lambdaArg?.let { params.removeLastOrNull() }
 
                     if (uMethod.sourcePsi?.isExtensionDeclaration() == true) params.removeFirst()
 
