@@ -1,6 +1,7 @@
 ### 0.36
   <ul>
     <li>Fix mistakenly showing interface upcast hints for <code>$continuation</code> parameter</li>
+    <li>Fix crashes when analyzing arbitrary strings as pathData</li>
   </ul>
 
 ### 0.35

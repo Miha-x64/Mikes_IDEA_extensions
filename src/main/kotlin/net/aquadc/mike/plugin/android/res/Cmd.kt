@@ -107,7 +107,7 @@ internal class Cmd(
             if (precision > ofPrecision)
                 return floatStart
         }
-        throw NoSuchElementException()
+        return Int.MAX_VALUE
     }
 
     fun lastFloatEnd(ofPrecision: Int): Int {
@@ -116,7 +116,6 @@ internal class Cmd(
             if (precision > ofPrecision)
                 last = floatEnd
         }
-        if (last < 0) throw NoSuchElementException()
         return last
     }
 
@@ -171,7 +170,7 @@ internal class Cmd(
 
         @JvmStatic
         fun paramsOf(cmd: Char): Array<Param>? {
-            return PARAMS[cmd.code - (if (cmd > 'Z') 'a' else 'A').code]
+            return PARAMS.getOrNull(cmd.code - (if (cmd > 'Z') 'a' else 'A').code)
         }
     }
 

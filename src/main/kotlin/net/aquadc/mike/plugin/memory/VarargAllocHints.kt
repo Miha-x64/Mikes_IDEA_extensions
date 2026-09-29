@@ -93,7 +93,7 @@ private class VarargAllocationHintsCollector(
         private const val HINT_JNEWA = 0
         private const val HINT_JSPRD = 2
         private const val HINT_KNEWA = 3
-        private const val HINT_KSPREAD = 5
+        private const val HINT_KSPRD = 5
         private val CONSTRAINTS = HorizontalConstraints(0, true) // in case of two hints, like `rest...` `new[] {` we wanna be last
     }
     private val hints: Array<InlayPresentation> = HINTS.map { factory.hint(it) }
@@ -155,7 +155,7 @@ private class VarargAllocationHintsCollector(
                 // maxOf(a = 1, other =  intArrayOf(2, 3, 4))
                 //                 draw * here
                 namedVarArg.getArgumentExpression()?.let { ae ->
-                    sink.addInlineElement(ae.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_KSPREAD]), CONSTRAINTS)
+                    sink.addInlineElement(ae.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_KSPRD]), CONSTRAINTS)
                 }
             }
         } else {

@@ -1,6 +1,5 @@
 package net.aquadc.mike.plugin
 
-import com.android.tools.lint.detector.api.explicitReceiver
 import com.intellij.codeInsight.FileModificationService
 import com.intellij.codeInsight.hints.ChangeListener
 import com.intellij.codeInsight.hints.ImmediateConfigurable
@@ -190,7 +189,7 @@ abstract class StringVisitor : AbstractUastNonRecursiveVisitor() {
     private fun UCallExpression.evaluateString(): String? {
         val args = valueArgumentCount
         if (args > 1) return null
-        val receiver = explicitReceiver?.evaluate() as? String ?: return null
+        val receiver = receiver?.evaluate() as? String ?: return null
         return when (resolve()?.name) {
             "trimIndent" if args == 0 ->
                 receiver.trimIndent()
