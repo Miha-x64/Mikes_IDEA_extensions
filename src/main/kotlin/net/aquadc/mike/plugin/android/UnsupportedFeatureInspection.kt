@@ -79,7 +79,7 @@ class UnsupportedFeatureInspection : UastInspection() {
 
         override fun visitImportStatement(node: UImportStatement): Boolean {
             val psi = (node.sourcePsi as? KtImportDirective)
-            if (psi != null && psi.importPath?.pathStr?.startsWith("kotlinx.android.synthetic") == true) {
+            if (psi != null && psi.importedReference?.text?.startsWith("kotlinx.android.synthetic") == true) {
                 holder.registerProblem(
                     psi.importedReference ?: psi,
                     "Kotlin Android Extensions are deprecated",
