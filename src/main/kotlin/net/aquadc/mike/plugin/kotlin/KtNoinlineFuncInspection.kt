@@ -19,10 +19,8 @@ class KtNoinlineFuncInspection : LocalInspectionTool() {
 
         override fun visitNamedFunction(function: KtNamedFunction) {
             super.visitNamedFunction(function)
-            function
-                .takeIf(KtNamedFunction::isLocal)
-                ?.funKeyword
-                ?.let { func ->
+            if (function.isLocal() && function.name == null)
+                function.funKeyword?.let { func ->
                     noinlineMessage(function)?.let { message ->
                         holder.registerProblem(func, message, ProblemHighlightType.WEAK_WARNING)
                     }

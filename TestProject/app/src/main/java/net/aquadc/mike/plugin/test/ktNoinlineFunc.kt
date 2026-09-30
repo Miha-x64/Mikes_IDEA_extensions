@@ -1,4 +1,4 @@
-@file:Suppress("unused", "UNUSED_VARIABLE", "NOTHING_TO_INLINE")
+@file:Suppress("unused", "UNUSED_VARIABLE", "NOTHING_TO_INLINE", "UNUSED_PARAMETER", "UnusedLambdaExpression")
 package net.aquadc.mike.plugin.test
 
 

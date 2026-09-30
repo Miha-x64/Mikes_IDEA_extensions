@@ -2,6 +2,7 @@
   <ul>
     <li>Fix mistakenly showing interface upcast hints for <code>$continuation</code> parameter</li>
     <li>Fix crashes when analyzing arbitrary strings as pathData</li>
+    <li>Stop reporting that named local functions can't be inlined: they are compiled normally now</li>
   </ul>
 
 ### 0.35
