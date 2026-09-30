@@ -46,6 +46,9 @@ class VarargAllocHintsKotlin : VarargAllocationHintsProvider(settingsKey) {
     }
 }
 
+/**
+ * @author Mike Gorünóv
+ */
 abstract class VarargAllocationHintsProvider(
     override val key: SettingsKey<VarargAllocHintsSettings>,
 ) : InlayHintsProvider<VarargAllocHintsSettings> {

@@ -263,7 +263,7 @@ abstract class NamedLocalQuickFix(
     final override fun getFamilyName(): String = _name
 }
 
-class NamedReplacementFix(
+internal class NamedReplacementFix(
     name: String,
     private val expression: String,
     private val kotlinExpression: String = expression,
@@ -425,7 +425,7 @@ inline fun <T, R : Comparable<R>> Array<out T>.maxByIf(selector: (T) -> R, predi
     return maxValue
 }
 
-inline fun <T> Array<out T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
+internal inline fun <T> Array<out T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     val iof = indexOfFirst(predicate)
     if (iof < 0) return emptyList()
     var i = iof + 1
@@ -463,12 +463,12 @@ fun Array<out LocalQuickFix?>.nonNull(): Array<LocalQuickFix> {
     return out as Array<LocalQuickFix>
 }
 
-@PublishedApi internal fun <T> Array<out T>.alOf(first: Int, second: Int): ArrayList<T> =
+internal fun <T> Array<out T>.alOf(first: Int, second: Int): ArrayList<T> =
     ArrayList<T>(min(1 + size - second /* found + left */, 10)).also {
         it.add(this[first])
         it.add(this[second])
     }
-inline fun <T> List<T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
+internal inline fun <T> List<T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     val iof = indexOfFirst(predicate)
     if (iof < 0) return emptyList()
     var i = iof + 1
@@ -485,7 +485,7 @@ inline fun <T> List<T>.miserlyFilter(predicate: (T) -> Boolean): List<T> {
     }
     return listOf(this[iof])
 }
-@PublishedApi internal fun <T> List<T>.alOf(first: Int, second: Int): ArrayList<T> =
+internal fun <T> List<T>.alOf(first: Int, second: Int): ArrayList<T> =
     ArrayList<T>(min(1 + size - second /* found + left */, 10)).also {
         it.add(this[first])
         it.add(this[second])
@@ -509,7 +509,7 @@ fun PsiElement.getParentUntil(c1: Class<out PsiElement>, c2: Class<out PsiElemen
 }
 
 inline fun IntArrayList.indexOfFirst(predicate: (Int) -> Boolean): Int {
-    for (i in 0 until size)
+    for (i in indices)
         if (predicate(getInt(i)))
             return i
     return -1

@@ -1,10 +1,12 @@
 package net.aquadc.mike.plugin.test
 
 import android.animation.ObjectAnimator
+import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.util.Property
 import android.view.View
 
+@SuppressLint("Recycle")
 @Suppress("androidTargetApiShouldBeRequires")
 @TargetApi(21)
 fun anims() {

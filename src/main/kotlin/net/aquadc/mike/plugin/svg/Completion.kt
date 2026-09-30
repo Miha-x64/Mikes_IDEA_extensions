@@ -21,6 +21,10 @@ internal class MinMacro :
     FoldNumMacro("min", "min(Number...)", BigDecimal::min, null)
 internal class AddMacro :
     FoldNumMacro("add", "add(Number...)", BigDecimal::add, TextResult("0"))
+
+/**
+ * @author Mike Gorünóv
+ */
 internal abstract class FoldNumMacro(
     name: String,
     description: String,

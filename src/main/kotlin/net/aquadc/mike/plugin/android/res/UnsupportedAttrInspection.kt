@@ -71,7 +71,6 @@ private class Crap(
     }
 
     companion object {
-        val knownSdks = intArrayOf(21, 23)
         val shitBunch = arrayOf(
             Crap(
                 DRAWABLE, tag = "bitmap", attr = "tint", requiredSdk = 21,

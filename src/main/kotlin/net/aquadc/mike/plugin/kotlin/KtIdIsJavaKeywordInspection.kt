@@ -53,7 +53,7 @@ class KtIdIsJavaKeywordInspection : LocalInspectionTool() {
             } while (container.containingClassOrObject?.also { container = it } != null)
 
             if (dcl is KtProperty && !dcl.hasModifier(KtTokens.CONST_KEYWORD) && dcl.jvmField == null) {
-                // keep eye on get/set if field if private
+                // keep eye on get/set if field is private
                 dcl.getter?.let(::analyze)
                 dcl.setter?.let(::analyze)
             } else {

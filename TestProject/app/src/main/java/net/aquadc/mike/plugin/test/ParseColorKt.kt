@@ -1,6 +1,7 @@
-@file:Suppress("unused", "MayBeConstant", "RemoveRedundantQualifierName")
+@file:[Suppress("unused", "MayBeConstant", "RemoveRedundantQualifierName") SuppressLint("UseKtx")]
 package net.aquadc.mike.plugin.test
 
+import android.annotation.SuppressLint
 import android.graphics.Color
 import android.graphics.Color.parseColor
 import androidx.core.graphics.toColorInt

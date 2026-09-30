@@ -1,6 +1,5 @@
 package net.aquadc.mike.plugin.android
 
-import com.android.tools.idea.kotlin.evaluateConstant
 import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalQuickFix

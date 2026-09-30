@@ -31,6 +31,7 @@ import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
+import net.aquadc.mike.plugin.miserlyMap as map
 
 /**
  * @author Mike Gorünóv
@@ -121,8 +122,8 @@ class UncachedAllocInspection : UastInspection() {
 
     }
 
-    companion object {
-        private val noArgConstructors = listOf("com.google.gson.Gson", "okhttp3.OkHttpClient")
+    private companion object {
+        private val noArgConstructors = arrayOf("com.google.gson.Gson", "okhttp3.OkHttpClient")
         private val unqualifiedNoArgConstructors = noArgConstructors.map { it.substring(it.lastIndexOf('.') + 1) }
     }
 

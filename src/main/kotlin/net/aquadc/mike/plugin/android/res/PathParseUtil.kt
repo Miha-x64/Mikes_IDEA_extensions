@@ -8,9 +8,6 @@ internal fun Char.isCommand(): Boolean =
 internal fun Char.isCWSP(): Boolean =
     this in CWSP
 
-internal fun CharSequence.containsDot(startIndex: Int, endIndex: Int): Boolean =
-    this.indexOfDot(startIndex, endIndex) >= 0
-
 internal fun CharSequence.indexOfDot(startIndex: Int, endIndex: Int): Int {
     return this.indexOf('.', startIndex, endIndex)
 }

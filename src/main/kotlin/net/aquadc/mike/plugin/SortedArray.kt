@@ -1,7 +1,7 @@
 package net.aquadc.mike.plugin
 
-
-/*wannabe inline*/ class SortedArray<E : Comparable<E>> @PublishedApi internal constructor(private val array: Array<*>) {
+@JvmInline
+internal value class SortedArray<E : Comparable<E>> internal constructor(private val array: Array<*>) {
 
     operator fun contains(value: E): Boolean =
         array.binarySearch(value) >= 0

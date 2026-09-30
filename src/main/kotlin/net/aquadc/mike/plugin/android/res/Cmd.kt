@@ -283,11 +283,11 @@ private fun collapse(lastMove: Cmd?, a: Cmd, b: Cmd): Cmd? = when {
 }
 
 private fun Cmd.shortened(): Cmd =
-    when {
-        cmd == 'L' && args[0] == startX -> Cmd(startX, startY, 'V', args[1])
-        cmd == 'L' && args[1] == startY -> Cmd(startX, startY, 'H', args[0])
-        cmd == 'l' && args[0].signum() == 0 -> Cmd(startX, startY, 'v', args[1])
-        cmd == 'l' && args[1].signum() == 0 -> Cmd(startX, startY, 'h', args[0])
+    when (cmd) {
+        'L' if args[0] == startX -> Cmd(startX, startY, 'V', args[1])
+        'L' if args[1] == startY -> Cmd(startX, startY, 'H', args[0])
+        'l' if args[0].signum() == 0 -> Cmd(startX, startY, 'v', args[1])
+        'l' if args[1].signum() == 0 -> Cmd(startX, startY, 'h', args[0])
         else -> this
     }
 
