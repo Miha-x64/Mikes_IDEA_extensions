@@ -1,5 +1,7 @@
+@file:Suppress("unused")
 package net.aquadc.mike.plugin.test
 
+@Deprecated("check no hints in annotations", ReplaceWith("", "", ""))
 class VarargsKotlin(
     i: Int,
     vararg j: Int,
@@ -22,11 +24,19 @@ fun varargsKotlin() {
     remember("", calculation = {})
 
     checkNoOob(0)
+    checkNoOob(0, 0, 0)
 
     remember( // check multiline appearance
         1,
         2,
     ) {}
+    remember( // check forced single-line for range
+        1, 2,
+    ) {}
+
+    // no:
+    intArrayOf(1, 2, 3)
+    setOf(1, 2, 3)
 }
 
 inline fun remember(vararg keys: Any, calculation: () -> Unit) {

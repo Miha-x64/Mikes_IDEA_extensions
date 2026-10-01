@@ -3,6 +3,8 @@
     <li>Fix mistakenly showing interface upcast hints for <code>$continuation</code> parameter</li>
     <li>Fix crashes when analyzing arbitrary strings as pathData</li>
     <li>Stop reporting that named local functions can't be inlined: they are compiled normally now</li>
+    <li>Vararg allocation hints: fix flickering in Kotlin, ignore Kotlin list/setOf(), Java List/Set.of, 
+        ignore in Kotlin annotations, fix single-line appearance in Kotlin multiline calls</li>
   </ul>
 
 ### 0.35

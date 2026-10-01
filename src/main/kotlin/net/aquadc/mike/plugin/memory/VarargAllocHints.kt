@@ -1,3 +1,4 @@
+@file:Suppress("UnstableApiUsage")
 package net.aquadc.mike.plugin.memory
 
 import com.intellij.codeInsight.hints.FactoryInlayHintsCollector
@@ -19,12 +20,14 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.nextLeafs
 import com.intellij.psi.util.prevLeafs
 import com.intellij.psi.util.startOffset
 import net.aquadc.mike.plugin.DumbHintsConfigurable
 import net.aquadc.mike.plugin.hint
+import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -101,17 +104,12 @@ private class VarargAllocationHintsCollector(
     }
     private val hints: Array<InlayPresentation> = HINTS.map { factory.hint(it) }
 
-    override fun collect(element: PsiElement, editor: Editor, sink: InlayHintsSink): Boolean {
-        if (!settings.enabled || file.project.let { DumbService.isDumb(it) || it.isDefault }) return false
-        if (element is PsiCallExpression) {
-            collectJava(element, sink)
-            return true
-            // Avoid returning `false` because it makes the whole pass to be skipped, not only children
-        } else if (element is KtCallExpression) {
-            return collectKotlin(element, sink)
-        }
-        return true
-    }
+    override fun collect(element: PsiElement, editor: Editor, sink: InlayHintsSink): Boolean =
+        if (settings.enabled && !file.project.let { DumbService.isDumb(it) || it.isDefault }) {
+            if (element is PsiCallExpression) collectJava(element, sink)
+            else if (element is KtCallExpression) collectKotlin(element, sink)
+            true // Avoid returning `false` because it makes the whole pass to be skipped
+        } else false
 
     private fun collectJava(element: PsiCallExpression, sink: InlayHintsSink) {
         val args = element.argumentList
@@ -119,6 +117,8 @@ private class VarargAllocationHintsCollector(
             return
 
         val callee = element.resolveMethod() ?: return
+        if (callee.name.let { it == "of" && callee.containingClass?.name.let { it == "List" || it == "Set" } }) return
+
         val paramList = callee.parameterList
         if (!paramList.isEmpty &&
             paramList.parameters.last().isVarArgs &&
@@ -126,18 +126,21 @@ private class VarargAllocationHintsCollector(
             val firstVarArg = args.expressions[paramList.parametersCount - 1]
             if (firstVarArg !is PsiNewExpression || !firstVarArg.isArrayCreation) {
                 if (firstVarArg.type is PsiArrayType) {
-                    sink.addInlineElement(firstVarArg.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_JSPRD]), CONSTRAINTS)
+                    sink.addHint(firstVarArg.startOffset, hints[HINT_JSPRD])
                 } else {
-                    sink.addInlineElement(firstVarArg.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_JNEWA]), CONSTRAINTS)
-                    sink.addInlineElement(args.expressions.last().endOffset, RecursivelyUpdatingRootPresentation(hints[HINT_JNEWA + 1]), CONSTRAINTS)
+                    sink.addHint(firstVarArg.startOffset, hints[HINT_JNEWA])
+                    sink.addHint(args.expressions.last().endOffset, hints[HINT_JNEWA + 1])
                 }
             }
         }
     }
 
-    private fun collectKotlin(element: KtCallExpression, sink: InlayHintsSink): Boolean {
-        if (element.valueArgumentList.let { it == null || it.arguments.isEmpty() }) return false
-        val callee = element.calleeExpression?.mainReference?.resolve()?.toUElementOfType<UMethod>() ?: return true
+    private fun collectKotlin(element: KtCallExpression, sink: InlayHintsSink) {
+        if (element.valueArgumentList.let { it == null || it.arguments.isEmpty() }) return
+        val callee = element.calleeExpression?.mainReference?.resolve()?.toUElementOfType<UMethod>() ?: return // arrayOf gets skipped here (why ?)
+
+        if ((callee.returnType as? PsiClassReferenceType)?.resolve()?.isAnnotationType == true) return // skip arrays in annotations
+        if (callee.name.let { it == "listOf" || it.endsWith("ListOf") || it == "setOf" || it.endsWith("SetOf") }) return
 
         val uastParameters = callee.uastParameters
         var variadicParamIndex = uastParameters.indexOfFirst {
@@ -146,9 +149,9 @@ private class VarargAllocationHintsCollector(
         }
         val variadicParamName = uastParameters.getOrNull(variadicParamIndex)?.name
         if (callee.sourcePsi?.isExtensionDeclaration() == true)
-            variadicParamIndex-- // in compiled code, ^^^^^^^^^^^^^^^^^ this is uastParameters.first() for some reason, so avoid crash by checking emptiness
+            variadicParamIndex--
 
-        if (variadicParamIndex < 0) return true
+        if (variadicParamIndex < 0) return
 
         val args = element.valueArguments
         val namedVarArg = args.firstOrNull { it.getArgumentName()?.asName?.asString() == variadicParamName }
@@ -158,14 +161,14 @@ private class VarargAllocationHintsCollector(
                 // maxOf(a = 1, other =  intArrayOf(2, 3, 4))
                 //                 draw * here
                 namedVarArg.getArgumentExpression()?.let { ae ->
-                    sink.addInlineElement(ae.startOffset, RecursivelyUpdatingRootPresentation(hints[HINT_KSPRD]), CONSTRAINTS)
+                    sink.addHint(ae.startOffset, hints[HINT_KSPRD])
                 }
             }
         } else {
             // maxOf(    1,   2, 3, 4 )
             // maxOf(a = 1,   2, 3, 4 )
             //         draw *[       ]
-            if (args.getOrNull(variadicParamIndex)?.isSpread != false) return true
+            if (args.getOrNull(variadicParamIndex)?.isSpread != false) return
             // ?.isSpread == false means arg is specified (!= null) and not spread (!= true), go on
 
             if (args
@@ -175,7 +178,6 @@ private class VarargAllocationHintsCollector(
                         arg.getArgumentName()?.asName?.asString().let { it == null || it == param.name }
                     }
             ) {
-
                 var varArgEndIndex = args.indexOfFirst(variadicParamIndex + 1) {
                     it.getArgumentName() != null // stop on named parameter after vararg
                 }
@@ -185,20 +187,18 @@ private class VarargAllocationHintsCollector(
                 // OMG, we've found vararg parameters range
                 if (varArgEndIndex - variadicParamIndex > 0) {
                     val firstVarArg = args[variadicParamIndex]
-                    sink.addInlineElement(
-                        firstVarArg.prevLeafs.firstOrNull { it !is PsiWhiteSpace && it !is PsiComment }
-                            ?.takeIf { it.node.elementType === KtTokens.LPAR }?.endOffset
-                            ?: firstVarArg.startOffset,
-                        RecursivelyUpdatingRootPresentation(hints[HINT_KNEWA]),
-                        CONSTRAINTS,
-                    )
                     val lastVarArg = args[varArgEndIndex - 1]
-                    sink.addInlineElement(
-                        lastVarArg.nextLeafs.firstOrNull { it !is PsiWhiteSpace && it !is PsiComment && it.node.elementType !== KtTokens.COMMA }
-                            ?.takeIf { it.node.elementType == KtTokens.RPAR }
-                            ?.startOffset ?: lastVarArg.endOffset,
-                        RecursivelyUpdatingRootPresentation(hints[HINT_KNEWA + 1]),
-                        CONSTRAINTS,
+                    val multiline = firstVarArg.getLineNumber(start = true) != lastVarArg.getLineNumber(start = false)
+                    sink.addHint(
+                        firstVarArg.takeIf { multiline }?.prevLeafs?.firstOrNull { it !is PsiWhiteSpace && it !is PsiComment }
+                            ?.takeIf { it.node.elementType === KtTokens.LPAR }?.endOffset
+                            ?: firstVarArg.startOffset, hints[HINT_KNEWA]
+                    )
+                    sink.addHint(
+                        lastVarArg.takeIf { multiline }?.nextLeafs?.firstOrNull { it !is PsiWhiteSpace && it !is PsiComment && it.node.elementType !== KtTokens.COMMA }
+                            ?.takeIf { it.node.elementType == KtTokens.RPAR }?.startOffset
+                            ?: lastVarArg.endOffset,
+                        hints[HINT_KNEWA + 1]
                     )
                     /*
                     variadic(
@@ -215,7 +215,10 @@ private class VarargAllocationHintsCollector(
 
             }
         }
-        return true
+    }
+
+    private fun InlayHintsSink.addHint(offset: Int, current: InlayPresentation) {
+        addInlineElement(offset, RecursivelyUpdatingRootPresentation(current), CONSTRAINTS)
     }
 
 }
