@@ -7,6 +7,7 @@
         ignore in Kotlin annotations, fix single-line appearance in Kotlin multiline calls</li>
     <li>“Boxed primitive array allocation” is reworked to trigger on collections</li>
     <li>Kotlin reference shortening resurrected</li>
+    <li>Pasting Gradle dependencies into <code>build.gradle</code> or <code>build.gradle.kts</code> extracts them into <code>gradle/libs.versions.toml</code></li>
   </ul>
 
 ### 0.35

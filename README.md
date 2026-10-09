@@ -72,6 +72,7 @@ and want their IDE to actively point out non-obvious problems and better alterna
     <li>ARGB Color swatches in gutter, folding int literals to <code>#[AA]RRGGBB</code>, color picker, pasting CSS colors as int literals</li>
     <li>Live templates for SVG and Android Vector Drawable pathData</li>
     <li>Live templates for implementing <code>Property</code> for <code>ObjectAnimator</code></li>
+    <li>Pasting Gradle dependencies into <code>build.gradle</code> or <code>build.gradle.kts</code> extracts them into <code>gradle/libs.versions.toml</code> <em>by <a href="https://github.com/maximk0/">maximk0</a></em></li>
   </ul>
 
 <!-- end plugin.xml -->
