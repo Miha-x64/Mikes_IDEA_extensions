@@ -66,6 +66,7 @@ and want their IDE to actively point out non-obvious problems and better alterna
 
   <h3>Editor features</h3>
   <ul>
+    <li>Pasting Gradle dependencies into <code>build.gradle</code> or <code>build.gradle.kts</code> extracts them into <code>gradle/libs.versions.toml</code></li>
     <li>Inlay hints when upcasting to interface, e.g.<br/>putExtra(list<code>as Serializable</code>)</li>
     <li>Inlay hints when overriding an interface method, e.g.<br/>@Override <code>from Runnable</code>,<br/>override fun <code>Runnable.</code>run()</li>
     <li>Inlay hints for vararg array allocation: <br/>String.format("%d", <code>new[]{</code>1<code>}</code>);<br/>maxOf(1, <code>*[</code>2, 3, 4<code>]</code>)</li>
