@@ -111,6 +111,7 @@
     <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
+    <depends optional="true" config-file="withVersionCatalog.xml">org.toml.lang</depends>
     <depends optional="true" config-file="withAndroid.xml">org.jetbrains.android</depends>
 
 </idea-plugin>
