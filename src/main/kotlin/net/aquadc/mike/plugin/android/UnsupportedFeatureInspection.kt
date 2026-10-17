@@ -91,10 +91,10 @@ class UnsupportedFeatureInspection : UastInspection() {
 
         override fun visitCallExpr(
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+            declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean {
             (node as? UCallExpression)?.let { checkListenerSupport(it, src) }
-            checkObtainStyled(src, declaringClassFqn, methodName, valueArguments)
+            if (declaringClassFqn != null) checkObtainStyled(src, declaringClassFqn, methodName, valueArguments)
             return true
         }
         private fun checkListenerSupport(node: UCallExpression, src: PsiElement) {

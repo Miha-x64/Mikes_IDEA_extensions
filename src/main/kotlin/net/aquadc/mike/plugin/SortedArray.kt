@@ -1,10 +1,16 @@
 package net.aquadc.mike.plugin
 
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
+
 @JvmInline
 internal value class SortedArray<E : Comparable<E>> internal constructor(private val array: Array<*>) {
 
-    operator fun contains(value: E): Boolean =
-        array.binarySearch(value) >= 0
+    @OptIn(ExperimentalContracts::class)
+    operator fun contains(value: E?): Boolean {
+        contract { returns(true) implies (value != null) }
+        return array.binarySearch(value) >= 0
+    }
 
     companion object {
 

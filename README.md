@@ -21,6 +21,7 @@ and want their IDE to actively point out non-obvious problems and better alterna
     <li><code>BigDecimal|BigInteger</code> instantiation can be replaced with constant <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
     <li><code>(BigDecimal|BigInteger).compareTo(ZERO)</code> can be replaced with <code>signum()</code> <em>by <a href="https://github.com/stokito/">stokito</a></em></li>
     <li>Excessive SVG pathData in a string literal</li>
+    <li>Boxed primitive collection allocation (<code>arrayOf(1, 2, 3)</code>, <code>Set.of(1, 2, 3)</code>)</li>
   </ul>
 
   <h3>Kotlin inspections</h3>
@@ -31,7 +32,6 @@ and want their IDE to actively point out non-obvious problems and better alterna
     <li>Anonymous function won't be inlined;
       function cannot be inlined if it is a receiver of an extension function</li>
     <li><del>Nullable argument to string concatenation</del> <i>should be re-implemented in more reliable way</i></li>
-    <li>Boxed primitive array allocation (<code>arrayOf(1, 2, 3)</code>)</li>
   </ul>
 
   <h3>Android inspections</h3>

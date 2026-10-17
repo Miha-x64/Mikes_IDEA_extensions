@@ -39,7 +39,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
 
         override fun visitCallExpr(
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+            declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean {
             node.sourcePsi?.let { srcPsi ->
                 MATCHERS_TO_FIXES.firstOrNull { it.tryReport(holder, valueArguments, srcPsi) }
@@ -60,7 +60,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
 
             val replacements = if (isStandardViewProperty(args) && argIndices.all { i -> args[i].sourcePsi != null })
                 argIndices.mapNullize { argIndex ->
-                    args[argIndex].evaluateString()?.let { VIEW_PROPERTY_FIXES[it.replaceFirstChar(Char::lowercase)] }
+                    args[argIndex].evaluateString()?.let { VIEW_PROPERTY_FIXES[it.decapitalize()] }
                 } else null
 
 

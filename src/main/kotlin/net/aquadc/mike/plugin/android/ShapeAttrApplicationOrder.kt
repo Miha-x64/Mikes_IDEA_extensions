@@ -32,9 +32,9 @@ class ShapeAttrApplicationOrder : UastInspection() {
 
         override fun visitCallExpr(
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+            declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean {
-            checkForRadius(src, kind, declaringClassFqn, receiver, methodName)
+            if (declaringClassFqn != null) checkForRadius(src, kind, declaringClassFqn, receiver, methodName)
             return true
         }
 

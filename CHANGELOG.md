@@ -5,6 +5,8 @@
     <li>Stop reporting that named local functions can't be inlined: they are compiled normally now</li>
     <li>Vararg allocation hints: fix flickering in Kotlin, ignore Kotlin list/setOf(), u*ArrayOf(), Java List/Set.of, 
         ignore in Kotlin annotations, fix single-line appearance in Kotlin multiline calls</li>
+    <li>“Boxed primitive array allocation” is reworked to trigger on collections</li>
+    <li>Kotlin reference shortening resurrected</li>
   </ul>
 
 ### 0.35

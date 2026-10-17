@@ -34,16 +34,17 @@ class BigDecimalConstantInspection : UastInspection(), CleanupLocalInspectionToo
 
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean,
-    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
+    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor(constructor = true)  {
 
         override fun visitCallExpr(
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+            declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean {
-            when (kind) {
-                METHOD_CALL -> visitMethodCall(src, declaringClassFqn, valueArguments)
-                CONSTRUCTOR_CALL -> visitNewExpression(src, declaringClassFqn, valueArguments)
-            }
+            if (declaringClassFqn != null)
+                when (kind) {
+                    METHOD_CALL -> visitMethodCall(src, declaringClassFqn, valueArguments)
+                    CONSTRUCTOR_CALL -> visitNewExpression(src, declaringClassFqn, valueArguments)
+                }
             return true
         }
 

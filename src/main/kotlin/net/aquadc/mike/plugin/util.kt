@@ -6,11 +6,14 @@ import com.intellij.codeInsight.hints.ImmediateConfigurable
 import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.codeInsight.hints.presentation.PresentationFactory
 import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.LocalInspectionToolSession
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.java.JavaBundle
 import com.intellij.lang.java.JavaLanguage
+import com.intellij.lang.jvm.JvmClass
+import com.intellij.lang.jvm.types.JvmReferenceType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
@@ -36,6 +39,7 @@ import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.util.sourceRoot
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -64,6 +68,7 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
 import org.jetbrains.kotlin.psi.KtVisitorVoid
+import org.jetbrains.kotlin.psi.ValueArgument
 import org.jetbrains.kotlin.psi.psiUtil.referenceExpression
 import org.jetbrains.uast.UBinaryExpression
 import org.jetbrains.uast.UCallExpression
@@ -87,6 +92,11 @@ abstract class UastInspection : LocalInspectionTool() {
     final override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor =
         UastVisitorAdapter(uVisitor(holder, isOnTheFly), true)
 
+    final override fun buildVisitor( // make unoverridable
+        holder: ProblemsHolder, isOnTheFly: Boolean, session: LocalInspectionToolSession,
+    ): PsiElementVisitor =
+        buildVisitor(holder, isOnTheFly)
+
     abstract fun uVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): AbstractUastNonRecursiveVisitor
 
 }
@@ -94,6 +104,8 @@ abstract class UastInspection : LocalInspectionTool() {
 abstract class FunctionCallVisitor(
     private val assignment: Boolean = false,
     private val comparison: Boolean = false,
+    private val constructor: Boolean = false,
+    private val arrayInitializer: Boolean = false,
 ) : AbstractUastNonRecursiveVisitor() {
     final override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean {
         if (node.sourcePsi?.language === KotlinLanguage.INSTANCE) return true
@@ -107,14 +119,45 @@ abstract class FunctionCallVisitor(
             if (src is PsiExpressionStatement) // some wisdom from IDEA sources, not sure whether it is useful
                 return true
 
-            val method = if (node.kind == UastCallKind.CONSTRUCTOR_CALL) "<init>" else node.methodName
-            val cls = node.resolvedClassFqn
-            val args = if (node.valueArgumentCount == 0) emptyList() else object : AbstractList<UExpression>() {
-                override val size: Int get() = node.valueArgumentCount
-                override fun get(index: Int): UExpression = node.valueArguments[index]
+            val cls: String?
+            val meth: String?
+            when (node.kind) {
+                UastCallKind.METHOD_CALL -> {
+                    cls = node.containingClassFqn
+                    meth = node.methodName
+                }
+                UastCallKind.CONSTRUCTOR_CALL -> {
+                    if (constructor) {
+                        val rtn = node.returnTypeFqn
+                        if (rtn != null) { // e.g. `Array()` inline constructor
+                            cls = rtn
+                            meth = "<init>"
+                        } else {
+                            cls = null
+                            meth = ((node.sourcePsi as? KtCallExpression)?.calleeExpression as? KtNameReferenceExpression)?.referencedName
+                        }
+                    } else return true
+                }
+                UastCallKind.NESTED_ARRAY_INITIALIZER ->
+                    if (arrayInitializer && // skip if already visited
+                        (node.uastParent as? UCallExpression)?.kind != UastCallKind.NEW_ARRAY_WITH_INITIALIZER) {
+                        cls = null
+                        meth = "{}"
+                    } else return true
+                else -> {
+                    meth = CTOR_NAMES[node.kind] // NEW_ARRAY_WITH_DIMENSIONS, NEW_ARRAY_WITH_INITIALIZER
+                    if (meth == null) {
+                        Logger.getInstance(javaClass).error("UCallExpression::kind == ${node.kind}")
+                        return true
+                    } else if (arrayInitializer) {
+                        cls = node.returnTypeFqn
+                    } else {
+                        return true
+                    }
+                }
             }
-            if (method != null && cls != null) {
-                return visitCallExpr(node, src, node.kind, null, cls, node.receiver, method, args)
+            if (meth != null) { // cls, on the other hand, may be null, DeepSeek says it's due to K2 regression
+                return visitCallExpr(node, src, node.kind, null, cls, node.receiver, meth, node.valueArguments)
             }
         }
         return true
@@ -126,8 +169,8 @@ abstract class FunctionCallVisitor(
         if (assignment && op == "=") {
             (node.leftOperand as? UReferenceExpression)?.let { leftRef ->
                 val name = leftRef.resolvedName
-                val cls = leftRef.resolvedClassFqn
-                if (name != null && cls != null) {
+                val cls = leftRef.containingClassFqn
+                if (name != null) {
                     val receiver = when (leftRef) {
                         is UCallExpression -> leftRef.receiver
                         is UQualifiedReferenceExpression -> leftRef.receiver
@@ -141,20 +184,32 @@ abstract class FunctionCallVisitor(
             }
         } else if (comparison && (op == "<" || op == "<=" || op == ">" || op == ">=")) {
             (node.leftOperand as? UReferenceExpression)?.let { leftRef ->
-                val cls = leftRef.resolvedClassFqn
-                if (cls != null) {
-                    return visitCallExpr(
-                        node, src, UastCallKind.METHOD_CALL, op,
-                        cls, node.leftOperand, "compareTo", listOf(node.rightOperand),
-                    )
-                }
+                val cls = leftRef.containingClassFqn
+                return visitCallExpr(
+                    node, src, UastCallKind.METHOD_CALL, op,
+                    cls, node.leftOperand, "compareTo", listOf(node.rightOperand),
+                )
             }
         }
         return true
     }
+
+    private val UResolvable.containingClassFqn: String?
+        get() = (resolve() as? PsiMember)?.containingClass?.qualifiedName
+
+    private val UCallExpression.returnTypeFqn: String?
+        get() = ((returnType as? JvmReferenceType)?.resolveType()?.declaration as? JvmClass)?.qualifiedName
+
+    private companion object {
+        private val CTOR_NAMES = buildMap {
+            put(UastCallKind.NEW_ARRAY_WITH_DIMENSIONS, "new[]")
+            put(UastCallKind.NEW_ARRAY_WITH_INITIALIZER, "new[]{}")
+        }
+    }
+
     abstract fun visitCallExpr(
         node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-        declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+        declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
     ): Boolean
 }
 
@@ -203,9 +258,6 @@ abstract class StringVisitor : AbstractUastNonRecursiveVisitor() {
     }
     abstract fun visitString(src: PsiElement, value: String): Boolean
 }
-
-val UResolvable.resolvedClassFqn: String?
-    get() = (resolve() as? PsiMember)?.containingClass?.qualifiedName
 
 fun CallMatcher.test(expr: PsiElement): Boolean = when (expr) {
     is PsiMethodCallExpression -> test(expr)
@@ -277,40 +329,39 @@ internal class NamedReplacementFix(
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         val psi = psiRef?.let { it.element ?: return } ?: descriptor.psiElement
         if (FileModificationService.getInstance().preparePsiElementForWrite(psi)) {
-            if (shorten) replaceAndShorten(project, psi) else replace(project, psi)
+            if (shorten) replaceAndShorten(project, psi, expression, kotlinExpression) else replace(project, psi)
         }
-    }
-
-    private fun replaceAndShorten(project: Project, psi: PsiElement) {
-        if (psi.language === JavaLanguage.INSTANCE) when (psi) {
-            is PsiExpression -> PsiReplacementUtil.replaceExpressionAndShorten(psi, expression)
-            is PsiStatement -> PsiReplacementUtil.replaceStatementAndShortenClassNames(psi, expression)
-            is PsiAnnotation -> CodeStyleManager.getInstance(project).reformat(
-                JavaCodeStyleManager.getInstance(project).shortenClassReferences(
-                    replaceJAnnotation(project, psi)
-                )
-            )
-        } else if (psi.language === KotlinLanguage.INSTANCE)
-            CodeStyleManager.getInstance(psi.project).reformat(/*FIXME broken in K2 ShortenReferences.DEFAULT.process(*/replaceKt(psi)/*)*/)
     }
 
     private fun replace(project: Project, psi: PsiElement) {
         if (psi.language === JavaLanguage.INSTANCE) when (psi) {
             is PsiExpression -> PsiReplacementUtil.replaceExpression(psi, expression)
             is PsiStatement -> PsiReplacementUtil.replaceStatement(psi, expression)
-            is PsiAnnotation -> CodeStyleManager.getInstance(project).reformat(replaceJAnnotation(project, psi))
+            is PsiAnnotation -> CodeStyleManager.getInstance(project).reformat(replaceJAnnotation(project, psi, expression))
         } else if (psi.language === KotlinLanguage.INSTANCE)
-            CodeStyleManager.getInstance(psi.project).reformat(replaceKt(psi))
+            CodeStyleManager.getInstance(psi.project).reformat(replaceKt(psi, kotlinExpression))
     }
-
-    private fun replaceJAnnotation(project: Project, psi: PsiAnnotation) =
-        psi.replace(JavaPsiFacade.getElementFactory(project).createAnnotationFromText(expression, psi.parent))
-
-    private fun replaceKt(psi: PsiElement) = psi.replace(
-        if (psi is KtAnnotationEntry) KtPsiFactory(psi.project).createAnnotationEntry(kotlinExpression)
-        else KtPsiFactory(psi.project).createExpression(kotlinExpression)
-    ) as KtElement
 }
+internal fun replaceAndShorten(project: Project, psi: PsiElement, expression: String, kotlinExpression: String = expression) {
+    if (psi.language === JavaLanguage.INSTANCE)
+        when (psi) {
+            is PsiExpression -> PsiReplacementUtil.replaceExpressionAndShorten(psi, expression)
+            is PsiStatement -> PsiReplacementUtil.replaceStatementAndShortenClassNames(psi, expression)
+            is PsiAnnotation -> CodeStyleManager.getInstance(project).reformat(
+                JavaCodeStyleManager.getInstance(project).shortenClassReferences(replaceJAnnotation(project, psi, expression))
+            )
+        }
+    else if (psi.language === KotlinLanguage.INSTANCE)
+        ShortenReferencesFacility.getInstance().shorten(replaceKt(psi, kotlinExpression))
+            ?.let(CodeStyleManager.getInstance(project)::reformat)
+}
+private fun replaceJAnnotation(project: Project, psi: PsiAnnotation, expression: String) =
+    psi.replace(JavaPsiFacade.getElementFactory(project).createAnnotationFromText(expression, psi.parent))
+private fun replaceKt(psi: PsiElement, expression: String) =
+    psi.replace(
+        if (psi is KtAnnotationEntry) KtPsiFactory(psi.project).createAnnotationEntry(expression)
+        else KtPsiFactory(psi.project).createExpression(expression)
+    ) as KtElement
 
 abstract class KtFunctionObjectVisitor : KtVisitorVoid() {
 
@@ -490,9 +541,11 @@ internal fun <T> List<T>.alOf(first: Int, second: Int): ArrayList<T> =
         it.add(this[first])
         it.add(this[second])
     }
-inline fun <T, reified R> Array<out T>.miserlyMap(transform: (T) -> R): Array<R> =
+internal inline fun <T, reified R> Array<out T>.miserlyMap(transform: (T) -> R): Array<R> =
     Array(size) { transform(this[it]) }
-inline fun <reified R : Any> IntArray.miserlyMapNullize(transform: (Int) -> R?): Array<R>? =
+internal inline fun <T, reified R> List<T>.miserlyMap(transform: (T) -> R): Array<R> =
+    Array(size) { transform(this[it]) }
+internal inline fun <reified R : Any> IntArray.miserlyMapNullize(transform: (Int) -> R?): Array<R>? =
     if (isEmpty()) null else Array(size) { transform(this[it]) ?: return null }
 
 operator fun <T> ((T) -> Boolean).not(): (T) -> Boolean = { !this(it) }
@@ -557,3 +610,20 @@ fun KtStringTemplateExpression.constantValue(): String? =
 
 val PsiFile.isTest: Boolean?
     get() = sourceRoot?.parent?.name?.let { "test" == it || "Test" in it }
+
+fun UCallExpression.argument(position: Int, name: String): UExpression? {
+    var fallback: UExpression? = null
+    valueArguments.forEachIndexed { i, arg ->
+        // method(name = value, ...
+        // arg: Expression 'value'
+        // arg.parent: Argument 'name = value'
+        (arg.sourcePsi?.parent as? ValueArgument)?.let {
+            if (it.getArgumentName()?.asName?.identifier == name) return arg
+        }
+        if (i == position) fallback = arg
+    }
+    return fallback
+}
+
+internal fun String.decapitalize(): String =
+    replaceFirstChar(Char::lowercase)

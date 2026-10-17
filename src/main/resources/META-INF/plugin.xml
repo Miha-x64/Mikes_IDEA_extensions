@@ -83,9 +83,9 @@
         <codeInsight.inlayProvider language="kotlin" implementationClass="net.aquadc.mike.plugin.memory.VarargAllocHintsKotlin" />
 
         <localInspection
-            language="kotlin" shortName="BoxArray" displayName="Array of boxed primitives"
-            groupPath="Kotlin" groupName="Performance" enabledByDefault="true" level="WARNING"
-            implementationClass="net.aquadc.mike.plugin.memory.BoxArray" />
+            language="UAST" shortName="BoxCollection" displayName="Collection of boxed primitives"
+            groupPath="JVM languages" groupName="Performance" enabledByDefault="true" level="WEAK WARNING"
+            implementationClass="net.aquadc.mike.plugin.memory.BoxCollectionInspection" />
 
         <!--TODO globalInspection
             shortName="UnusedImpl" displayName="Unused implementation"

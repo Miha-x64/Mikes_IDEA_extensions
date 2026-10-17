@@ -21,10 +21,10 @@ import kotlin.math.absoluteValue
 class WrongStateAttr : UastInspection() {
     override fun uVisitor(
         holder: ProblemsHolder, isOnTheFly: Boolean
-    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
+    ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor(constructor = true) {
         override fun visitCallExpr(
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+            declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean =
             if (kind === UastCallKind.CONSTRUCTOR_CALL && declaringClassFqn == "android.content.res.ColorStateList") {
                 // android.content.res.ColorStateList.ColorStateList(int[][], int[])

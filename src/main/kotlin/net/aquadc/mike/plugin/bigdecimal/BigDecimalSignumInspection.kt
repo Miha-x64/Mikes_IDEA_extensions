@@ -35,9 +35,9 @@ class BigDecimalSignumInspection : UastInspection(), CleanupLocalInspectionTool 
 
         override fun visitCallExpr(
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+            declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean {
-            check(src, operator, declaringClassFqn, receiver, methodName, valueArguments)
+            if (declaringClassFqn != null) check(src, operator, declaringClassFqn, receiver, methodName, valueArguments)
             return true
         }
         private fun check(

@@ -51,7 +51,7 @@ class ConstantParseColor : UastInspection(), CleanupLocalInspectionTool {
     ): AbstractUastNonRecursiveVisitor = object : FunctionCallVisitor() {
         override fun visitCallExpr(
             node: UExpression, src: PsiElement, kind: UastCallKind, operator: String?,
-            declaringClassFqn: String, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
+            declaringClassFqn: String?, receiver: UExpression?, methodName: String, valueArguments: List<UExpression>,
         ): Boolean =
             if (kind == UastCallKind.METHOD_CALL) {
                 if (declaringClassFqn == "android.graphics.Color" && methodName == "parseColor") {
