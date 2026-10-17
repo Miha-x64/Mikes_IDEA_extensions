@@ -140,7 +140,11 @@ private class VarargAllocationHintsCollector(
         val callee = element.calleeExpression?.mainReference?.resolve()?.toUElementOfType<UMethod>() ?: return // arrayOf gets skipped here (why ?)
 
         if ((callee.returnType as? PsiClassReferenceType)?.resolve()?.isAnnotationType == true) return // skip arrays in annotations
-        if (callee.name.let { it == "listOf" || it.endsWith("ListOf") || it == "setOf" || it.endsWith("SetOf") }) return
+        if (callee.name.let {
+            it == "listOf" || it.endsWith("ListOf") ||
+                    it == "setOf" || it.endsWith("SetOf") ||
+                    it == "arrayOf" || it.endsWith("ArrayOf") // arrayOf is skipped by regression (?), double-check, and skip e.g. uintArrayOf(), too
+        }) return
 
         val uastParameters = callee.uastParameters
         var variadicParamIndex = uastParameters.indexOfFirst {
