@@ -537,13 +537,15 @@ internal class PathTag private constructor(
             pathTag.name == "path" && pathTag.subTags.isEmpty()) {
             holder.registerProblem(
                 pathTag, "", ProblemHighlightType.INFORMATION,
-                splitPathFix(subPathRanges, startPositions)
+                SplitPathFix(floatRanges, subPathRanges, startPositions)
             )
         }
     }
-    private fun splitPathFix(
-        subPathRanges: List<IntArrayList>, startPositions: List<FloatArrayList>,
-    ) = object : NamedLocalQuickFix("Split path") {
+    private class SplitPathFix(
+        @FileModifier.SafeFieldForPreview private val floatRanges: IntArrayList,
+        @FileModifier.SafeFieldForPreview private val subPathRanges: List<IntArrayList>,
+        @FileModifier.SafeFieldForPreview private val startPositions: List<FloatArrayList>
+    ) : NamedLocalQuickFix("Split path") {
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
             val tag = descriptor.psiElement as? XmlTag
             val parent = tag?.parentOfType<XmlTag>() ?: return
@@ -715,18 +717,22 @@ private fun removeSubPathFix(
         replacementRanges[2 * it + 1] = endOffset + victimLen
         sb.toString()
     }
-    return object : NamedLocalQuickFix("Remove sub-path") {
-        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-            val attrVal = (descriptor.psiElement as? XmlAttributeValue) ?: return
-            val value = attrVal.value
-            val fixed =
-                if (replacements.size == 1) value.replaceRange(replacementRanges.getInt(0), replacementRanges.getInt(1), replacements[0])
-                else StringBuilder(value).apply {
-                    for (i in replacements.lastIndex downTo 0)
-                        replace(replacementRanges.getInt(2 * i), replacementRanges.getInt(2 * i + 1), replacements[i])
-                }.toString()
-            (attrVal.parent as XmlAttribute).setValue(fixed)
-        }
+    return RemoveSubPathFix(replacements, replacementRanges)
+}
+class RemoveSubPathFix(
+    @FileModifier.SafeFieldForPreview private val replacements: List<String>,
+    @FileModifier.SafeFieldForPreview private val replacementRanges: IntArrayList
+) : NamedLocalQuickFix("Remove sub-path") {
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val attrVal = (descriptor.psiElement as? XmlAttributeValue) ?: return
+        val value = attrVal.value
+        val fixed =
+            if (replacements.size == 1) value.replaceRange(replacementRanges.getInt(0), replacementRanges.getInt(1), replacements[0])
+            else StringBuilder(value).apply {
+                for (i in replacements.lastIndex downTo 0)
+                    replace(replacementRanges.getInt(2 * i), replacementRanges.getInt(2 * i + 1), replacements[i])
+            }.toString()
+        (attrVal.parent as XmlAttribute).setValue(fixed)
     }
 }
 

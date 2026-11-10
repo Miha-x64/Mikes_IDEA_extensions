@@ -1,5 +1,6 @@
 package net.aquadc.mike.plugin.memory
 
+import com.intellij.codeInsight.intention.FileModifier
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.java.JavaLanguage
@@ -114,20 +115,25 @@ class BoxCollectionVisitor(
                 kotlinExpression = "${unboxedLS}Array(${dimensions.text})",
             ) }),
             *libraryFactories.map { (lib, fac) ->
-                object : NamedLocalQuickFix("Use ${fac.name} from ${lib.name}") { // libraries are not language features, thus 'Use' go after 'Replace'
-                    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                        val cap =
-                            descriptor.psiElement
-                                ?.toUElementOfType<UCallExpression>()
-                                ?.valueArguments?.singleOrNull()
-                                ?.sourcePsi?.text
-                        val newKwSp =
-                            "new ".takeIf { descriptor.psiElement.language === JavaLanguage.INSTANCE }.orEmpty()
-                        replaceAndShorten(project, descriptor.psiElement, fac.expression(newKwSp, unboxed, cap))
-                    }
-                }
+                ReplaceWithCapacity(fac, lib, unboxed)
             }
         )
+    }
+    private class ReplaceWithCapacity(
+        private val fac: FactoryImpl.WithCapacity,
+        lib: Library,
+        private val unboxed: String,
+    ) : NamedLocalQuickFix("Use ${fac.name} from ${lib.name}") { // libraries are not language features, thus 'Use' go after 'Replace'
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            val cap =
+                descriptor.psiElement
+                    ?.toUElementOfType<UCallExpression>()
+                    ?.valueArguments?.singleOrNull()
+                    ?.sourcePsi?.text
+            val newKwSp =
+                "new ".takeIf { descriptor.psiElement.language === JavaLanguage.INSTANCE }.orEmpty()
+            replaceAndShorten(project, descriptor.psiElement, fac.expression(newKwSp, unboxed, cap))
+        }
     }
 
     private fun visitOfElements(src: PsiElement, unboxed: String, myFactories: Array<out FactoryDef>) {
@@ -136,58 +142,47 @@ class BoxCollectionVisitor(
         holder.registerProblem(
             src,
             "${factoryNames[myFactories]!!} of boxed ${unboxedLS}s",
-            object : NamedLocalQuickFix("Replace with $unboxedLS array") { // array is a language feature, thus 'Replace' goes before 'Use'
-                override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                    val psi = descriptor.psiElement ?: return
-                    val (success, sArgs) = psi.argsSortedIfOrdered(myFactories) ?: return
-                    replaceAndShorten(
-                        project, psi,
-                        when (psi.language) {
-                            JavaLanguage.INSTANCE ->
-                                "new ${unboxedLS.decapitalize()}[] {${sArgs.joinToString(", ")}}"
-                            KotlinLanguage.INSTANCE ->
-                                // UInt -> uint[ArrayOf()]
-                                "${unboxedLS.lowercase()}ArrayOf(${sArgs.joinToString(", ")})".let {
-                                    if (success) it else "$it.also { it.sort() }"
-                                }
-                            else -> return
-                        }
-                    )
-                }
-            },
+            ReplaceOfElementsWithArray(unboxedLS, myFactories),
             *libraryFactories.map { (lib, fac) ->
-                object : NamedLocalQuickFix("Use ${fac.name} from ${lib.name}") { // libraries are not language features, thus 'Use' go after 'Replace'
-                    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                        val psi = descriptor.psiElement ?: return
-                        val (success, sArgs) = psi.argsSortedIfOrdered(myFactories) ?: return
-                        val postfix = if (success) "" else fac.sorted // e.g. expr.sorted()
-                        replaceAndShorten(project, descriptor.psiElement, fac.expression(unboxed, sArgs) + postfix)
-                    }
-                }
+                ReplaceOfElementsWithLibrary(fac, lib, myFactories, unboxed)
             }
         )
     }
-    private fun PsiElement.argsSortedIfOrdered(myFactories: Array<out FactoryDef>): Pair<Boolean, Array<String>>? {
-        val args = toUElementOfType<UCallExpression>()?.valueArguments ?: return null
-        val distinctArgs =
-            if (myFactories in setFactories) args.asInSet(sorted = myFactories === sortedSetFactories)?.asList()
-            else args
-        val sortedArgText = (distinctArgs ?: args).map { it.sourcePsi?.text ?: return null }
-        return Pair(distinctArgs != null, sortedArgText)
-    }
-    private fun List<UExpression>.asInSet(sorted: Boolean): Array<UExpression>? =
-        map { it to (it.evaluate() ?: return null) }
-            .takeIf { !sorted || it.safeSortBy(Pair<*, *>::second) }
-            ?.distinctBy(Pair<*, *>::second)
-            ?.map(Pair<UExpression, *>::first)
-    private fun <T, R> Array<T>.safeSortBy(selector: (T) -> R): Boolean =
-        try {
-            @Suppress("UNCHECKED_CAST")
-            sortBy { selector(it) as Comparable<Any> }
-            true
-        } catch (_: ClassCastException) {
-            false
+    private class ReplaceOfElementsWithArray(
+        private val unboxedLS: String,
+        private val myFactories: Array<out FactoryDef>,
+    ) : NamedLocalQuickFix("Replace with $unboxedLS array") { // array is a language feature, thus 'Replace' goes before 'Use'
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            val psi = descriptor.psiElement ?: return
+            val (success, sArgs) = psi.argsSortedIfOrdered(myFactories) ?: return
+            replaceAndShorten(
+                project, psi,
+                when (psi.language) {
+                    JavaLanguage.INSTANCE ->
+                        "new ${unboxedLS.decapitalize()}[] {${sArgs.joinToString(", ")}}"
+                    KotlinLanguage.INSTANCE ->
+                        // UInt -> uint[ArrayOf()]
+                        "${unboxedLS.lowercase()}ArrayOf(${sArgs.joinToString(", ")})".let {
+                            if (success) it else "$it.also { it.sort() }"
+                        }
+                    else -> return
+                }
+            )
         }
+    }
+    private class ReplaceOfElementsWithLibrary(
+        private val fac: FactoryImpl.OfElements,
+        lib: Library,
+        private val myFactories: Array<out FactoryDef>,
+        private val unboxed: String,
+    ) : NamedLocalQuickFix("Use ${fac.name} from ${lib.name}") { // libraries are not language features, thus 'Use' go after 'Replace'
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            val psi = descriptor.psiElement ?: return
+            val (success, sArgs) = psi.argsSortedIfOrdered(myFactories) ?: return
+            val postfix = if (success) "" else fac.sorted // e.g. expr.sorted()
+            replaceAndShorten(project, descriptor.psiElement, fac.expression(unboxed, sArgs) + postfix)
+        }
+    }
 
     private fun visitWithFactory(src: PsiElement, unboxed: String, size: PsiElement, factory: PsiElement) {
         val libraryFactories = findReplacements<FactoryImpl.WithFactory>(unboxed, arrayFactories)
@@ -197,30 +192,41 @@ class BoxCollectionVisitor(
         holder.registerProblem(
             src,
             "Array of boxed ${unboxed}s",
-            object : NamedLocalQuickFix("Replace with $unboxed array") { // array is a language feature, thus 'Replace' goes before 'Use'
-                override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                    val psi = descriptor.psiElement
-                    CodeStyleManager.getInstance(psi.project).reformat(
-                        psi.replace(
-                            KtPsiFactory(psi.project).createExpression(
-                                if (trailingFac) "${unboxed}Array($size) $factory"
-                                else "${unboxed}Array($size, $factory)"
-                            )
-                        )
-                    )
-                }
-            },
+            ReplaceWithFactoryWithArray(unboxed, trailingFac, size, factory),
             *libraryFactories.map { (lib, fac) ->
-                object : NamedLocalQuickFix("Use ${fac.name} from ${lib.name}") { // libraries are not language features, thus 'Use' go after 'Replace'
-                    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                        val node = descriptor.psiElement?.toUElementOfType<UCallExpression>() ?: return
-                        val size = node.argument(0, "size")?.sourcePsi ?: return
-                        val init = node.argument(1, "init")?.sourcePsi ?: return
-                        replaceAndShorten(project, descriptor.psiElement, fac.expression(unboxed, size.text, init.text, init is KtLambdaExpression || init is KtLambdaArgument))
-                    }
-                }
+                ReplaceWithFactoryWithLibrary(fac, lib, unboxed)
             }
         )
+    }
+    private class ReplaceWithFactoryWithArray(
+        private val unboxed: String,
+        private val trailingFac: Boolean,
+        private val size: String?,
+        private val factory: String?,
+    ) : NamedLocalQuickFix("Replace with $unboxed array") { // array is a language feature, thus 'Replace' goes before 'Use'
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            val psi = descriptor.psiElement
+            CodeStyleManager.getInstance(psi.project).reformat(
+                psi.replace(
+                    KtPsiFactory(psi.project).createExpression(
+                        if (trailingFac) "${unboxed}Array($size) $factory"
+                        else "${unboxed}Array($size, $factory)"
+                    )
+                )
+            )
+        }
+    }
+    private class ReplaceWithFactoryWithLibrary(
+        private val fac: FactoryImpl.WithFactory,
+        lib: Library,
+        private val unboxed: String,
+    ) : NamedLocalQuickFix("Use ${fac.name} from ${lib.name}") { // libraries are not language features, thus 'Use' go after 'Replace'
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            val node = descriptor.psiElement?.toUElementOfType<UCallExpression>() ?: return
+            val size = node.argument(0, "size")?.sourcePsi ?: return
+            val init = node.argument(1, "init")?.sourcePsi ?: return
+            replaceAndShorten(project, descriptor.psiElement, fac.expression(unboxed, size.text, init.text, init is KtLambdaExpression || init is KtLambdaArgument))
+        }
     }
 
     private fun UCallExpression.componentType(): String? {
@@ -262,6 +268,28 @@ class BoxCollectionVisitor(
         }
     }
     private companion object {
+        private fun PsiElement.argsSortedIfOrdered(myFactories: Array<out FactoryDef>): Pair<Boolean, Array<String>>? {
+            val args = toUElementOfType<UCallExpression>()?.valueArguments ?: return null
+            val distinctArgs =
+                if (myFactories in setFactories) args.asInSet(sorted = myFactories === sortedSetFactories)?.asList()
+                else args
+            val sortedArgText = (distinctArgs ?: args).map { it.sourcePsi?.text ?: return null }
+            return Pair(distinctArgs != null, sortedArgText)
+        }
+        private fun List<UExpression>.asInSet(sorted: Boolean): Array<UExpression>? =
+            map { it to (it.evaluate() ?: return null) }
+                .takeIf { !sorted || it.safeSortBy(Pair<*, *>::second) }
+                ?.distinctBy(Pair<*, *>::second)
+                ?.map(Pair<UExpression, *>::first)
+        private fun <T, R> Array<T>.safeSortBy(selector: (T) -> R): Boolean =
+            try {
+                @Suppress("UNCHECKED_CAST")
+                sortBy { selector(it) as Comparable<Any> }
+                true
+            } catch (_: ClassCastException) {
+                false
+            }
+
         private val arrayFactories = arrayOf(
             FactoryDef.OfElements(null, "arrayOf"),
             FactoryDef.WithCapacity(null, "arrayOfNulls"),
@@ -307,6 +335,7 @@ class BoxCollectionVisitor(
             put(linkedSetFactories, "LinkedSet")
         }
 
+        @FileModifier.SafeTypeForPreview
         private sealed class FactoryDef(val declaringClassFqn: String?, vararg val funNames: String) {
             class OfElements(declaringClassFqn: String?, vararg funNames: String) : FactoryDef(declaringClassFqn, *funNames)
             class WithCapacity(declaringClassFqn: String?, vararg funNames: String) : FactoryDef(declaringClassFqn, *funNames)
@@ -493,8 +522,11 @@ class BoxCollectionVisitor(
                 (it as? T)?.types?.contains(unboxed) == true
             }?.let { lib to it as T }
         }
+
+        @FileModifier.SafeTypeForPreview
         private sealed class FactoryImpl(val name: String, vararg val types: String) {
 
+            @FileModifier.SafeTypeForPreview
             class OfElements(
                 name: String,
                 val sorted: String = "",
@@ -506,12 +538,14 @@ class BoxCollectionVisitor(
                 }
             }
 
+            @FileModifier.SafeTypeForPreview
             class WithCapacity(
                 name: String,
                 vararg types: String,
                 val expression: (newKwSp: String, type: String, cap: String?) -> String,
             ) : FactoryImpl(name, types = types)
 
+            @FileModifier.SafeTypeForPreview
             class WithFactory(
                 name: String,
                 vararg types: String,

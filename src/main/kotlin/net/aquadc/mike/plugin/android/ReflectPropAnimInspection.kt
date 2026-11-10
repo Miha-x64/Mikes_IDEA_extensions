@@ -1,24 +1,41 @@
 package net.aquadc.mike.plugin.android
 
+import com.intellij.codeInsight.intention.FileModifier
 import com.intellij.codeInspection.CleanupLocalInspectionTool
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
-import com.intellij.psi.*
+import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiExpression
+import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.PsiType
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiUtilCore
 import com.siyeh.ig.PsiReplacementUtil
 import com.siyeh.ig.callMatcher.CallMatcher
-import net.aquadc.mike.plugin.*
+import net.aquadc.mike.plugin.FunctionCallVisitor
+import net.aquadc.mike.plugin.NamedLocalQuickFix
+import net.aquadc.mike.plugin.UastInspection
+import net.aquadc.mike.plugin.decapitalize
+import net.aquadc.mike.plugin.fixes
+import net.aquadc.mike.plugin.test
+import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtPsiFactory
-import org.jetbrains.uast.*
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UElement
+import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UastCallKind
+import org.jetbrains.uast.evaluateString
+import org.jetbrains.uast.getParentOfType
+import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
-import com.intellij.codeInsight.FileModificationService.getInstance as fileModificationService
+import org.jetbrains.uast.wrapULiteral
 import com.intellij.lang.java.JavaLanguage.INSTANCE as Java
 import com.intellij.psi.CommonClassNames.JAVA_LANG_OBJECT as TObject
 import com.intellij.psi.CommonClassNames.JAVA_LANG_STRING as TString
@@ -49,6 +66,7 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
         }
     }
 
+    @FileModifier.SafeTypeForPreview
     private class MatcherToFix(
         private val matcher: CallMatcher,
         private val isStandardViewProperty: ArgsPredicate,
@@ -72,60 +90,59 @@ class ReflectPropAnimInspection : UastInspection(), CleanupLocalInspectionTool {
                 "Reflective property animation",
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                 holder.isOnTheFly,
-                *fixes(replacements?.let { fix(it) })
+                *fixes(replacements?.let(::Replacement))
             ))
 
             return true
         }
-        private fun fix(
-            replacements: Array<String>
-        ) = object : NamedLocalQuickFix("Replace property name with explicit Property instance") {
+
+        private inner class Replacement(
+            private val replacements: Array<String>,
+        ) : NamedLocalQuickFix("Replace property name with explicit Property instance") {
             override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
                 val uCall = descriptor.startElement.toUElement()?.getParentOfType<UCallExpression>(false) ?: return
                 val call: PsiElement = uCall.sourcePsi ?: return
-                if (fileModificationService().preparePsiElementForWrite(call)) {
-                    val args = uCall.valueArguments
-                    val lang = call.language
-                    if (replaceMethodWith == "") {
-                        if (lang == Java) PsiReplacementUtil.replaceExpression(
-                            call as PsiExpression,
-                            TView + '.' + replacements.single()
-                        ) else if (lang == Kotlin) CodeStyleManager.getInstance(call.project).reformat(
-//                            ShortenRefs.process( FIXME
-                                (call.parent as? KtDotQualifiedExpression ?: call).replace(
-                                    KtPsiFactory(call.project).createExpression(TView + '.' + replacements.single())
-                                ) as KtElement
-//                            )
-                        )
-                    } else {
-                        if (lang == Java) {
-                            argIndices.forEachIndexed { i, argIdx ->
-                                (args[argIdx].sourcePsi as? PsiExpression)?.let { srcArg ->
-                                    val replacement = replacements[i]
-                                    PsiReplacementUtil.replaceExpressionAndShorten(srcArg, "$TView.$replacement")
-                                }
-                            }
-                        } else if (lang == Kotlin) {
-                            val kt = KtPsiFactory((call as KtElement).project)
-                            argIndices.forEachIndexed { i, argIdx ->
+                val args = uCall.valueArguments
+                val lang = call.language
+                if (replaceMethodWith == "") {
+                    if (lang == Java) PsiReplacementUtil.replaceExpression(
+                        call as PsiExpression,
+                        TView + '.' + replacements.single()
+                    ) else if (lang == Kotlin)
+                        ShortenReferencesFacility.getInstance().shorten(
+                            (call.parent as? KtDotQualifiedExpression ?: call).replace(
+                                KtPsiFactory(call.project).createExpression(TView + '.' + replacements.single())
+                            ) as KtElement
+                        )?.let(CodeStyleManager.getInstance(project)::reformat)
+                } else {
+                    if (lang == Java) {
+                        argIndices.forEachIndexed { i, argIdx ->
+                            (args[argIdx].sourcePsi as? PsiExpression)?.let { srcArg ->
                                 val replacement = replacements[i]
-                                wrapULiteral(args[argIdx]).sourcePsi?.replace(
-                                    kt.createExpression("$TView.$replacement")
-                                )
+                                PsiReplacementUtil.replaceExpressionAndShorten(srcArg, "$TView.$replacement")
                             }
-                            CodeStyleManager.getInstance(call.project).reformat(/*FIXME ShortenRefs.process(*/call/*)*/)
                         }
-                        if (replaceMethodWith != null) {
-                            if (lang == Java) {
-                                PsiReplacementUtil.replaceExpressionAndShorten(
-                                    (call as PsiMethodCallExpression).methodExpression,
-                                    (call.methodExpression.qualifierExpression?.text?.let { "$it." } ?: "") +
-                                            replaceMethodWith
-                                )
-                            } else if (lang == Kotlin) {
-                                (call as KtCallExpression).calleeExpression
-                                    ?.replace(KtPsiFactory(call.project).createExpression(replaceMethodWith))
-                            }
+                    } else if (lang == Kotlin) {
+                        val kt = KtPsiFactory((call as KtElement).project)
+                        argIndices.forEachIndexed { i, argIdx ->
+                            val replacement = replacements[i]
+                            wrapULiteral(args[argIdx]).sourcePsi?.replace(
+                                kt.createExpression("$TView.$replacement")
+                            )
+                        }
+                        ShortenReferencesFacility.getInstance().shorten(call)
+                            ?.let(CodeStyleManager.getInstance(project)::reformat)
+                    }
+                    if (replaceMethodWith != null) {
+                        if (lang == Java) {
+                            PsiReplacementUtil.replaceExpressionAndShorten(
+                                (call as PsiMethodCallExpression).methodExpression,
+                                (call.methodExpression.qualifierExpression?.text?.let { "$it." } ?: "") +
+                                        replaceMethodWith
+                            )
+                        } else if (lang == Kotlin) {
+                            (call as KtCallExpression).calleeExpression
+                                ?.replace(KtPsiFactory(call.project).createExpression(replaceMethodWith))
                         }
                     }
                 }

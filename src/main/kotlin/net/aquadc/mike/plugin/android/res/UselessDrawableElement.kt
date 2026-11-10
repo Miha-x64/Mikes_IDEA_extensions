@@ -50,45 +50,54 @@ private fun ProblemsHolder.checkLayerList(tag: XmlTag) {
                             (insets and insetInsets.foldIndexed(0) { i, acc, inset ->
                                 acc or if (itemChild.getAttribute(inset, ANDROID_NS) == null) 0 else 1 shl i
                             }) != 0) // <item left="x"><inset insetLeft="y"> could be hard or impossible to merge
-                ) null else object : NamedLocalQuickFix(
-                    if (insets == 0) "Replace <layer-list> with <item> contents"
-                    else "Replace <layer-list> with <inset>"
-                ) {
-                    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-                        val layerList = descriptor.psiElement as XmlTag
-                        if (insets == 0) {
-                            itemChild as XmlTag
-                            layerList.transferNamespacesTo(itemChild)
-                            val repl = layerList.replace(itemChild)
-                            CodeStyleManager.getInstance(project).reformat(repl)
-                        } else {
-                            layerList.name = "inset"
-                            item.attributes.forEach {
-                                val name = it.localName
-                                val iof = layerInsets.indexOf(name)
-                                layerList.setAttribute(
-                                    if (iof < 0) it.name else "${it.namespacePrefix}:${insetInsets[iof]}",
-                                    it.value
-                                )
-                            }
-
-                            if (itemChild is XmlTag)
-                                layerList.addSubTag(itemChild, true)
-
-                            item.delete()
-
-                            if (itemChild is XmlAttribute)
-                                layerList.collapseIfEmpty()
-
-                            CodeStyleManager.getInstance(project).reformat(layerList)
-                        }
-                    }
-                },
+                ) null else ReplaceLayerListFix(
+                    insets,
+                ),
                 ProblemHighlightType.WEAK_WARNING
             )
         }
     }
     checkItems(tag)
+}
+private class ReplaceLayerListFix(
+    private val insets: Int,
+): NamedLocalQuickFix(
+    if (insets == 0) "Replace <layer-list> with <item> contents" else "Replace <layer-list> with <inset>"
+) {
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val layerList = descriptor.psiElement as? XmlTag ?: return
+        val item = layerList.subTags.singleOrNull() ?: return
+        val itemChild = item.getAttribute("drawable", ANDROID_NS).let { ref ->
+            if (ref != null) ref.takeIf { item.subTags.isEmpty() } else item.subTags.singleOrNull()
+        }
+
+        if (insets == 0) {
+            itemChild as XmlTag
+            layerList.transferNamespacesTo(itemChild)
+            val repl = layerList.replace(itemChild)
+            CodeStyleManager.getInstance(project).reformat(repl)
+        } else {
+            layerList.name = "inset"
+            item.attributes.forEach {
+                val name = it.localName
+                val iof = layerInsets.indexOf(name)
+                layerList.setAttribute(
+                    if (iof < 0) it.name else "${it.namespacePrefix}:${insetInsets[iof]}",
+                    it.value
+                )
+            }
+
+            if (itemChild is XmlTag)
+                layerList.addSubTag(itemChild, true)
+
+            item.delete()
+
+            if (itemChild is XmlAttribute)
+                layerList.collapseIfEmpty()
+
+            CodeStyleManager.getInstance(project).reformat(layerList)
+        }
+    }
 }
 
 private fun ProblemsHolder.checkInset(tag: XmlTag) {
